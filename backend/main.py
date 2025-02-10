@@ -3,6 +3,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from datetime import datetime
+from contextlib import asynccontextmanager
 import time
 import clr
 import pyvisa
@@ -53,20 +54,8 @@ from Thorlabs.MotionControl.GenericMotorCLI import *
 from Thorlabs.MotionControl.Benchtop.BrushlessMotorCLI import *
 from System import Decimal
 
-# Create FastAPI app
-app = FastAPI()
 
 global_state = GlobalState()
-
-# Add CORS middleware
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
 
 # Define the request model
 class RectangleParams(BaseModel):
@@ -109,17 +98,27 @@ def initialize_channel(device, channel_number):
 
     except Exception as e:
         print(f"---Channel {channel_number} initialization error: {e}")
-
-@app.on_event("startup")
-async def startup_event():
+    
+@asynccontextmanager
+async def lifespan(app: FastAPI):
     global_state.device = initialize_device("103387864")
     global_state.channel1, global_state.motor_config1 = initialize_channel(global_state.device, 1)
     global_state.channel2, global_state.motor_config2 = initialize_channel(global_state.device, 2)
     global_state.lockin = SR865A()
-
-@app.on_event("shutdown")
-async def startup_event():
+    yield
     global_state.device.Disconnect()
+    
+# Create FastAPI app
+app = FastAPI(lifespan=lifespan)
+
+# Add CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 def home_channel(channel):
     print(f"---Homing channel {channel.ChannelNo}")
