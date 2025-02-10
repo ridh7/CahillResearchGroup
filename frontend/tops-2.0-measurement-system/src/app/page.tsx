@@ -10,6 +10,17 @@ type FormData = {
   steps: string;
 };
 
+type ChannelSettings = {
+  homingVelocity: string;
+  maxVelocity: string;
+  acceleration: string;
+};
+
+type Settings = {
+  channel1: ChannelSettings;
+  channel2: ChannelSettings;
+};
+
 export default function CalculatePage() {
   const [formData, setFormData] = useState<FormData>({
     x1: "",
@@ -19,6 +30,28 @@ export default function CalculatePage() {
     steps: "",
   });
   const [status, setStatus] = useState<string>("");
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<"channel1" | "channel2">(
+    "channel1"
+  );
+
+  const [settings, setSettings] = useState<Settings>({
+    channel1: { homingVelocity: "", maxVelocity: "", acceleration: "" },
+    channel2: { homingVelocity: "", maxVelocity: "", acceleration: "" },
+  });
+
+  const defaultSettings: Settings = {
+    channel1: {
+      homingVelocity: "100",
+      maxVelocity: "1000",
+      acceleration: "500",
+    },
+    channel2: {
+      homingVelocity: "100",
+      maxVelocity: "1000",
+      acceleration: "500",
+    },
+  };
 
   const handleSubmit = async () => {
     try {
@@ -74,6 +107,113 @@ export default function CalculatePage() {
 
   return (
     <div className="min-h-screen bg-black flex items-center justify-center">
+      <button
+        onClick={() => setIsSettingsOpen(true)}
+        className="absolute top-4 right-4 bg-gray-800 p-2 rounded-full hover:bg-gray-700"
+      >
+        <svg
+          className="w-6 h-6 text-white"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
+          />
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+          />
+        </svg>
+      </button>
+
+      {/* Settings Popup */}
+      {isSettingsOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-gray-900 p-6 rounded-lg w-96">
+            <div className="flex justify-between mb-4">
+              <h2 className="text-white text-xl">Settings</h2>
+              <button
+                onClick={() => setIsSettingsOpen(false)}
+                className="text-gray-400 hover:text-white"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Tabs */}
+            <div className="flex mb-4">
+              <button
+                className={`flex-1 py-2 ${
+                  activeTab === "channel1" ? "bg-blue-600" : "bg-gray-800"
+                } text-white rounded-l`}
+                onClick={() => setActiveTab("channel1")}
+              >
+                Channel 1
+              </button>
+              <button
+                className={`flex-1 py-2 ${
+                  activeTab === "channel2" ? "bg-blue-600" : "bg-gray-800"
+                } text-white rounded-r`}
+                onClick={() => setActiveTab("channel2")}
+              >
+                Channel 2
+              </button>
+            </div>
+
+            {/* Settings Fields */}
+            <div className="space-y-4">
+              {Object.entries(settings[activeTab]).map(([key, value]) => (
+                <div key={key}>
+                  <label className="text-white text-sm mb-1 block">
+                    {key.charAt(0).toUpperCase() +
+                      key.slice(1).replace(/([A-Z])/g, " $1")}
+                  </label>
+                  <input
+                    type="number"
+                    value={value}
+                    onChange={(e) =>
+                      setSettings({
+                        ...settings,
+                        [activeTab]: {
+                          ...settings[activeTab],
+                          [key]: e.target.value,
+                        },
+                      })
+                    }
+                    className="w-full p-2 rounded bg-gray-800 text-white border border-gray-700 focus:border-blue-500 focus:outline-none"
+                  />
+                </div>
+              ))}
+            </div>
+
+            {/* Buttons */}
+            <div className="flex space-x-4 mt-6">
+              <button
+                onClick={() => setSettings(defaultSettings)}
+                className="flex-1 bg-gray-700 text-white py-2 rounded hover:bg-gray-600 transition-colors"
+              >
+                Reset to Default
+              </button>
+              <button
+                onClick={() => {
+                  // Add your save logic here
+                  setIsSettingsOpen(false);
+                }}
+                className="flex-1 bg-blue-600 text-white py-2 rounded hover:bg-blue-700 transition-colors"
+              >
+                Save
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="bg-gray-900 p-8 rounded-lg shadow-xl w-96">
         <div className="space-y-4">
           {(Object.keys(formData) as Array<keyof FormData>).map((key) => (
