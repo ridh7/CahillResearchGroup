@@ -80,7 +80,7 @@ channel1, motor_config1 = initialize_channel(device, 1)
 channel2, motor_config2 = initialize_channel(device, 2)
 
 def home_channel(channel):
-    print(f"---Homing channel {dir(channel)}")
+    print(f"---Homing channel {channel.ChannelNo}")
     channel.Home(60000)
     time.sleep(1)
 
