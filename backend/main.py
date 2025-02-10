@@ -75,6 +75,15 @@ def initialize_channel(device, channel_number):
     except Exception as e:
         print(f"---Channel {channel_number} initialization error: {e}")
 
+device = initialize_device("103387864")
+channel1, motor_config1 = initialize_channel(device, 1)
+channel2, motor_config2 = initialize_channel(device, 2)
+
+def home_channel(channel):
+    print(f"---Homing channel {dir(channel)}")
+    channel.Home(60000)
+    time.sleep(1)
+
 
 def move_in_rectangle(x1, y1, x2, y2, steps, channel1, channel2):
     try:
@@ -104,15 +113,9 @@ def move_in_rectangle(x1, y1, x2, y2, steps, channel1, channel2):
     except Exception as e:
         print(f"---Error in moving: {e}")
 
-
 @app.post("/start")
 async def start_movement(params: RectangleParams):
     try:
-        # Initialize device and channels
-        device = initialize_device("103387864")
-        channel1, motor_config1 = initialize_channel(device, 1)
-        channel2, motor_config2 = initialize_channel(device, 2)
-
         # Execute movement
         move_in_rectangle(
             params.x1, params.y1, params.x2, params.y2, params.steps, channel1, channel2
@@ -121,7 +124,22 @@ async def start_movement(params: RectangleParams):
         return {"status": "success", "message": "Movement completed"}
     except Exception as e:
         return {"status": "error", "message": str(e)}
-
+    
+@app.get('/home_x')
+async def home_x():
+    try:
+        home_channel(channel1)
+        return {"status": "success", "message": "Homing completed"}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+    
+@app.get('/home_y')
+async def home_y():
+    try:
+        home_channel(channel2)
+        return {"status": "success", "message": "Homing completed"}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
 
 @app.get("/")
 def read_root():

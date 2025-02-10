@@ -13,8 +13,8 @@ type FormData = {
 export default function CalculatePage() {
   const [formData, setFormData] = useState<FormData>({
     x1: "",
-    x2: "",
     y1: "",
+    x2: "",
     y2: "",
     steps: "",
   });
@@ -35,6 +35,34 @@ export default function CalculatePage() {
           y2: parseFloat(formData.y2),
           steps: parseInt(formData.steps),
         }),
+      });
+      const data = await response.json();
+      setStatus(data.message);
+    } catch (error) {
+      console.error("Error:", error);
+      setStatus("Error occurred");
+    }
+  };
+
+  const handleHomeX = async () => {
+    try {
+      setStatus("Processing...");
+      const response = await fetch("http://localhost:8000/home_x", {
+        method: "GET",
+      });
+      const data = await response.json();
+      setStatus(data.message);
+    } catch (error) {
+      console.error("Error:", error);
+      setStatus("Error occurred");
+    }
+  };
+
+  const handleHomeY = async () => {
+    try {
+      setStatus("Processing...");
+      const response = await fetch("http://localhost:8000/home_y", {
+        method: "GET",
       });
       const data = await response.json();
       setStatus(data.message);
@@ -66,6 +94,18 @@ export default function CalculatePage() {
             className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 transition-colors"
           >
             Start
+          </button>
+          <button
+            onClick={handleHomeX}
+            className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 transition-colors"
+          >
+            Home X
+          </button>
+          <button
+            onClick={handleHomeY}
+            className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 transition-colors"
+          >
+            Home Y
           </button>
           {status && (
             <div className="mt-4 text-center text-white">{status}</div>
