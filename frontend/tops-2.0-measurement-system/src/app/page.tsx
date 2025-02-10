@@ -18,21 +18,29 @@ export default function CalculatePage() {
     y2: "",
     steps: "",
   });
+  const [status, setStatus] = useState<string>("");
 
   const handleSubmit = async () => {
     try {
-      const response = await fetch("/api/calculate", {
+      setStatus("Processing...");
+      const response = await fetch("http://localhost:8000/start", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({
+          x1: parseFloat(formData.x1),
+          x2: parseFloat(formData.x2),
+          y1: parseFloat(formData.y1),
+          y2: parseFloat(formData.y2),
+          steps: parseInt(formData.steps),
+        }),
       });
       const data = await response.json();
-      // Handle response data
-      console.log(data);
+      setStatus(data.message);
     } catch (error) {
       console.error("Error:", error);
+      setStatus("Error occurred");
     }
   };
 
@@ -59,6 +67,9 @@ export default function CalculatePage() {
           >
             Start
           </button>
+          {status && (
+            <div className="mt-4 text-center text-white">{status}</div>
+          )}
         </div>
       </div>
     </div>
