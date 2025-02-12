@@ -1,7 +1,7 @@
 from fastapi import APIRouter
 from app.models.rectangle import RectangleParams
 from app.services.movement import move_in_rectangle, home_channel
-from main import global_state
+from app.models.state import global_state
 
 router = APIRouter()
 

@@ -1,13 +1,11 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.routers import endpoints
-from app.core.devices import GlobalState
 from contextlib import asynccontextmanager
 from app.core.devices import *
+from app.models.state import global_state
 
-global_state = GlobalState()
-
-
+        
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     global_state.device = initialize_device("103387864")

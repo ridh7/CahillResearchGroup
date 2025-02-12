@@ -16,18 +16,6 @@ from Thorlabs.MotionControl.DeviceManagerCLI import *
 from Thorlabs.MotionControl.GenericMotorCLI import *
 from Thorlabs.MotionControl.Benchtop.BrushlessMotorCLI import *
 
-# from System import Decimal
-
-
-class GlobalState:
-    def __init__(self):
-        self.device = None
-        self.channel1 = None
-        self.channel2 = None
-        self.motor_config1 = None
-        self.motor_config2 = None
-        self.lockin = None
-
 
 class SR865A:
     def __init__(self, resource_name=None):

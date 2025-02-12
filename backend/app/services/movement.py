@@ -1,7 +1,8 @@
 import time
 from datetime import datetime
-from main import global_state
+from app.models.state import global_state
 from app.utils.file_utils import save_to_file
+import clr
 from System import Decimal
 
 
