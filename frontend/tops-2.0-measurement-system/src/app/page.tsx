@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 
 type FormData = {
   x1: string;
@@ -21,6 +22,23 @@ type Settings = {
   channel2: ChannelSettings;
 };
 
+function useClickOutside(
+  ref: React.RefObject<HTMLElement | null>,
+  handler: () => void
+) {
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (ref.current && !ref.current.contains(event.target as Node)) {
+        handler();
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [ref, handler]);
+}
+
 export default function CalculatePage() {
   const [formData, setFormData] = useState<FormData>({
     x1: "",
@@ -38,6 +56,12 @@ export default function CalculatePage() {
   const [settings, setSettings] = useState<Settings>({
     channel1: { homingVelocity: "", maxVelocity: "", acceleration: "" },
     channel2: { homingVelocity: "", maxVelocity: "", acceleration: "" },
+  });
+  const settingsButtonRef = useRef<HTMLButtonElement | null>(null);
+  const settingsMenuRef = useRef<HTMLDivElement | null>(null);
+
+  useClickOutside(settingsMenuRef, () => {
+    if (isSettingsOpen) setIsSettingsOpen(false);
   });
 
   const defaultSettings: Settings = {
@@ -108,8 +132,9 @@ export default function CalculatePage() {
   return (
     <div className="min-h-screen bg-black flex items-center justify-center">
       <button
-        onClick={() => setIsSettingsOpen(true)}
-        className="absolute top-4 right-4 bg-gray-800 p-2 rounded-full hover:bg-gray-700"
+        ref={settingsButtonRef}
+        onClick={() => setIsSettingsOpen(!isSettingsOpen)}
+        className="absolute top-4 right-4 bg-gray-800 p-2 rounded-full hover:bg-gray-700 transition-colors"
       >
         <svg
           className="w-6 h-6 text-white"
@@ -133,86 +158,103 @@ export default function CalculatePage() {
       </button>
 
       {/* Settings Popup */}
-      {isSettingsOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-gray-900 p-6 rounded-lg w-96">
-            <div className="flex justify-between mb-4">
-              <h2 className="text-white text-xl">Settings</h2>
-              <button
-                onClick={() => setIsSettingsOpen(false)}
-                className="text-gray-400 hover:text-white"
-              >
-                ✕
-              </button>
-            </div>
+      <AnimatePresence>
+        {isSettingsOpen && (
+          <motion.div
+            ref={settingsMenuRef}
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            transition={{ duration: 0.1 }}
+            className="fixed z-50 origin-top-right"
+            style={{
+              top: settingsButtonRef.current
+                ? settingsButtonRef.current.offsetTop +
+                  settingsButtonRef.current.offsetHeight +
+                  8
+                : 0,
+              right: "1rem",
+            }}
+          >
+            <div className="bg-gray-900 p-6 rounded-lg w-96 shadow-xl border border-gray-800">
+              <div className="flex justify-between mb-4">
+                <h2 className="text-white text-xl font-semibold">Settings</h2>
+                <button
+                  onClick={() => setIsSettingsOpen(false)}
+                  className="text-gray-400 hover:text-white"
+                >
+                  ✕
+                </button>
+              </div>
 
-            {/* Tabs */}
-            <div className="flex mb-4">
-              <button
-                className={`flex-1 py-2 ${
-                  activeTab === "channel1" ? "bg-blue-600" : "bg-gray-800"
-                } text-white rounded-l`}
-                onClick={() => setActiveTab("channel1")}
-              >
-                Channel 1
-              </button>
-              <button
-                className={`flex-1 py-2 ${
-                  activeTab === "channel2" ? "bg-blue-600" : "bg-gray-800"
-                } text-white rounded-r`}
-                onClick={() => setActiveTab("channel2")}
-              >
-                Channel 2
-              </button>
-            </div>
+              {/* Tabs */}
+              <div className="flex mb-4">
+                <button
+                  className={`flex-1 py-2 ${
+                    activeTab === "channel1" ? "bg-blue-600" : "bg-gray-800"
+                  } text-white rounded-l`}
+                  onClick={() => setActiveTab("channel1")}
+                >
+                  Channel 1
+                </button>
+                <button
+                  className={`flex-1 py-2 ${
+                    activeTab === "channel2" ? "bg-blue-600" : "bg-gray-800"
+                  } text-white rounded-r`}
+                  onClick={() => setActiveTab("channel2")}
+                >
+                  Channel 2
+                </button>
+              </div>
 
-            {/* Settings Fields */}
-            <div className="space-y-4">
-              {Object.entries(settings[activeTab]).map(([key, value]) => (
-                <div key={key}>
-                  <label className="text-white text-sm mb-1 block">
-                    {key.charAt(0).toUpperCase() +
-                      key.slice(1).replace(/([A-Z])/g, " $1")}
-                  </label>
-                  <input
-                    type="number"
-                    value={value}
-                    onChange={(e) =>
-                      setSettings({
-                        ...settings,
-                        [activeTab]: {
-                          ...settings[activeTab],
-                          [key]: e.target.value,
-                        },
-                      })
-                    }
-                    className="w-full p-2 rounded bg-gray-800 text-white border border-gray-700 focus:border-blue-500 focus:outline-none"
-                  />
-                </div>
-              ))}
-            </div>
+              {/* Settings Fields */}
+              <div className="space-y-4">
+                {Object.entries(settings[activeTab]).map(([key, value]) => (
+                  <div key={key}>
+                    <label className="text-white text-sm mb-1 block">
+                      {key.charAt(0).toUpperCase() +
+                        key.slice(1).replace(/([A-Z])/g, " $1")}
+                    </label>
+                    <input
+                      type="number"
+                      value={value}
+                      onChange={(e) =>
+                        setSettings({
+                          ...settings,
+                          [activeTab]: {
+                            ...settings[activeTab],
+                            [key]: e.target.value,
+                          },
+                        })
+                      }
+                      className="w-full p-2 rounded bg-gray-800 text-white border border-gray-700 focus:border-blue-500 focus:outline-none"
+                    />
+                  </div>
+                ))}
+              </div>
 
-            {/* Buttons */}
-            <div className="flex space-x-4 mt-6">
-              <button
-                onClick={() => setSettings(defaultSettings)}
-                className="flex-1 bg-gray-700 text-white py-2 rounded hover:bg-gray-600 transition-colors"
-              >
-                Reset to Default
-              </button>
-              <button
-                onClick={() => {
-                  // Add your save logic here
-                  setIsSettingsOpen(false);
-                }}
-                className="flex-1 bg-blue-600 text-white py-2 rounded hover:bg-blue-700 transition-colors"
-              >
-                Save
-              </button>
+              {/* Buttons */}
+              <div className="flex space-x-4 mt-6">
+                <button
+                  onClick={() => setSettings(defaultSettings)}
+                  className="flex-1 bg-gray-700 text-white py-2 rounded hover:bg-gray-600 transition-colors"
+                >
+                  Reset to Default
+                </button>
+                <button
+                  onClick={() => {
+                    // Add your save logic here
+                    setIsSettingsOpen(false);
+                  }}
+                  className="flex-1 bg-blue-600 text-white py-2 rounded hover:bg-blue-700 transition-colors"
+                >
+                  Save
+                </button>
+              </div>
             </div>
-          </div>
-        </div>
-      )}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <div className="bg-gray-900 p-8 rounded-lg shadow-xl w-96">
         <div className="space-y-4">
