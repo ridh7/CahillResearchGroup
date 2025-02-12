@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 from app.models.rectangle import RectangleParams
-from app.services.movement import move_in_rectangle, home_channel
+from app.services.movement import *
 from app.models.state import global_state
 
 router = APIRouter()
@@ -40,6 +40,13 @@ async def home_y():
     except Exception as e:
         return {"status": "error", "message": str(e)}
 
+@router.get("/get_movement_params_x")
+async def get_x():
+    try:
+        home_params, vel_params = get_movement_params(global_state.channel1)
+        return {"status": "success", "message": f"{home_params.Velocity}"}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
 
 @router.get("/")
 def read_root():

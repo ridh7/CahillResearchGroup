@@ -45,3 +45,8 @@ def move_in_rectangle(x1, y1, x2, y2, steps, channel1, channel2):
         save_to_file(data)
     except Exception as e:
         print(f"---Error in moving: {e}")
+        
+def get_movement_params(channel):
+    home_params = channel.GetHomingParams()
+    vel_params = channel.GetVelocityParams()
+    return home_params, vel_params

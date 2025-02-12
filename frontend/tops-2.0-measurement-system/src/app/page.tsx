@@ -129,11 +129,43 @@ export default function CalculatePage() {
     }
   };
 
+  const handleGetParams = async () => {
+    try {
+      setStatus("Processing...");
+      const response = await fetch(
+        "http://localhost:8000/get_movement_params_x",
+        {
+          method: "GET",
+        }
+      );
+      const data = await response.json();
+      setStatus(data.message);
+      setSettings({
+        channel1: {
+          homingVelocity: data.message,
+          maxVelocity: "1",
+          acceleration: "2",
+        },
+        channel2: {
+          homingVelocity: "3",
+          maxVelocity: "4",
+          acceleration: "5",
+        },
+      });
+    } catch (error) {
+      console.error("Error:", error);
+      setStatus("Error occurred");
+    }
+  };
+
   return (
     <div className="min-h-screen bg-black flex items-center justify-center">
       <button
         ref={settingsButtonRef}
-        onClick={() => setIsSettingsOpen(!isSettingsOpen)}
+        onClick={() => {
+          handleGetParams();
+          setIsSettingsOpen(!isSettingsOpen);
+        }}
         className="absolute top-4 right-4 bg-gray-800 p-2 rounded-full hover:bg-gray-700 transition-colors"
       >
         <svg
@@ -288,6 +320,12 @@ export default function CalculatePage() {
             className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 transition-colors"
           >
             Home Y
+          </button>
+          <button
+            onClick={handleGetParams}
+            className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 transition-colors"
+          >
+            Get Homing Velocity X
           </button>
           {status && (
             <div className="mt-4 text-center text-white">{status}</div>
