@@ -1,5 +1,6 @@
 from fastapi import APIRouter
 from app.models.rectangle import RectangleParams
+from app.models.channel import ChannelParams
 from app.services.movement import *
 from app.models.state import global_state
 
@@ -23,30 +24,38 @@ async def start_movement(params: RectangleParams):
         return {"status": "error", "message": str(e)}
 
 
-@router.get("/home_x")
-async def home_x():
+@router.post("/home")
+async def home(params: ChannelParams):
     try:
-        home_channel(global_state.channel1)
+        if ChannelParams.channel_direction == "x":
+            home_channel(global_state.channel1)
+        elif ChannelParams.channel_direction == "y":
+            home_channel(global_state.channel2)
+        else:
+            home_channel(global_state.channel1)
+            home_channel(global_state.channel2)
         return {"status": "success", "message": "Homing completed"}
     except Exception as e:
         return {"status": "error", "message": str(e)}
 
 
-@router.get("/home_y")
-async def home_y():
+@router.post("/get_movement_params")
+async def get_movement_params_api():
     try:
-        home_channel(global_state.channel2)
-        return {"status": "success", "message": "Homing completed"}
+        home_params_x, vel_params_x = get_movement_params(global_state.channel1)
+        home_params_y, vel_params_y = get_movement_params(global_state.channel2)
+        return {
+            "status": "success",
+            "homing_velocity_x": {home_params_x.Velocity},
+            "max_velocity_x": {vel_params_x.MaxVelocity},
+            "acceleration_x": {vel_params_x.Acceleration},
+            "homing_velocity_y": {home_params_y.Velocity},
+            "max_velocity_y": {vel_params_y.MaxVelocity},
+            "acceleration_y": {vel_params_y.Acceleration},
+        }
     except Exception as e:
         return {"status": "error", "message": str(e)}
 
-@router.get("/get_movement_params_x")
-async def get_x():
-    try:
-        home_params, vel_params = get_movement_params(global_state.channel1)
-        return {"status": "success", "message": f"{home_params.Velocity}"}
-    except Exception as e:
-        return {"status": "error", "message": str(e)}
 
 @router.get("/")
 def read_root():

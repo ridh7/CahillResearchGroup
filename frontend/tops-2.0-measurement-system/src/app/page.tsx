@@ -101,25 +101,17 @@ export default function CalculatePage() {
     }
   };
 
-  const handleHomeX = async () => {
+  const handleHome = async (channel_direction: string) => {
     try {
       setStatus("Processing...");
-      const response = await fetch("http://localhost:8000/home_x", {
-        method: "GET",
-      });
-      const data = await response.json();
-      setStatus(data.message);
-    } catch (error) {
-      console.error("Error:", error);
-      setStatus("Error occurred");
-    }
-  };
-
-  const handleHomeY = async () => {
-    try {
-      setStatus("Processing...");
-      const response = await fetch("http://localhost:8000/home_y", {
-        method: "GET",
+      const response = await fetch("http://localhost:8000/home", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          channel_direction: channel_direction,
+        }),
       });
       const data = await response.json();
       setStatus(data.message);
@@ -133,23 +125,22 @@ export default function CalculatePage() {
     try {
       setStatus("Processing...");
       const response = await fetch(
-        "http://localhost:8000/get_movement_params_x",
+        "http://localhost:8000/get_movement_params",
         {
           method: "GET",
         }
       );
       const data = await response.json();
-      setStatus(data.message);
       setSettings({
         channel1: {
-          homingVelocity: data.message,
-          maxVelocity: "1",
-          acceleration: "2",
+          homingVelocity: data.homing_velocity_x,
+          maxVelocity: data.max_velocity_x,
+          acceleration: data.acceleration_x,
         },
         channel2: {
-          homingVelocity: "3",
-          maxVelocity: "4",
-          acceleration: "5",
+          homingVelocity: data.homing_velocity_y,
+          maxVelocity: data.max_velocity_y,
+          acceleration: data.acceleration_y,
         },
       });
     } catch (error) {
@@ -310,22 +301,22 @@ export default function CalculatePage() {
             Start
           </button>
           <button
-            onClick={handleHomeX}
+            onClick={() => handleHome("x")}
             className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 transition-colors"
           >
             Home X
           </button>
           <button
-            onClick={handleHomeY}
+            onClick={() => handleHome("y")}
             className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 transition-colors"
           >
             Home Y
           </button>
           <button
-            onClick={handleGetParams}
+            onClick={() => handleHome("")}
             className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 transition-colors"
           >
-            Get Homing Velocity X
+            Home X & Y
           </button>
           {status && (
             <div className="mt-4 text-center text-white">{status}</div>
