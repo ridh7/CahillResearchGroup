@@ -27,9 +27,10 @@ async def start_movement(params: RectangleParams):
 @router.post("/home")
 async def home(params: ChannelParams):
     try:
-        if ChannelParams.channel_direction == "x":
+        print(params.channel_direction)
+        if params.channel_direction == "x":
             home_channel(global_state.channel1)
-        elif ChannelParams.channel_direction == "y":
+        elif params.channel_direction == "y":
             home_channel(global_state.channel2)
         else:
             home_channel(global_state.channel1)
@@ -39,19 +40,19 @@ async def home(params: ChannelParams):
         return {"status": "error", "message": str(e)}
 
 
-@router.post("/get_movement_params")
+@router.get("/get_movement_params")
 async def get_movement_params_api():
     try:
         home_params_x, vel_params_x = get_movement_params(global_state.channel1)
         home_params_y, vel_params_y = get_movement_params(global_state.channel2)
         return {
             "status": "success",
-            "homing_velocity_x": {home_params_x.Velocity},
-            "max_velocity_x": {vel_params_x.MaxVelocity},
-            "acceleration_x": {vel_params_x.Acceleration},
-            "homing_velocity_y": {home_params_y.Velocity},
-            "max_velocity_y": {vel_params_y.MaxVelocity},
-            "acceleration_y": {vel_params_y.Acceleration},
+            "homing_velocity_x": f"{home_params_x.Velocity}",
+            "max_velocity_x": f"{vel_params_x.MaxVelocity}",
+            "acceleration_x": f"{vel_params_x.Acceleration}",
+            "homing_velocity_y": f"{home_params_y.Velocity}",
+            "max_velocity_y": f"{vel_params_y.MaxVelocity}",
+            "acceleration_y": f"{vel_params_y.Acceleration}",
         }
     except Exception as e:
         return {"status": "error", "message": str(e)}
