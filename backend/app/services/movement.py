@@ -12,7 +12,9 @@ def home_channel(channel):
     time.sleep(1)
 
 
-def move_in_rectangle(x1, y1, x2, y2, x_steps, y_steps, x_step_size, y_step_size, channel1, channel2):
+def move_in_rectangle(
+    x1, y1, x2, y2, x_steps, y_steps, x_step_size, y_step_size, channel1, channel2
+):
     try:
         print(
             f"---Current position: ({channel1.DevicePosition}, {channel2.DevicePosition})"
@@ -48,7 +50,8 @@ def move_in_rectangle(x1, y1, x2, y2, x_steps, y_steps, x_step_size, y_step_size
         save_to_file(data)
     except Exception as e:
         print(f"---Error in moving: {e}")
-        
+
+
 def get_movement_params(channel):
     home_params = channel.GetHomingParams()
     vel_params = channel.GetVelocityParams()

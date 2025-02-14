@@ -59,18 +59,24 @@ async def get_movement_params_api():
         }
     except Exception as e:
         return {"status": "error", "message": str(e)}
-    
+
+
 @router.post("/set_movement_params")
 async def set_movement_params_api(params: Settings):
     try:
-        global_state.channel1.SetHomingVelocity(Decimal(params.channel1.homing_velocity))
-        global_state.channel1.SetVelocityParams(Decimal(params.channel1.max_velocity), Decimal(params.channel1.acceleration))
-        global_state.channel2.SetHomingVelocity(Decimal(params.channel2.homing_velocity))
-        global_state.channel2.SetVelocityParams(Decimal(params.channel2.max_velocity), Decimal(params.channel2.acceleration))
-        return {
-            "status": "success",
-            "message": "movement params set"
-        }
+        global_state.channel1.SetHomingVelocity(
+            Decimal(params.channel1.homing_velocity)
+        )
+        global_state.channel1.SetVelocityParams(
+            Decimal(params.channel1.max_velocity), Decimal(params.channel1.acceleration)
+        )
+        global_state.channel2.SetHomingVelocity(
+            Decimal(params.channel2.homing_velocity)
+        )
+        global_state.channel2.SetVelocityParams(
+            Decimal(params.channel2.max_velocity), Decimal(params.channel2.acceleration)
+        )
+        return {"status": "success", "message": "movement params set"}
     except Exception as e:
         return {"status": "error", "message": str(e)}
 
@@ -80,13 +86,10 @@ async def get_current_position():
     try:
         x = global_state.channel1.DevicePosition
         y = global_state.channel2.DevicePosition
-        return {
-            "status": "success",
-            "x": f"{x}",
-            "y": f"{y}"
-        }
+        return {"status": "success", "x": f"{x}", "y": f"{y}"}
     except Exception as e:
         return {"status": "error", "x": "NaN", "y": "NaN"}
+
 
 @router.get("/")
 def read_root():

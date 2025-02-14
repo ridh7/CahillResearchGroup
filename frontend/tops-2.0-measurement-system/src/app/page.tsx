@@ -53,6 +53,14 @@ export default function CalculatePage() {
     xStepSize: "",
     yStepSize: "",
   });
+  const [lockinData, setLockinData] = useState({
+    X: 0,
+    Y: 0,
+    R: 0,
+    theta: 0,
+    frequency: 0,
+    phase: 0,
+  });
   const [status, setStatus] = useState<string>("");
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<"channel1" | "channel2">(
@@ -82,6 +90,27 @@ export default function CalculatePage() {
       acceleration: "1000",
     },
   };
+
+  useEffect(() => {
+    const ws = new WebSocket("ws://localhost:8000/ws/lockin");
+
+    ws.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+      setLockinData(data);
+    };
+
+    ws.onerror = (error) => {
+      console.error("WebSocket error:", error);
+    };
+
+    ws.onclose = () => {
+      console.log("WebSocket connection closed");
+    };
+
+    return () => {
+      ws.close();
+    };
+  }, []);
 
   const handleSubmit = async () => {
     try {
@@ -208,6 +237,26 @@ export default function CalculatePage() {
 
   return (
     <div className="min-h-screen bg-black flex items-center justify-center">
+      <div className="absolute top-4 left-4 bg-gray-900 p-4 rounded-lg shadow-xl border border-gray-800">
+        <h2 className="text-white text-lg font-semibold mb-2">
+          Lock-in Amplifier
+        </h2>
+        <div className="grid grid-cols-2 gap-2 text-sm">
+          <div className="text-gray-400">X:</div>
+          <div className="text-white">{lockinData.X.toFixed(6)}</div>
+          <div className="text-gray-400">Y:</div>
+          <div className="text-white">{lockinData.Y.toFixed(6)}</div>
+          <div className="text-gray-400">R:</div>
+          <div className="text-white">{lockinData.R.toFixed(6)}</div>
+          <div className="text-gray-400">θ:</div>
+          <div className="text-white">{lockinData.theta.toFixed(6)}°</div>
+          <div className="text-gray-400">Frequency:</div>
+          <div className="text-white">{lockinData.frequency.toFixed(2)} Hz</div>
+          <div className="text-gray-400">Phase:</div>
+          <div className="text-white">{lockinData.phase.toFixed(2)}°</div>
+        </div>
+      </div>
+
       <button
         ref={settingsButtonRef}
         onClick={() => {
