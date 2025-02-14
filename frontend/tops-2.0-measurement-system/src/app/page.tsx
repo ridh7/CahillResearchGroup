@@ -123,7 +123,6 @@ export default function CalculatePage() {
 
   const handleGetParams = async () => {
     try {
-      setStatus("Processing...");
       const response = await fetch(
         "http://localhost:8000/get_movement_params",
         {
@@ -143,6 +142,39 @@ export default function CalculatePage() {
           acceleration: data.acceleration_y,
         },
       });
+    } catch (error) {
+      console.error("Error:", error);
+      setStatus("Error occurred");
+    }
+  };
+
+  const handleSetParams = async (new_settings: Settings) => {
+    try {
+      const response = await fetch(
+        "http://localhost:8000/set_movement_params",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            channel1: {
+              homing_velocity: parseFloat(new_settings.channel1.homingVelocity),
+              max_velocity: parseFloat(new_settings.channel1.maxVelocity),
+              acceleration: parseFloat(new_settings.channel1.acceleration),
+            },
+            channel2: {
+              homing_velocity: parseFloat(new_settings.channel2.homingVelocity),
+              max_velocity: parseFloat(new_settings.channel2.maxVelocity),
+              acceleration: parseFloat(new_settings.channel2.acceleration),
+            },
+          }),
+        }
+      );
+      const data = await response.json();
+      if (data.status === "success") {
+        console.log("success");
+      }
     } catch (error) {
       console.error("Error:", error);
       setStatus("Error occurred");
@@ -266,7 +298,7 @@ export default function CalculatePage() {
                 </button>
                 <button
                   onClick={() => {
-                    // Add your save logic here
+                    handleSetParams(settings);
                     setIsSettingsOpen(false);
                   }}
                   className="flex-1 bg-blue-600 text-white py-2 rounded hover:bg-blue-700 transition-colors"

@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 from app.models.rectangle import RectangleParams
-from app.models.channel import ChannelParams
+from app.models.channel import *
 from app.services.movement import *
 from app.models.state import global_state
 
@@ -53,6 +53,20 @@ async def get_movement_params_api():
             "homing_velocity_y": f"{home_params_y.Velocity}",
             "max_velocity_y": f"{vel_params_y.MaxVelocity}",
             "acceleration_y": f"{vel_params_y.Acceleration}",
+        }
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+    
+@router.post("/set_movement_params")
+async def set_movement_params_api(params: Settings):
+    try:
+        global_state.channel1.SetHomingVelocity(Decimal(params.channel1.homing_velocity))
+        global_state.channel1.SetVelocityParams(Decimal(params.channel1.max_velocity), Decimal(params.channel1.acceleration))
+        global_state.channel2.SetHomingVelocity(Decimal(params.channel2.homing_velocity))
+        global_state.channel2.SetVelocityParams(Decimal(params.channel2.max_velocity), Decimal(params.channel2.acceleration))
+        return {
+            "status": "success",
+            "message": "movement params set"
         }
     except Exception as e:
         return {"status": "error", "message": str(e)}
