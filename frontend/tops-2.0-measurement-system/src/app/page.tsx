@@ -181,6 +181,22 @@ export default function CalculatePage() {
     }
   };
 
+  const getCurrentPosition = async () => {
+    try {
+      const response = await fetch(
+        "http://localhost:8000/get_current_position",
+        {
+          method: "GET",
+        }
+      );
+      const data = await response.json();
+      setStatus("(" + data.x + ", " + data.y + ")");
+    } catch (error) {
+      console.error("Error: ", error);
+      setStatus("Error occurred");
+    }
+  };
+
   return (
     <div className="min-h-screen bg-black flex items-center justify-center">
       <button
@@ -349,6 +365,12 @@ export default function CalculatePage() {
             className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 transition-colors"
           >
             Home X & Y
+          </button>
+          <button
+            onClick={getCurrentPosition}
+            className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 transition-colors"
+          >
+            Get Current Position
           </button>
           {status && (
             <div className="mt-4 text-center text-white">{status}</div>

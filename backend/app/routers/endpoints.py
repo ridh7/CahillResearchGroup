@@ -72,6 +72,19 @@ async def set_movement_params_api(params: Settings):
         return {"status": "error", "message": str(e)}
 
 
+@router.get("/get_current_position")
+async def get_current_position():
+    try:
+        x = global_state.channel1.DevicePosition
+        y = global_state.channel2.DevicePosition
+        return {
+            "status": "success",
+            "x": f"{x}",
+            "y": f"{y}"
+        }
+    except Exception as e:
+        return {"status": "error", "x": "NaN", "y": "NaN"}
+
 @router.get("/")
 def read_root():
     return {"status": "API is running"}
