@@ -9,6 +9,7 @@ type FormData = {
   y1: string;
   y2: string;
   steps: string;
+  stepSize: string;
 };
 
 type ChannelSettings = {
@@ -46,6 +47,7 @@ export default function CalculatePage() {
     x2: "",
     y2: "",
     steps: "",
+    stepSize: "",
   });
   const [status, setStatus] = useState<string>("");
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -66,14 +68,14 @@ export default function CalculatePage() {
 
   const defaultSettings: Settings = {
     channel1: {
-      homingVelocity: "100",
-      maxVelocity: "1000",
-      acceleration: "500",
+      homingVelocity: "10",
+      maxVelocity: "100",
+      acceleration: "1000",
     },
     channel2: {
-      homingVelocity: "100",
-      maxVelocity: "1000",
-      acceleration: "500",
+      homingVelocity: "10",
+      maxVelocity: "100",
+      acceleration: "1000",
     },
   };
 
@@ -91,6 +93,7 @@ export default function CalculatePage() {
           y1: parseFloat(formData.y1),
           y2: parseFloat(formData.y2),
           steps: parseInt(formData.steps),
+          stepSize: parseFloat(formData.stepSize),
         }),
       });
       const data = await response.json();

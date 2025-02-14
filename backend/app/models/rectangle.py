@@ -7,3 +7,4 @@ class RectangleParams(BaseModel):
     y1: float
     y2: float
     steps: int
+    stepSize: float

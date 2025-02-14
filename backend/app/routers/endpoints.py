@@ -16,6 +16,7 @@ async def start_movement(params: RectangleParams):
             params.x2,
             params.y2,
             params.steps,
+            params.stepSize,
             global_state.channel1,
             global_state.channel2,
         )
