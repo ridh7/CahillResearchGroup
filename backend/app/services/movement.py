@@ -12,27 +12,25 @@ def home_channel(channel):
     time.sleep(1)
 
 
-def move_in_rectangle(x1, y1, x2, y2, steps, stepSize, channel1, channel2):
+def move_in_rectangle(x1, y1, x2, y2, x_steps, y_steps, x_step_size, y_step_size, channel1, channel2):
     try:
         print(
             f"---Current position: ({channel1.DevicePosition}, {channel2.DevicePosition})"
         )
-        if stepSize:
-            step_size_x = stepSize
-            step_size_y = stepSize
-        else:
-            step_size_x = abs(x2 - x1) / steps
-            step_size_y = abs(y2 - y1) / steps
+        if not x_step_size:
+            x_step_size = abs(x2 - x1) / x_steps
+        if not y_step_size:
+            y_step_size = abs(y2 - y1) / y_steps
         x, y = x1, y1
         data = []
         while y < y2:
-            y += step_size_y
+            y += y_step_size
             channel2.MoveTo(Decimal(y), 60000)
             print(
                 f"---Current position: ({channel1.DevicePosition}, {channel2.DevicePosition})"
             )
             while x < x2:
-                x += step_size_x
+                x += x_step_size
                 channel1.MoveTo(Decimal(x), 60000)
                 print(
                     f"---Current position: ({channel1.DevicePosition}, {channel2.DevicePosition})"

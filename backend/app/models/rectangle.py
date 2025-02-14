@@ -6,5 +6,7 @@ class RectangleParams(BaseModel):
     x2: float
     y1: float
     y2: float
-    steps: int
-    stepSize: float
+    x_steps: int
+    y_steps: int
+    x_step_size: float
+    y_step_size: float

@@ -8,8 +8,10 @@ type FormData = {
   x2: string;
   y1: string;
   y2: string;
-  steps: string;
-  stepSize: string;
+  xSteps: string;
+  ySteps: string;
+  xStepSize: string;
+  yStepSize: string;
 };
 
 type ChannelSettings = {
@@ -46,8 +48,10 @@ export default function CalculatePage() {
     y1: "",
     x2: "",
     y2: "",
-    steps: "",
-    stepSize: "",
+    xSteps: "",
+    ySteps: "",
+    xStepSize: "",
+    yStepSize: "",
   });
   const [status, setStatus] = useState<string>("");
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -92,8 +96,10 @@ export default function CalculatePage() {
           x2: parseFloat(formData.x2),
           y1: parseFloat(formData.y1),
           y2: parseFloat(formData.y2),
-          steps: parseInt(formData.steps),
-          stepSize: parseFloat(formData.stepSize),
+          x_steps: parseInt(formData.xSteps),
+          y_steps: parseInt(formData.ySteps),
+          x_step_size: parseFloat(formData.xStepSize),
+          y_step_size: parseFloat(formData.yStepSize),
         }),
       });
       const data = await response.json();
