@@ -47,3 +47,17 @@ async def websocket_endpoint(websocket: WebSocket):
         print(f"WebSocket error: {e}")
     finally:
         await websocket.close()
+
+
+@app.websocket("/ws/multimeter")
+async def websocket_multimeter_endpoint(websocket: WebSocket):
+    await websocket.accept()
+    try:
+        while True:
+            value = global_state.multimeter.read_value()
+            await websocket.send_json({"value": value})
+            await asyncio.sleep(0.1)  # 10Hz update rate
+    except Exception as e:
+        print(f"WebSocket error: {e}")
+    finally:
+        await websocket.close()

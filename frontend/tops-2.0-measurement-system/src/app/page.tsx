@@ -61,6 +61,9 @@ export default function CalculatePage() {
     frequency: 0,
     phase: 0,
   });
+  const [multimeterData, setMultimeterData] = useState({
+    value: 0,
+  });
   const [status, setStatus] = useState<string>("");
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<"channel1" | "channel2">(
@@ -109,6 +112,23 @@ export default function CalculatePage() {
 
     return () => {
       ws.close();
+    };
+  }, []);
+
+  useEffect(() => {
+    const multimeterWs = new WebSocket("ws://localhost:8000/ws/multimeter");
+
+    multimeterWs.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+      setMultimeterData(data);
+    };
+
+    multimeterWs.onerror = (error) => {
+      console.error("Multimeter WebSocket error:", error);
+    };
+
+    return () => {
+      multimeterWs.close();
     };
   }, []);
 
@@ -254,6 +274,14 @@ export default function CalculatePage() {
           <div className="text-white">{lockinData.frequency.toFixed(2)} Hz</div>
           <div className="text-gray-400">Phase:</div>
           <div className="text-white">{lockinData.phase.toFixed(2)}°</div>
+        </div>
+      </div>
+
+      <div className="absolute top-4 left-64 bg-gray-900 p-4 rounded-lg shadow-xl border border-gray-800">
+        <h2 className="text-white text-lg font-semibold mb-2">Multimeter</h2>
+        <div className="grid grid-cols-2 gap-2 text-sm">
+          <div className="text-gray-400">Value:</div>
+          <div className="text-white">{multimeterData.value.toFixed(6)} V</div>
         </div>
       </div>
 
