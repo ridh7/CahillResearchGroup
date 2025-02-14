@@ -16,6 +16,7 @@ async def lifespan(app: FastAPI):
         global_state.device, 2
     )
     global_state.lockin = SR865A()
+    global_state.multimeter = BKPrecision5493C()
     yield
     global_state.device.Disconnect()
 

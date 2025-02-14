@@ -6,5 +6,6 @@ class GlobalState:
         self.motor_config1 = None
         self.motor_config2 = None
         self.lockin = None
+        self.multimeter = None
         
 global_state = GlobalState()

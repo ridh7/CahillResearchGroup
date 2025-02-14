@@ -38,6 +38,7 @@ def move_in_rectangle(x1, y1, x2, y2, steps, channel1, channel2):
                 values["timestamp"] = timestamp
                 values["positionX"] = channel1.DevicePosition
                 values["positionY"] = channel2.DevicePosition
+                values["voltage"] = global_state.multimeter.read_value()
                 data.append(values)
                 time.sleep(0.1)
             x = x1
