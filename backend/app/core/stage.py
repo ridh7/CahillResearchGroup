@@ -23,6 +23,8 @@ from System import Decimal
 class ThorlabsBBD302:
     def __init__(self, serial_number=None, channel_count=2):
         try:
+            self.channel = {}
+            self.motor_config = {}
             self.channel_count = channel_count
             DeviceManagerCLI.BuildDeviceList()
             if serial_number is None:
@@ -39,12 +41,7 @@ class ThorlabsBBD302:
                 print(f"---Connected to: {self.device.GetDeviceInfo().Description}")
             else:
                 print("---Device initialization error")
-        except Exception as e:
-            print(f"---Device initialization error: {e}")
-
-    def initialize_channels(self):
-        try:
-            for channel_number in range(self.channel_count):
+            for channel_number in range(1, self.channel_count + 1):
                 print(f"---Initializing channel {channel_number}")
                 self.channel[channel_number] = self.device.GetChannel(channel_number)
                 self.channel[channel_number].StartPolling(250)
@@ -58,7 +55,7 @@ class ThorlabsBBD302:
                 self.channel[channel_number].Home(60000)
                 time.sleep(1)
         except Exception as e:
-            print(f"---Channel initialization error: {e}")
+            print(f"---Device initialization error: {e}")
 
     def home_channel(self, channel_number):
         try:

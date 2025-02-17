@@ -29,7 +29,6 @@ async def start_movement(params: RectangleParams):
 @router.post("/home")
 async def home(params: ChannelParams):
     try:
-        print(params.channel_direction)
         if params.channel_direction == "x":
             global_state.stage.home_channel(1)
         elif params.channel_direction == "y":
