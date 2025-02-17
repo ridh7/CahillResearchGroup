@@ -2,24 +2,20 @@ from fastapi import FastAPI, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
 from app.routers import endpoints
 from contextlib import asynccontextmanager
-from app.core.devices import *
 from app.models.state import global_state
+from app.core.stage import ThorlabsBBD302
+from app.core.multimeter import BKPrecision5493C
+from app.core.lockin import SR865A
 import asyncio
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    global_state.device = initialize_device("103387864")
-    global_state.channel1, global_state.motor_config1 = initialize_channel(
-        global_state.device, 1
-    )
-    global_state.channel2, global_state.motor_config2 = initialize_channel(
-        global_state.device, 2
-    )
+    global_state.stage = ThorlabsBBD302()
     global_state.lockin = SR865A()
     global_state.multimeter = BKPrecision5493C()
     yield
-    global_state.device.Disconnect()
+    global_state.stage.device.Disconnect()
 
 
 app = FastAPI(lifespan=lifespan)

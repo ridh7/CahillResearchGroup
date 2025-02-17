@@ -3,7 +3,7 @@ from datetime import datetime
 
 def save_to_file(data, filename=None):
     if filename is None:
-        filename = f"SR865A_measurements_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
+        filename = f"Measurements_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
     with open(filename, "w") as f:
         f.write(
             "Timestamp,PositionX,PositionY,X(V),Y(V),R(V),Theta(deg),Frequency(Hz),Phase(deg),Voltage(V)\n"
