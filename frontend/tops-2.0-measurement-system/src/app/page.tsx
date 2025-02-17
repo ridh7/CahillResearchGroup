@@ -64,6 +64,10 @@ export default function CalculatePage() {
   const [multimeterData, setMultimeterData] = useState({
     value: 0,
   });
+  const [lockinConnected, setLockinConnected] = useState(false);
+  const [multimeterConnected, setMultimeterConnected] = useState(false);
+  const [lockinWs, setLockinWs] = useState<WebSocket | null>(null);
+  const [multimeterWs, setMultimeterWs] = useState<WebSocket | null>(null);
   const [status, setStatus] = useState<string>("");
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<"channel1" | "channel2">(
@@ -94,7 +98,7 @@ export default function CalculatePage() {
     },
   };
 
-  useEffect(() => {
+  const connectLockin = () => {
     const ws = new WebSocket("ws://localhost:8000/ws/lockin");
 
     ws.onmessage = (event) => {
@@ -104,33 +108,60 @@ export default function CalculatePage() {
 
     ws.onerror = (error) => {
       console.error("WebSocket error:", error);
+      setLockinConnected(false);
     };
 
     ws.onclose = () => {
       console.log("WebSocket connection closed");
+      setLockinConnected(false);
     };
 
-    return () => {
-      ws.close();
+    ws.onopen = () => {
+      setLockinConnected(true);
     };
-  }, []);
 
-  useEffect(() => {
-    const multimeterWs = new WebSocket("ws://localhost:8000/ws/multimeter");
+    setLockinWs(ws);
+  };
 
-    multimeterWs.onmessage = (event) => {
+  const disconnectLockin = () => {
+    if (lockinWs) {
+      lockinWs.close();
+      setLockinWs(null);
+      setLockinConnected(false);
+    }
+  };
+
+  const connectMultimeter = () => {
+    const ws = new WebSocket("ws://localhost:8000/ws/multimeter");
+
+    ws.onmessage = (event) => {
       const data = JSON.parse(event.data);
       setMultimeterData(data);
     };
 
-    multimeterWs.onerror = (error) => {
+    ws.onerror = (error) => {
       console.error("Multimeter WebSocket error:", error);
+      setMultimeterConnected(false);
     };
 
-    return () => {
-      multimeterWs.close();
+    ws.onclose = () => {
+      setMultimeterConnected(false);
     };
-  }, []);
+
+    ws.onopen = () => {
+      setMultimeterConnected(true);
+    };
+
+    setMultimeterWs(ws);
+  };
+
+  const disconnectMultimeter = () => {
+    if (multimeterWs) {
+      multimeterWs.close();
+      setMultimeterWs(null);
+      setMultimeterConnected(false);
+    }
+  };
 
   const handleSubmit = async () => {
     try {
@@ -258,9 +289,39 @@ export default function CalculatePage() {
   return (
     <div className="min-h-screen bg-black flex items-center justify-center">
       <div className="absolute top-4 left-4 bg-gray-900 p-4 rounded-lg shadow-xl border border-gray-800">
-        <h2 className="text-white text-lg font-semibold mb-2">
-          Lock-in Amplifier
-        </h2>
+        <div className="flex justify-between items-center mb-2">
+          <h2 className="text-white text-lg font-semibold mb-2">
+            Lock-in Amplifier
+          </h2>
+          <div className="flex gap-2">
+            <button
+              onClick={connectLockin}
+              disabled={lockinConnected}
+              className={`p-1 rounded-full ${
+                lockinConnected
+                  ? "text-gray-500"
+                  : "text-green-500 hover:text-green-400"
+              }`}
+            >
+              <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
+                <path d="M10 4.5c-3.03 0-5.5 2.47-5.5 5.5s2.47 5.5 5.5 5.5 5.5-2.47 5.5-5.5-2.47-5.5-5.5-5.5zm-1 8.5v-6l4 3-4 3z" />
+              </svg>
+            </button>
+            <button
+              onClick={disconnectLockin}
+              disabled={!lockinConnected}
+              className={`p-1 rounded-full ${
+                !lockinConnected
+                  ? "text-gray-500"
+                  : "text-red-500 hover:text-red-400"
+              }`}
+            >
+              <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
+                <path d="M10 4.5c-3.03 0-5.5 2.47-5.5 5.5s2.47 5.5 5.5 5.5 5.5-2.47 5.5-5.5-2.47-5.5-5.5-5.5zm-1 8.5v-6h2v6h-2z" />
+              </svg>
+            </button>
+          </div>
+        </div>
         <div className="grid grid-cols-2 gap-2 text-sm">
           <div className="text-gray-400">X:</div>
           <div className="text-white">{lockinData.X.toFixed(6)}</div>
@@ -278,7 +339,37 @@ export default function CalculatePage() {
       </div>
 
       <div className="absolute top-4 left-64 bg-gray-900 p-4 rounded-lg shadow-xl border border-gray-800">
-        <h2 className="text-white text-lg font-semibold mb-2">Multimeter</h2>
+        <div className="flex justify-between items-center mb-2">
+          <h2 className="text-white text-lg font-semibold">Multimeter</h2>
+          <div className="flex gap-2">
+            <button
+              onClick={connectMultimeter}
+              disabled={multimeterConnected}
+              className={`p-1 rounded-full ${
+                multimeterConnected
+                  ? "text-gray-500"
+                  : "text-green-500 hover:text-green-400"
+              }`}
+            >
+              <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
+                <path d="M10 4.5c-3.03 0-5.5 2.47-5.5 5.5s2.47 5.5 5.5 5.5 5.5-2.47 5.5-5.5-2.47-5.5-5.5-5.5zm-1 8.5v-6l4 3-4 3z" />
+              </svg>
+            </button>
+            <button
+              onClick={disconnectMultimeter}
+              disabled={!multimeterConnected}
+              className={`p-1 rounded-full ${
+                !multimeterConnected
+                  ? "text-gray-500"
+                  : "text-red-500 hover:text-red-400"
+              }`}
+            >
+              <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
+                <path d="M10 4.5c-3.03 0-5.5 2.47-5.5 5.5s2.47 5.5 5.5 5.5 5.5-2.47 5.5-5.5-2.47-5.5-5.5-5.5zm-1 8.5v-6h2v6h-2z" />
+              </svg>
+            </button>
+          </div>
+        </div>
         <div className="grid grid-cols-2 gap-2 text-sm">
           <div className="text-gray-400">Value:</div>
           <div className="text-white">{multimeterData.value.toFixed(6)} V</div>
