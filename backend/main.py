@@ -7,6 +7,7 @@ from app.core.stage import ThorlabsBBD302
 from app.core.multimeter import BKPrecision5493C
 from app.core.lockin import SR865A
 import asyncio
+from fastapi.websockets import WebSocketDisconnect
 
 
 @asynccontextmanager
@@ -51,11 +52,15 @@ async def websocket_endpoint(websocket: WebSocket):
     task = asyncio.create_task(send_lockin_data(websocket))
     try:
         await task
+    except WebSocketDisconnect:
+        task.cancel()
     except Exception as e:
         print(f"WebSocket error: {e}")
         task.cancel()
-    finally:
-        await websocket.close()
+        try:
+            await websocket.close()
+        except:
+            pass
 
 
 @app.websocket("/ws/multimeter")
@@ -64,8 +69,12 @@ async def websocket_multimeter_endpoint(websocket: WebSocket):
     task = asyncio.create_task(send_multimeter_data(websocket))
     try:
         await task
+    except WebSocketDisconnect:
+        task.cancel()
     except Exception as e:
         print(f"WebSocket error: {e}")
         task.cancel()
-    finally:
-        await websocket.close()
+        try:
+            await websocket.close()
+        except:
+            pass
