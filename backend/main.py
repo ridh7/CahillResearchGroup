@@ -31,16 +31,29 @@ app.add_middleware(
 app.include_router(endpoints.router)
 
 
+async def send_lockin_data(websocket: WebSocket):
+    while True:
+        values = global_state.lockin.read_values()
+        await websocket.send_json(values)
+        await asyncio.sleep(0.1)
+
+
+async def send_multimeter_data(websocket: WebSocket):
+    while True:
+        value = global_state.multimeter.read_value()
+        await websocket.send_json({"value": value})
+        await asyncio.sleep(0.1)
+
+
 @app.websocket("/ws/lockin")
 async def websocket_endpoint(websocket: WebSocket):
     await websocket.accept()
+    task = asyncio.create_task(send_lockin_data(websocket))
     try:
-        while True:
-            values = global_state.lockin.read_values()
-            await websocket.send_json(values)
-            await asyncio.sleep(0.1)  # 10Hz update rate
+        await task
     except Exception as e:
         print(f"WebSocket error: {e}")
+        task.cancel()
     finally:
         await websocket.close()
 
@@ -48,12 +61,11 @@ async def websocket_endpoint(websocket: WebSocket):
 @app.websocket("/ws/multimeter")
 async def websocket_multimeter_endpoint(websocket: WebSocket):
     await websocket.accept()
+    task = asyncio.create_task(send_multimeter_data(websocket))
     try:
-        while True:
-            value = global_state.multimeter.read_value()
-            await websocket.send_json({"value": value})
-            await asyncio.sleep(0.1)  # 10Hz update rate
+        await task
     except Exception as e:
         print(f"WebSocket error: {e}")
+        task.cancel()
     finally:
         await websocket.close()
