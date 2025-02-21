@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import RealTimeGraphs from "../components/RealTimeGraphs";
 
 type FormData = {
   x1: string;
@@ -554,6 +555,12 @@ export default function CalculatePage() {
           )}
         </div>
       </div>
+      <RealTimeGraphs
+        lockinData={lockinData}
+        multimeterData={multimeterData}
+        lockinConnected={lockinConnected}
+        multimeterConnected={multimeterConnected}
+      />
     </div>
   );
 }
