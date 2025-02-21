@@ -63,8 +63,8 @@ export default function RealTimeGraphs({
   };
 
   return (
-    <div className="grid grid-cols-1 gap-4 mt-4">
-      <div className="bg-gray-900 p-4 rounded-lg">
+    <div className="grid grid-cols-1 gap-4 mt-4 ml-4">
+      <div className="bg-gray-900 p-4 rounded-lg w-96">
         <h3 className="text-white text-lg mb-2">Lock-in X Component</h3>
         <ResponsiveContainer width="100%" height={200}>
           <LineChart data={xData}>

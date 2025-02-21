@@ -290,8 +290,8 @@ export default function CalculatePage() {
   return (
     <div className="min-h-screen bg-black flex items-center justify-center">
       <div className="absolute top-4 left-4 bg-gray-900 p-4 rounded-lg shadow-xl border border-gray-800">
-        <div className="flex justify-between items-center mb-2">
-          <h2 className="text-white text-lg font-semibold mb-2">
+        <div className="flex justify-between items-center align-middle mb-2">
+          <h2 className="text-white text-lg font-semibold mr-2">
             Lock-in Amplifier
           </h2>
           <div className="flex gap-2">
@@ -339,9 +339,9 @@ export default function CalculatePage() {
         </div>
       </div>
 
-      <div className="absolute top-4 left-64 bg-gray-900 p-4 rounded-lg shadow-xl border border-gray-800">
+      <div className="absolute top-72 left-4 bg-gray-900 p-4 rounded-lg shadow-xl border border-gray-800">
         <div className="flex justify-between items-center mb-2">
-          <h2 className="text-white text-lg font-semibold">Multimeter</h2>
+          <h2 className="text-white text-lg font-semibold mr-2">Multimeter</h2>
           <div className="flex gap-2">
             <button
               onClick={connectMultimeter}
