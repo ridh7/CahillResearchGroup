@@ -11,7 +11,7 @@ import {
 } from "recharts";
 
 interface DataPoint {
-  timestamp: number;
+  time: number; // Relative time in seconds
   value: number;
 }
 
@@ -36,76 +36,159 @@ export default function RealTimeGraphs({
   const [xData, setXData] = useState<DataPoint[]>([]);
   const [yData, setYData] = useState<DataPoint[]>([]);
   const [multimeterValues, setMultimeterValues] = useState<DataPoint[]>([]);
+  const [startTime] = useState(Date.now()); // Anchor for relative time
 
   useEffect(() => {
     if (lockinConnected) {
-      const timestamp = Date.now();
-      setXData((prev) =>
-        [...prev, { timestamp, value: lockinData.X }].slice(-100)
-      );
-      setYData((prev) =>
-        [...prev, { timestamp, value: lockinData.Y }].slice(-100)
-      );
+      const time = (Date.now() - startTime) / 1000; // Convert to seconds
+      setXData((prev) => [...prev, { time, value: lockinData.X }].slice(-100));
+      setYData((prev) => [...prev, { time, value: lockinData.Y }].slice(-100));
     }
   }, [lockinData, lockinConnected]);
 
   useEffect(() => {
     if (multimeterConnected) {
-      const timestamp = Date.now();
+      const time = (Date.now() - startTime) / 1000; // Convert to seconds
       setMultimeterValues((prev) =>
-        [...prev, { timestamp, value: multimeterData.value }].slice(-100)
+        [...prev, { time, value: multimeterData.value }].slice(-100)
       );
     }
   }, [multimeterData, multimeterConnected]);
 
-  const formatTime = (timestamp: number) => {
-    return new Date(timestamp).toLocaleTimeString();
-  };
+  const formatTime = (time: number) => `${time.toFixed(1)}s`; // Simple seconds format
 
   return (
-    <div className="grid grid-cols-1 gap-4 mt-4 ml-4">
-      <div className="bg-gray-900 p-4 rounded-lg w-96">
-        <h3 className="text-white text-lg mb-2">Lock-in X Component</h3>
+    <div className="space-y-6">
+      {/* Lock-in Amplifier X vs. Time */}
+      <div className="bg-black p-4 rounded-lg shadow-lg">
+        <h3 className="text-white text-lg font-semibold mb-2">
+          Lock-in Amplifier X vs. Time
+        </h3>
         <ResponsiveContainer width="100%" height={200}>
           <LineChart data={xData}>
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="timestamp" tickFormatter={formatTime} />
-            <YAxis />
-            <Tooltip labelFormatter={formatTime} />
-            <Legend />
-            <Line type="monotone" dataKey="value" stroke="#8884d8" name="X" />
-          </LineChart>
-        </ResponsiveContainer>
-      </div>
-
-      <div className="bg-gray-900 p-4 rounded-lg">
-        <h3 className="text-white text-lg mb-2">Lock-in Y Component</h3>
-        <ResponsiveContainer width="100%" height={200}>
-          <LineChart data={yData}>
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="timestamp" tickFormatter={formatTime} />
-            <YAxis />
-            <Tooltip labelFormatter={formatTime} />
-            <Legend />
-            <Line type="monotone" dataKey="value" stroke="#82ca9d" name="Y" />
-          </LineChart>
-        </ResponsiveContainer>
-      </div>
-
-      <div className="bg-gray-900 p-4 rounded-lg">
-        <h3 className="text-white text-lg mb-2">Multimeter Values</h3>
-        <ResponsiveContainer width="100%" height={200}>
-          <LineChart data={multimeterValues}>
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="timestamp" tickFormatter={formatTime} />
-            <YAxis />
-            <Tooltip labelFormatter={formatTime} />
-            <Legend />
+            <CartesianGrid stroke="#444" strokeDasharray="3 3" />
+            <XAxis
+              dataKey="time"
+              tickFormatter={formatTime}
+              stroke="#fff"
+              label={{
+                value: "Time (s)",
+                position: "insideBottom",
+                offset: -5,
+                fill: "#fff",
+              }}
+            />
+            <YAxis
+              stroke="#fff"
+              label={{
+                value: "X",
+                angle: -90,
+                position: "insideLeft",
+                fill: "#fff",
+              }}
+            />
+            <Tooltip
+              labelFormatter={formatTime}
+              contentStyle={{ backgroundColor: "#333", border: "none" }}
+              labelStyle={{ color: "#fff" }}
+            />
+            <Legend wrapperStyle={{ color: "#fff" }} />
             <Line
               type="monotone"
               dataKey="value"
-              stroke="#ffc658"
-              name="Value"
+              stroke="#3b82f6" // Blue
+              name="X"
+              dot={false}
+            />
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
+
+      {/* Lock-in Amplifier Y vs. Time */}
+      <div className="bg-black p-4 rounded-lg shadow-lg">
+        <h3 className="text-white text-lg font-semibold mb-2">
+          Lock-in Amplifier Y vs. Time
+        </h3>
+        <ResponsiveContainer width="100%" height={200}>
+          <LineChart data={yData}>
+            <CartesianGrid stroke="#444" strokeDasharray="3 3" />
+            <XAxis
+              dataKey="time"
+              tickFormatter={formatTime}
+              stroke="#fff"
+              label={{
+                value: "Time (s)",
+                position: "insideBottom",
+                offset: -5,
+                fill: "#fff",
+              }}
+            />
+            <YAxis
+              stroke="#fff"
+              label={{
+                value: "Y",
+                angle: -90,
+                position: "insideLeft",
+                fill: "#fff",
+              }}
+            />
+            <Tooltip
+              labelFormatter={formatTime}
+              contentStyle={{ backgroundColor: "#333", border: "none" }}
+              labelStyle={{ color: "#fff" }}
+            />
+            <Legend wrapperStyle={{ color: "#fff" }} />
+            <Line
+              type="monotone"
+              dataKey="value"
+              stroke="#f97316" // Orange
+              name="Y"
+              dot={false}
+            />
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
+
+      {/* Multimeter Voltage vs. Time */}
+      <div className="bg-black p-4 rounded-lg shadow-lg">
+        <h3 className="text-white text-lg font-semibold mb-2">
+          Multimeter Voltage vs. Time
+        </h3>
+        <ResponsiveContainer width="100%" height={200}>
+          <LineChart data={multimeterValues}>
+            <CartesianGrid stroke="#444" strokeDasharray="3 3" />
+            <XAxis
+              dataKey="time"
+              tickFormatter={formatTime}
+              stroke="#fff"
+              label={{
+                value: "Time (s)",
+                position: "insideBottom",
+                offset: -5,
+                fill: "#fff",
+              }}
+            />
+            <YAxis
+              stroke="#fff"
+              label={{
+                value: "Voltage (V)",
+                angle: -90,
+                position: "insideLeft",
+                fill: "#fff",
+              }}
+            />
+            <Tooltip
+              labelFormatter={formatTime}
+              contentStyle={{ backgroundColor: "#333", border: "none" }}
+              labelStyle={{ color: "#fff" }}
+            />
+            <Legend wrapperStyle={{ color: "#fff" }} />
+            <Line
+              type="monotone"
+              dataKey="value"
+              stroke="#22c55e" // Green
+              name="Voltage"
+              dot={false}
             />
           </LineChart>
         </ResponsiveContainer>

@@ -1,0 +1,30 @@
+import RealTimeGraphs from "./RealTimeGraphs";
+import { LockinData, MultimeterData } from "../app/page";
+
+type GraphsPanelProps = {
+  lockinData: LockinData;
+  multimeterData: MultimeterData;
+  lockinConnected: boolean;
+  multimeterConnected: boolean;
+};
+
+export default function GraphsPanel({
+  lockinData,
+  multimeterData,
+  lockinConnected,
+  multimeterConnected,
+}: GraphsPanelProps) {
+  return (
+    <div className="w-1/2 bg-gray-800 p-4 rounded-lg shadow-lg">
+      <h2 className="text-white text-lg font-semibold mb-4">
+        Real-Time Data Plots
+      </h2>
+      <RealTimeGraphs
+        lockinData={lockinData}
+        multimeterData={multimeterData}
+        lockinConnected={lockinConnected}
+        multimeterConnected={multimeterConnected}
+      />
+    </div>
+  );
+}
