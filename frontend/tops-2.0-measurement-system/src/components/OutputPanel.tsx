@@ -1,25 +1,33 @@
-import { LockinData, MultimeterData } from "../app/page";
+import { LockinData, MultimeterData, StageData } from "../app/page";
 
 type OutputPanelProps = {
   lockinData: LockinData;
   multimeterData: MultimeterData;
+  stageData: StageData;
   lockinConnected: boolean;
   multimeterConnected: boolean;
+  stageConnected: boolean;
   connectLockin: () => void;
   disconnectLockin: () => void;
   connectMultimeter: () => void;
   disconnectMultimeter: () => void;
+  connectStage: () => void;
+  disconnectStage: () => void;
 };
 
 export default function OutputPanel({
   lockinData,
   multimeterData,
+  stageData,
   lockinConnected,
   multimeterConnected,
+  stageConnected,
   connectLockin,
   disconnectLockin,
   connectMultimeter,
   disconnectMultimeter,
+  connectStage,
+  disconnectStage,
 }: OutputPanelProps) {
   return (
     <div className="w-1/5 bg-gray-800 p-4 rounded-lg shadow-lg space-y-6">
@@ -114,6 +122,47 @@ export default function OutputPanel({
           <span className="text-white">
             {multimeterData.value.toFixed(6)} V
           </span>
+        </div>
+      </div>
+
+      {/*Stage*/}
+      <div>
+        <div className="flex justify-between items-center mb-2">
+          <h2 className="text-white text-lg font-semibold">Stage</h2>
+          <div className="flex gap-2">
+            <button
+              onClick={connectStage}
+              disabled={stageConnected}
+              className={`p-1 ${
+                stageConnected
+                  ? "text-gray-500"
+                  : "text-teal-500 hover:text-teal-400"
+              }`}
+            >
+              <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
+                <path d="M10 4.5c-3.03 0-5.5 2.47-5.5 5.5s2.47 5.5 5.5 5.5 5.5-2.47 5.5-5.5-2.47-5.5-5.5-5.5zm-1 8.5v-6l4 3-4 3z" />
+              </svg>
+            </button>
+            <button
+              onClick={disconnectStage}
+              disabled={!stageConnected}
+              className={`p-1 ${
+                !stageConnected
+                  ? "text-gray-500"
+                  : "text-red-500 hover:text-red-400"
+              }`}
+            >
+              <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
+                <path d="M10 4.5c-3.03 0-5.5 2.47-5.5 5.5s2.47 5.5 5.5 5.5 5.5-2.47 5.5-5.5-2.47-5.5-5.5-5.5zm-1 8.5v-6h2v6h-2z" />
+              </svg>
+            </button>
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-2 text-sm">
+          <span className="text-gray-400">X:</span>
+          <span className="text-white">{stageData.x.toFixed(6)}</span>
+          <span className="text-gray-400">Y:</span>
+          <span className="text-white">{stageData.y.toFixed(6)}</span>
         </div>
       </div>
     </div>

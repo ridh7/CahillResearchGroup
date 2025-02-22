@@ -38,6 +38,11 @@ export type MultimeterData = {
   value: number;
 };
 
+export type StageData = {
+  x: number;
+  y: number;
+};
+
 export type ChannelSettings = {
   homingVelocity: string;
   maxVelocity: string;
@@ -93,10 +98,16 @@ export default function CalculatePage() {
   const [multimeterData, setMultimeterData] = useState<MultimeterData>({
     value: 0,
   });
+  const [stageData, setStageData] = useState<StageData>({
+    x: 0,
+    y: 0,
+  });
   const [lockinConnected, setLockinConnected] = useState(false);
   const [multimeterConnected, setMultimeterConnected] = useState(false);
+  const [stageConnected, setStageConnected] = useState(false);
   const [lockinWs, setLockinWs] = useState<WebSocket | null>(null);
   const [multimeterWs, setMultimeterWs] = useState<WebSocket | null>(null);
+  const [stageWs, setStageWs] = useState<WebSocket | null>(null);
   const [status, setStatus] = useState<string>("");
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [settings, setSettings] = useState<Settings>({
@@ -124,7 +135,6 @@ export default function CalculatePage() {
     },
   };
 
-  // WebSocket Connections (unchanged from your code)
   const connectLockin = () => {
     const ws = new WebSocket("ws://localhost:8000/ws/lockin");
     ws.onmessage = (event) => setLockinData(JSON.parse(event.data));
@@ -155,7 +165,21 @@ export default function CalculatePage() {
     setMultimeterConnected(false);
   };
 
-  // API Handlers (unchanged from your code)
+  const connectStage = () => {
+    const ws = new WebSocket("ws://localhost:8000/ws/multimeter");
+    ws.onmessage = (event) => setStageData(JSON.parse(event.data));
+    ws.onerror = () => setStageConnected(false);
+    ws.onclose = () => setStageConnected(false);
+    ws.onopen = () => setStageConnected(true);
+    setStageWs(ws);
+  };
+
+  const disconnectStage = () => {
+    stageWs?.close();
+    setStageWs(null);
+    setStageConnected(false);
+  };
+
   const handleSubmit = async () => {
     try {
       setStatus("Processing...");
@@ -325,12 +349,16 @@ export default function CalculatePage() {
         <OutputPanel
           lockinData={lockinData}
           multimeterData={multimeterData}
+          stageData={stageData}
           lockinConnected={lockinConnected}
           multimeterConnected={multimeterConnected}
+          stageConnected={stageConnected}
           connectLockin={connectLockin}
           disconnectLockin={disconnectLockin}
           connectMultimeter={connectMultimeter}
           disconnectMultimeter={disconnectMultimeter}
+          connectStage={connectStage}
+          disconnectStage={disconnectStage}
         />
       </div>
 
