@@ -109,3 +109,12 @@ class ThorlabsBBD302:
             save_to_file(data)
         except Exception as e:
             print(f"---Error in moving: {e}")
+
+    def get_current_position():
+        try:
+            x = global_state.stage.channel[1].DevicePosition
+            y = global_state.stage.channel[2].DevicePosition
+            return {"x": x, "y": y}
+        except Exception as e:
+            print(f"Error reading from stage: {e}")
+            return None

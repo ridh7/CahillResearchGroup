@@ -46,6 +46,13 @@ async def send_multimeter_data(websocket: WebSocket):
         await asyncio.sleep(0.1)
 
 
+async def send_stage_data(websocket: WebSocket):
+    while True:
+        values = global_state.stage.read_values()
+        await websocket.send_json({"value": values})
+        await asyncio.sleep(0.1)
+
+
 @app.websocket("/ws/lockin")
 async def websocket_endpoint(websocket: WebSocket):
     await websocket.accept()
@@ -67,6 +74,23 @@ async def websocket_endpoint(websocket: WebSocket):
 async def websocket_multimeter_endpoint(websocket: WebSocket):
     await websocket.accept()
     task = asyncio.create_task(send_multimeter_data(websocket))
+    try:
+        await task
+    except WebSocketDisconnect:
+        task.cancel()
+    except Exception as e:
+        print(f"WebSocket error: {e}")
+        task.cancel()
+        try:
+            await websocket.close()
+        except:
+            pass
+
+
+@app.websocket("/ws/stage")
+async def websocket_stage_endpoint(websocket: WebSocket):
+    await websocket.accept()
+    task = asyncio.create_task(send_stage_data(websocket))
     try:
         await task
     except WebSocketDisconnect:
