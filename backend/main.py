@@ -49,7 +49,7 @@ async def send_multimeter_data(websocket: WebSocket):
 async def send_stage_data(websocket: WebSocket):
     while True:
         values = global_state.stage.read_values()
-        await websocket.send_json({"value": values})
+        await websocket.send_json(values)
         await asyncio.sleep(0.1)
 
 

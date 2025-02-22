@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { AnimatePresence } from "framer-motion";
 import MetadataPanel from "../components/MetadataPanel";
 import DeviceControls from "../components/DeviceControls";
 import GraphsPanel from "../components/GraphsPanel";
@@ -166,7 +166,7 @@ export default function CalculatePage() {
   };
 
   const connectStage = () => {
-    const ws = new WebSocket("ws://localhost:8000/ws/multimeter");
+    const ws = new WebSocket("ws://localhost:8000/ws/stage");
     ws.onmessage = (event) => setStageData(JSON.parse(event.data));
     ws.onerror = () => setStageConnected(false);
     ws.onclose = () => setStageConnected(false);

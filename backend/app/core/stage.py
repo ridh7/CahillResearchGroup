@@ -110,11 +110,11 @@ class ThorlabsBBD302:
         except Exception as e:
             print(f"---Error in moving: {e}")
 
-    def get_current_position():
+    def read_values(self):
         try:
             x = global_state.stage.channel[1].DevicePosition
             y = global_state.stage.channel[2].DevicePosition
-            return {"x": x, "y": y}
+            return {"x": f"{x}", "y": f"{y}"}
         except Exception as e:
             print(f"Error reading from stage: {e}")
             return None
