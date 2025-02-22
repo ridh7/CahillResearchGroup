@@ -149,6 +149,16 @@ export default function CalculatePage() {
     setLockinWs(null);
     setLockinConnected(false);
   };
+  const resetLockin = () => {
+    setLockinData({
+      X: 0,
+      Y: 0,
+      R: 0,
+      theta: 0,
+      frequency: 0,
+      phase: 0,
+    });
+  };
 
   const connectMultimeter = () => {
     const ws = new WebSocket("ws://localhost:8000/ws/multimeter");
@@ -165,6 +175,12 @@ export default function CalculatePage() {
     setMultimeterConnected(false);
   };
 
+  const resetMultimeter = () => {
+    setMultimeterData({
+      value: 0,
+    });
+  };
+
   const connectStage = () => {
     const ws = new WebSocket("ws://localhost:8000/ws/stage");
     ws.onmessage = (event) => setStageData(JSON.parse(event.data));
@@ -178,6 +194,13 @@ export default function CalculatePage() {
     stageWs?.close();
     setStageWs(null);
     setStageConnected(false);
+  };
+
+  const resetStage = () => {
+    setStageData({
+      x: 0,
+      y: 0,
+    });
   };
 
   const handleSubmit = async () => {
@@ -359,6 +382,9 @@ export default function CalculatePage() {
           disconnectMultimeter={disconnectMultimeter}
           connectStage={connectStage}
           disconnectStage={disconnectStage}
+          resetLockin={resetLockin}
+          resetMultimeter={resetMultimeter}
+          resetStage={resetStage}
         />
       </div>
 
