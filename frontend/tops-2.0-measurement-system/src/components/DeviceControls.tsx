@@ -68,6 +68,7 @@ export default function DeviceControls({
                     ...formData,
                     xStepSize: "", // Reset Step Size fields
                     yStepSize: "",
+                    movementMode: "steps",
                   });
                 }}
                 className="mr-2 text-teal-600 focus:ring-teal-500"
@@ -86,6 +87,7 @@ export default function DeviceControls({
                     ...formData,
                     xSteps: "", // Reset Steps fields
                     ySteps: "",
+                    movementMode: "stepSize",
                   });
                 }}
                 className="mr-2 text-teal-600 focus:ring-teal-500"

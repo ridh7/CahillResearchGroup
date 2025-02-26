@@ -75,12 +75,11 @@ class ThorlabsBBD302:
             print(f"---Error: {e}")
 
     def move_in_rectangle(
-        self, x1, y1, x2, y2, x_steps, y_steps, x_step_size, y_step_size
+        self, x1, y1, x2, y2, x_steps, y_steps, x_step_size, y_step_size, movement_mode
     ):
         try:
-            if not x_step_size:
+            if movement_mode == "steps":
                 x_step_size = abs(x2 - x1) / x_steps
-            if not y_step_size:
                 y_step_size = abs(y2 - y1) / y_steps
             x, y = x1, y1
             data = []

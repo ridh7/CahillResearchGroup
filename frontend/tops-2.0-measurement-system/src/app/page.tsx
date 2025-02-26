@@ -23,6 +23,7 @@ export type FormData = {
   ySteps: string;
   xStepSize: string;
   yStepSize: string;
+  movementMode: string;
 };
 
 export type LockinData = {
@@ -85,6 +86,7 @@ export default function CalculatePage() {
     ySteps: "",
     xStepSize: "",
     yStepSize: "",
+    movementMode: "",
   });
 
   const [lockinData, setLockinData] = useState<LockinData>({
@@ -218,6 +220,7 @@ export default function CalculatePage() {
           y_steps: parseInt(formData.ySteps),
           x_step_size: parseFloat(formData.xStepSize),
           y_step_size: parseFloat(formData.yStepSize),
+          movement_mode: formData.movementMode,
         }),
       });
       const data = await response.json();

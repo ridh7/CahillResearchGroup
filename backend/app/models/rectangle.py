@@ -10,3 +10,4 @@ class RectangleParams(BaseModel):
     y_steps: int
     x_step_size: float
     y_step_size: float
+    movement_mode: str
