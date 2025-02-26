@@ -9,6 +9,24 @@ type DeviceControlsProps = {
   status: string;
 };
 
+const initialFormData = {
+  sampleId: "",
+  sampleName: "",
+  probeLaserPower: "",
+  pumpLaserPower: "",
+  aluminumThickness: "",
+  comments: "",
+  x1: "",
+  x2: "",
+  y1: "",
+  y2: "",
+  xSteps: "",
+  ySteps: "",
+  xStepSize: "",
+  yStepSize: "",
+  movementMode: "steps",
+};
+
 export default function DeviceControls({
   formData,
   setFormData,
@@ -19,6 +37,10 @@ export default function DeviceControls({
   const [activeTab, setActiveTab] = useState<"stage" | "lockin" | "multimeter">(
     "stage"
   );
+
+  const handleReset = () => {
+    setFormData(initialFormData);
+  };
 
   return (
     <div className="bg-gray-800 p-4 rounded-lg shadow-lg flex-1">
@@ -180,6 +202,12 @@ export default function DeviceControls({
               Home Y
             </button>
           </div>
+          <button
+            onClick={handleReset}
+            className="w-full bg-red-600 text-white py-2 rounded hover:bg-red-700 transition-colors"
+          >
+            Reset Values
+          </button>
           {status && (
             <div className="text-center text-white mt-2">{status}</div>
           )}
