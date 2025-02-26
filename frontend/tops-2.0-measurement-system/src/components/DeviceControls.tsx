@@ -62,7 +62,14 @@ export default function DeviceControls({
                 name="movementMode"
                 value="steps"
                 checked={movementMode === "steps"}
-                onChange={() => setMovementMode("steps")}
+                onChange={() => {
+                  setMovementMode("steps");
+                  setFormData({
+                    ...formData,
+                    xStepSize: "", // Reset Step Size fields
+                    yStepSize: "",
+                  });
+                }}
                 className="mr-2 text-teal-600 focus:ring-teal-500"
               />
               Steps
@@ -73,7 +80,14 @@ export default function DeviceControls({
                 name="movementMode"
                 value="stepSize"
                 checked={movementMode === "stepSize"}
-                onChange={() => setMovementMode("stepSize")}
+                onChange={() => {
+                  setMovementMode("stepSize");
+                  setFormData({
+                    ...formData,
+                    xSteps: "", // Reset Steps fields
+                    ySteps: "",
+                  });
+                }}
                 className="mr-2 text-teal-600 focus:ring-teal-500"
               />
               Step Size
