@@ -9,6 +9,8 @@ type GraphsPanelProps = {
   resetLockin: boolean;
   resetMultimeter: boolean;
   onResetComplete: () => void;
+  lockinStartTime: number | null;
+  multimeterStartTime: number | null;
 };
 
 export default function GraphsPanel({
@@ -19,6 +21,8 @@ export default function GraphsPanel({
   resetLockin,
   resetMultimeter,
   onResetComplete,
+  lockinStartTime,
+  multimeterStartTime,
 }: GraphsPanelProps) {
   return (
     <div className="w-1/2 bg-gray-800 p-4 rounded-lg shadow-lg">
@@ -33,6 +37,8 @@ export default function GraphsPanel({
         resetLockin={resetLockin}
         resetMultimeter={resetMultimeter}
         onResetComplete={onResetComplete}
+        lockinStartTime={lockinStartTime}
+        multimeterStartTime={multimeterStartTime}
       />
     </div>
   );

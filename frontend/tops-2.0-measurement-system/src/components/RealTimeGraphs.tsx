@@ -28,6 +28,8 @@ interface GraphProps {
   resetLockin: boolean;
   resetMultimeter: boolean;
   onResetComplete: () => void;
+  lockinStartTime: number | null;
+  multimeterStartTime: number | null;
 }
 
 export default function RealTimeGraphs({
@@ -38,11 +40,12 @@ export default function RealTimeGraphs({
   resetLockin,
   resetMultimeter,
   onResetComplete,
+  lockinStartTime,
+  multimeterStartTime,
 }: GraphProps) {
   const [xData, setXData] = useState<DataPoint[]>([]);
   const [yData, setYData] = useState<DataPoint[]>([]);
   const [multimeterValues, setMultimeterValues] = useState<DataPoint[]>([]);
-  const [startTime] = useState(Date.now()); // Anchor for relative time
 
   useEffect(() => {
     if (resetLockin) {
@@ -60,16 +63,16 @@ export default function RealTimeGraphs({
   }, [resetMultimeter, onResetComplete]);
 
   useEffect(() => {
-    if (lockinConnected) {
-      const time = (Date.now() - startTime) / 1000; // Convert to seconds
+    if (lockinConnected && lockinStartTime !== null) {
+      const time = (Date.now() - lockinStartTime) / 1000; // Convert to seconds
       setXData((prev) => [...prev, { time, value: lockinData.X }].slice(-100));
       setYData((prev) => [...prev, { time, value: lockinData.Y }].slice(-100));
     }
   }, [lockinData, lockinConnected]);
 
   useEffect(() => {
-    if (multimeterConnected) {
-      const time = (Date.now() - startTime) / 1000; // Convert to seconds
+    if (multimeterConnected && multimeterStartTime !== null) {
+      const time = (Date.now() - multimeterStartTime) / 1000; // Convert to seconds
       setMultimeterValues((prev) =>
         [...prev, { time, value: multimeterData.value }].slice(-100)
       );

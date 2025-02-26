@@ -109,6 +109,10 @@ export default function CalculatePage() {
   const [stageConnected, setStageConnected] = useState(false);
   const [resetLockinTrigger, setResetLockinTrigger] = useState(false);
   const [resetMultimeterTrigger, setResetMultimeterTrigger] = useState(false);
+  const [lockinStartTime, setLockinStartTime] = useState<number | null>(null);
+  const [multimeterStartTime, setMultimeterStartTime] = useState<number | null>(
+    null
+  );
   const [lockinWs, setLockinWs] = useState<WebSocket | null>(null);
   const [multimeterWs, setMultimeterWs] = useState<WebSocket | null>(null);
   const [stageWs, setStageWs] = useState<WebSocket | null>(null);
@@ -144,7 +148,10 @@ export default function CalculatePage() {
     ws.onmessage = (event) => setLockinData(JSON.parse(event.data));
     ws.onerror = () => setLockinConnected(false);
     ws.onclose = () => setLockinConnected(false);
-    ws.onopen = () => setLockinConnected(true);
+    ws.onopen = () => {
+      setLockinConnected(true);
+      setLockinStartTime(Date.now());
+    };
     setLockinWs(ws);
   };
 
@@ -152,6 +159,7 @@ export default function CalculatePage() {
     lockinWs?.close();
     setLockinWs(null);
     setLockinConnected(false);
+    setLockinStartTime(null);
   };
   const resetLockin = () => {
     setLockinData({
@@ -163,6 +171,7 @@ export default function CalculatePage() {
       phase: 0,
     });
     setResetLockinTrigger(true);
+    setLockinStartTime(null);
   };
 
   const connectMultimeter = () => {
@@ -170,7 +179,10 @@ export default function CalculatePage() {
     ws.onmessage = (event) => setMultimeterData(JSON.parse(event.data));
     ws.onerror = () => setMultimeterConnected(false);
     ws.onclose = () => setMultimeterConnected(false);
-    ws.onopen = () => setMultimeterConnected(true);
+    ws.onopen = () => {
+      setMultimeterConnected(true);
+      setMultimeterStartTime(Date.now());
+    };
     setMultimeterWs(ws);
   };
 
@@ -178,6 +190,7 @@ export default function CalculatePage() {
     multimeterWs?.close();
     setMultimeterWs(null);
     setMultimeterConnected(false);
+    setMultimeterStartTime(null);
   };
 
   const resetMultimeter = () => {
@@ -185,6 +198,7 @@ export default function CalculatePage() {
       value: 0,
     });
     setResetMultimeterTrigger(true);
+    setMultimeterStartTime(null);
   };
 
   const connectStage = () => {
@@ -367,6 +381,8 @@ export default function CalculatePage() {
           resetLockin={resetLockinTrigger}
           resetMultimeter={resetMultimeterTrigger}
           onResetComplete={handleResetComplete}
+          lockinStartTime={lockinStartTime}
+          multimeterStartTime={multimeterStartTime}
         />
 
         {/* Right Panel */}
