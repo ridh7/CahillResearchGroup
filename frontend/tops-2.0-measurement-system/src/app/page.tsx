@@ -171,7 +171,11 @@ export default function CalculatePage() {
       phase: 0,
     });
     setResetLockinTrigger(true);
-    setLockinStartTime(null);
+    if (lockinConnected) {
+      setLockinStartTime(Date.now());
+    } else {
+      setLockinStartTime(null);
+    }
   };
 
   const connectMultimeter = () => {
@@ -198,7 +202,11 @@ export default function CalculatePage() {
       value: 0,
     });
     setResetMultimeterTrigger(true);
-    setMultimeterStartTime(null);
+    if (multimeterConnected) {
+      setMultimeterStartTime(Date.now());
+    } else {
+      setMultimeterStartTime(null);
+    }
   };
 
   const connectStage = () => {
