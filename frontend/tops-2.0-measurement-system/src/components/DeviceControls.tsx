@@ -162,6 +162,12 @@ export default function DeviceControls({
               Start
             </button>
             <button
+              onClick={() => handleHome("")}
+              className="flex-1 bg-teal-600 text-white py-2 rounded hover:bg-teal-700 transition-colors"
+            >
+              Home XY
+            </button>
+            <button
               onClick={() => handleHome("x")}
               className="flex-1 bg-teal-600 text-white py-2 rounded hover:bg-teal-700 transition-colors"
             >
@@ -172,12 +178,6 @@ export default function DeviceControls({
               className="flex-1 bg-teal-600 text-white py-2 rounded hover:bg-teal-700 transition-colors"
             >
               Home Y
-            </button>
-            <button
-              onClick={() => handleHome("")}
-              className="flex-1 bg-teal-600 text-white py-2 rounded hover:bg-teal-700 transition-colors"
-            >
-              Home XY
             </button>
           </div>
           {status && (
