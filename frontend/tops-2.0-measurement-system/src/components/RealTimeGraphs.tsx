@@ -25,6 +25,9 @@ interface GraphProps {
   };
   lockinConnected: boolean;
   multimeterConnected: boolean;
+  resetLockin: boolean;
+  resetMultimeter: boolean;
+  onResetComplete: () => void;
 }
 
 export default function RealTimeGraphs({
@@ -32,11 +35,29 @@ export default function RealTimeGraphs({
   multimeterData,
   lockinConnected,
   multimeterConnected,
+  resetLockin,
+  resetMultimeter,
+  onResetComplete,
 }: GraphProps) {
   const [xData, setXData] = useState<DataPoint[]>([]);
   const [yData, setYData] = useState<DataPoint[]>([]);
   const [multimeterValues, setMultimeterValues] = useState<DataPoint[]>([]);
   const [startTime] = useState(Date.now()); // Anchor for relative time
+
+  useEffect(() => {
+    if (resetLockin) {
+      setXData([]);
+      setYData([]);
+      onResetComplete();
+    }
+  }, [resetLockin, onResetComplete]);
+
+  useEffect(() => {
+    if (resetMultimeter) {
+      setMultimeterValues([]);
+      onResetComplete();
+    }
+  }, [resetMultimeter, onResetComplete]);
 
   useEffect(() => {
     if (lockinConnected) {

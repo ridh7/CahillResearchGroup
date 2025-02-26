@@ -107,6 +107,8 @@ export default function CalculatePage() {
   const [lockinConnected, setLockinConnected] = useState(false);
   const [multimeterConnected, setMultimeterConnected] = useState(false);
   const [stageConnected, setStageConnected] = useState(false);
+  const [resetLockinTrigger, setResetLockinTrigger] = useState(false);
+  const [resetMultimeterTrigger, setResetMultimeterTrigger] = useState(false);
   const [lockinWs, setLockinWs] = useState<WebSocket | null>(null);
   const [multimeterWs, setMultimeterWs] = useState<WebSocket | null>(null);
   const [stageWs, setStageWs] = useState<WebSocket | null>(null);
@@ -160,6 +162,7 @@ export default function CalculatePage() {
       frequency: 0,
       phase: 0,
     });
+    setResetLockinTrigger(true);
   };
 
   const connectMultimeter = () => {
@@ -181,6 +184,7 @@ export default function CalculatePage() {
     setMultimeterData({
       value: 0,
     });
+    setResetMultimeterTrigger(true);
   };
 
   const connectStage = () => {
@@ -298,6 +302,11 @@ export default function CalculatePage() {
     }
   };
 
+  const handleResetComplete = () => {
+    setResetLockinTrigger(false);
+    setResetMultimeterTrigger(false);
+  };
+
   return (
     <div className="min-h-screen bg-gray-900 flex flex-col">
       {/* Top Bar */}
@@ -355,6 +364,9 @@ export default function CalculatePage() {
           multimeterData={multimeterData}
           lockinConnected={lockinConnected}
           multimeterConnected={multimeterConnected}
+          resetLockin={resetLockinTrigger}
+          resetMultimeter={resetMultimeterTrigger}
+          onResetComplete={handleResetComplete}
         />
 
         {/* Right Panel */}

@@ -6,6 +6,9 @@ type GraphsPanelProps = {
   multimeterData: MultimeterData;
   lockinConnected: boolean;
   multimeterConnected: boolean;
+  resetLockin: boolean;
+  resetMultimeter: boolean;
+  onResetComplete: () => void;
 };
 
 export default function GraphsPanel({
@@ -13,6 +16,9 @@ export default function GraphsPanel({
   multimeterData,
   lockinConnected,
   multimeterConnected,
+  resetLockin,
+  resetMultimeter,
+  onResetComplete,
 }: GraphsPanelProps) {
   return (
     <div className="w-1/2 bg-gray-800 p-4 rounded-lg shadow-lg">
@@ -24,6 +30,9 @@ export default function GraphsPanel({
         multimeterData={multimeterData}
         lockinConnected={lockinConnected}
         multimeterConnected={multimeterConnected}
+        resetLockin={resetLockin}
+        resetMultimeter={resetMultimeter}
+        onResetComplete={onResetComplete}
       />
     </div>
   );
