@@ -295,19 +295,6 @@ export default function CalculatePage() {
     }
   };
 
-  const getCurrentPosition = async () => {
-    try {
-      const response = await fetch(
-        "http://localhost:8000/get_current_position"
-      );
-      const data = await response.json();
-      setStatus(`(${data.x}, ${data.y})`);
-    } catch (error) {
-      console.error("Error: ", error);
-      setStatus("Error occurred");
-    }
-  };
-
   return (
     <div className="min-h-screen bg-gray-900 flex flex-col">
       {/* Top Bar */}
@@ -355,7 +342,6 @@ export default function CalculatePage() {
             setFormData={setFormData}
             handleSubmit={handleSubmit}
             handleHome={handleHome}
-            getCurrentPosition={getCurrentPosition}
             status={status}
           />
         </div>

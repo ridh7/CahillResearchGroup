@@ -6,7 +6,6 @@ type DeviceControlsProps = {
   setFormData: React.Dispatch<React.SetStateAction<FormData>>;
   handleSubmit: () => void;
   handleHome: (direction: string) => void;
-  getCurrentPosition: () => void;
   status: string;
 };
 
@@ -15,11 +14,13 @@ export default function DeviceControls({
   setFormData,
   handleSubmit,
   handleHome,
-  getCurrentPosition,
   status,
 }: DeviceControlsProps) {
   const [activeTab, setActiveTab] = useState<"stage" | "lockin" | "multimeter">(
     "stage"
+  );
+  const [movementMode, setMovementMode] = useState<"steps" | "stepSize">(
+    "steps"
   );
 
   return (
@@ -53,17 +54,35 @@ export default function DeviceControls({
 
       {activeTab === "stage" && (
         <div className="space-y-4">
+          {/* Radio Buttons for Movement Mode */}
+          <div className="flex justify-center space-x-6 mb-4">
+            <label className="flex items-center text-white">
+              <input
+                type="radio"
+                name="movementMode"
+                value="steps"
+                checked={movementMode === "steps"}
+                onChange={() => setMovementMode("steps")}
+                className="mr-2 text-teal-600 focus:ring-teal-500"
+              />
+              Steps
+            </label>
+            <label className="flex items-center text-white">
+              <input
+                type="radio"
+                name="movementMode"
+                value="stepSize"
+                checked={movementMode === "stepSize"}
+                onChange={() => setMovementMode("stepSize")}
+                className="mr-2 text-teal-600 focus:ring-teal-500"
+              />
+              Step Size
+            </label>
+          </div>
+
           <div className="grid grid-cols-2 gap-2">
-            {[
-              "x1",
-              "y1",
-              "x2",
-              "y2",
-              "xSteps",
-              "ySteps",
-              "xStepSize",
-              "yStepSize",
-            ].map((key) => (
+            {/* Always show x1, y1, x2, y2 */}
+            {["x1", "y1", "x2", "y2"].map((key) => (
               <input
                 key={key}
                 type="number"
@@ -78,7 +97,52 @@ export default function DeviceControls({
                 }
               />
             ))}
+            {/* Conditionally show xSteps/ySteps or xStepSize/yStepSize */}
+            {movementMode === "steps" ? (
+              <>
+                <input
+                  type="number"
+                  placeholder="xSteps"
+                  className="p-2 rounded bg-gray-700 text-white border border-gray-600 focus:border-teal-500 focus:outline-none"
+                  value={formData.xSteps}
+                  onChange={(e) =>
+                    setFormData({ ...formData, xSteps: e.target.value })
+                  }
+                />
+                <input
+                  type="number"
+                  placeholder="ySteps"
+                  className="p-2 rounded bg-gray-700 text-white border border-gray-600 focus:border-teal-500 focus:outline-none"
+                  value={formData.ySteps}
+                  onChange={(e) =>
+                    setFormData({ ...formData, ySteps: e.target.value })
+                  }
+                />
+              </>
+            ) : (
+              <>
+                <input
+                  type="number"
+                  placeholder="xStepSize"
+                  className="p-2 rounded bg-gray-700 text-white border border-gray-600 focus:border-teal-500 focus:outline-none"
+                  value={formData.xStepSize}
+                  onChange={(e) =>
+                    setFormData({ ...formData, xStepSize: e.target.value })
+                  }
+                />
+                <input
+                  type="number"
+                  placeholder="yStepSize"
+                  className="p-2 rounded bg-gray-700 text-white border border-gray-600 focus:border-teal-500 focus:outline-none"
+                  value={formData.yStepSize}
+                  onChange={(e) =>
+                    setFormData({ ...formData, yStepSize: e.target.value })
+                  }
+                />
+              </>
+            )}
           </div>
+
           <div className="flex space-x-2">
             <button
               onClick={handleSubmit}
@@ -105,12 +169,6 @@ export default function DeviceControls({
               Home XY
             </button>
           </div>
-          <button
-            onClick={getCurrentPosition}
-            className="w-full bg-teal-600 text-white py-2 rounded hover:bg-teal-700 transition-colors"
-          >
-            Get Position
-          </button>
           {status && (
             <div className="text-center text-white mt-2">{status}</div>
           )}
