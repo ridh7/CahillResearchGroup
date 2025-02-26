@@ -86,7 +86,7 @@ export default function CalculatePage() {
     ySteps: "",
     xStepSize: "",
     yStepSize: "",
-    movementMode: "",
+    movementMode: "steps",
   });
 
   const [lockinData, setLockinData] = useState<LockinData>({
@@ -216,10 +216,10 @@ export default function CalculatePage() {
           x2: parseFloat(formData.x2),
           y1: parseFloat(formData.y1),
           y2: parseFloat(formData.y2),
-          x_steps: parseInt(formData.xSteps),
-          y_steps: parseInt(formData.ySteps),
-          x_step_size: parseFloat(formData.xStepSize),
-          y_step_size: parseFloat(formData.yStepSize),
+          x_steps: parseInt(formData.xSteps) || null,
+          y_steps: parseInt(formData.ySteps) || null,
+          x_step_size: parseFloat(formData.xStepSize) || null,
+          y_step_size: parseFloat(formData.yStepSize) || null,
           movement_mode: formData.movementMode,
         }),
       });

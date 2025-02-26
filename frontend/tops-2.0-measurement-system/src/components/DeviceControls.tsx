@@ -19,9 +19,6 @@ export default function DeviceControls({
   const [activeTab, setActiveTab] = useState<"stage" | "lockin" | "multimeter">(
     "stage"
   );
-  const [movementMode, setMovementMode] = useState<"steps" | "stepSize">(
-    "steps"
-  );
 
   return (
     <div className="bg-gray-800 p-4 rounded-lg shadow-lg flex-1">
@@ -61,9 +58,8 @@ export default function DeviceControls({
                 type="radio"
                 name="movementMode"
                 value="steps"
-                checked={movementMode === "steps"}
+                checked={formData.movementMode === "steps"}
                 onChange={() => {
-                  setMovementMode("steps");
                   setFormData({
                     ...formData,
                     xStepSize: "", // Reset Step Size fields
@@ -80,9 +76,8 @@ export default function DeviceControls({
                 type="radio"
                 name="movementMode"
                 value="stepSize"
-                checked={movementMode === "stepSize"}
+                checked={formData.movementMode === "stepSize"}
                 onChange={() => {
-                  setMovementMode("stepSize");
                   setFormData({
                     ...formData,
                     xSteps: "", // Reset Steps fields
@@ -114,7 +109,7 @@ export default function DeviceControls({
               />
             ))}
             {/* Conditionally show xSteps/ySteps or xStepSize/yStepSize */}
-            {movementMode === "steps" ? (
+            {formData.movementMode === "steps" ? (
               <>
                 <input
                   type="number"
