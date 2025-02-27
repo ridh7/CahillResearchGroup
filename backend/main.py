@@ -62,7 +62,7 @@ async def websocket_endpoint(websocket: WebSocket):
     except WebSocketDisconnect:
         task.cancel()
     except Exception as e:
-        print(f"WebSocket error: {e}")
+        print(f"Lockin websocket error: {e}")
         task.cancel()
         try:
             await websocket.close()
@@ -79,7 +79,7 @@ async def websocket_multimeter_endpoint(websocket: WebSocket):
     except WebSocketDisconnect:
         task.cancel()
     except Exception as e:
-        print(f"WebSocket error: {e}")
+        print(f"Multimeter websocket error: {e}")
         task.cancel()
         try:
             await websocket.close()
@@ -96,7 +96,7 @@ async def websocket_stage_endpoint(websocket: WebSocket):
     except WebSocketDisconnect:
         task.cancel()
     except Exception as e:
-        print(f"WebSocket error: {e}")
+        print(f"Stage websocket error: {e}")
         task.cancel()
         try:
             await websocket.close()
