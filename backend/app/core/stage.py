@@ -81,15 +81,17 @@ class ThorlabsBBD302:
             if movement_mode == "steps":
                 x_step_size = abs(x2 - x1) / x_steps
                 y_step_size = abs(y2 - y1) / y_steps
-            x, y = x1, y1
+            greater_x, greater_y = max(x1, x2), max(y1, y2)
+            smaller_x, smaller_y = min(x1, x2), min(y1, y2)
+            x, y = smaller_x, smaller_y
             data = []
-            while y < y2:
+            while y < greater_y:
                 y += y_step_size
                 self.channel[2].MoveTo(Decimal(y), 60000)
                 print(
                     f"---Current position: ({self.channel[1].DevicePosition}, {self.channel[2].DevicePosition})"
                 )
-                while x < x2:
+                while x < greater_x:
                     x += x_step_size
                     self.channel[1].MoveTo(Decimal(x), 60000)
                     print(
@@ -103,7 +105,7 @@ class ThorlabsBBD302:
                     values["voltage"] = global_state.multimeter.read_value()
                     data.append(values)
                     time.sleep(0.1)
-                x = x1
+                x = smaller_x
                 self.channel[1].MoveTo(Decimal(x), 60000)
             save_to_file(data)
         except Exception as e:

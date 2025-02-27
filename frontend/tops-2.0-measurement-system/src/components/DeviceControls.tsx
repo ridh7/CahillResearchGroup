@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { FormData } from "../app/page";
 
 type DeviceControlsProps = {
@@ -42,6 +42,52 @@ export default function DeviceControls({
     setFormData(initialFormData);
   };
 
+  const isFormValid = useMemo(() => {
+    const x1Valid =
+      formData.x1 !== "" &&
+      Number(formData.x1) >= 0 &&
+      Number(formData.x1) <= 110;
+    const x2Valid =
+      formData.x2 !== "" &&
+      Number(formData.x2) >= 0 &&
+      Number(formData.x2) <= 110;
+    const y1Valid =
+      formData.y1 !== "" &&
+      Number(formData.y1) >= 0 &&
+      Number(formData.y1) <= 75;
+    const y2Valid =
+      formData.y2 !== "" &&
+      Number(formData.y2) >= 0 &&
+      Number(formData.y2) <= 75;
+
+    if (formData.movementMode === "steps") {
+      const xStepsValid =
+        formData.xSteps !== "" &&
+        Number(formData.xSteps) > 0 &&
+        Number.isInteger(Number(formData.xSteps));
+      const yStepsValid =
+        formData.ySteps !== "" &&
+        Number(formData.ySteps) > 0 &&
+        Number.isInteger(Number(formData.ySteps));
+      return (
+        x1Valid && x2Valid && y1Valid && y2Valid && xStepsValid && yStepsValid
+      );
+    } else {
+      const xStepSizeValid =
+        formData.xStepSize !== "" && Number(formData.xStepSize) > 0;
+      const yStepSizeValid =
+        formData.yStepSize !== "" && Number(formData.yStepSize) > 0;
+      return (
+        x1Valid &&
+        x2Valid &&
+        y1Valid &&
+        y2Valid &&
+        xStepSizeValid &&
+        yStepSizeValid
+      );
+    }
+  }, [formData]);
+
   return (
     <div className="bg-gray-800 p-4 rounded-lg shadow-lg flex-1">
       <div className="flex mb-4">
@@ -73,7 +119,6 @@ export default function DeviceControls({
 
       {activeTab === "stage" && (
         <div className="space-y-4">
-          {/* Radio Buttons for Movement Mode */}
           <div className="flex justify-center space-x-6 mb-4">
             <label className="flex items-center text-white">
               <input
@@ -84,7 +129,7 @@ export default function DeviceControls({
                 onChange={() => {
                   setFormData({
                     ...formData,
-                    xStepSize: "", // Reset Step Size fields
+                    xStepSize: "",
                     yStepSize: "",
                     movementMode: "steps",
                   });
@@ -102,7 +147,7 @@ export default function DeviceControls({
                 onChange={() => {
                   setFormData({
                     ...formData,
-                    xSteps: "", // Reset Steps fields
+                    xSteps: "",
                     ySteps: "",
                     movementMode: "stepSize",
                   });
@@ -114,50 +159,99 @@ export default function DeviceControls({
           </div>
 
           <div className="grid grid-cols-2 gap-2">
-            {/* Always show x1, y1, x2, y2 */}
             {["x1", "y1", "x2", "y2"].map((key) => (
               <input
                 key={key}
                 type="number"
-                placeholder={key}
-                className="p-2 rounded bg-gray-700 text-white border border-gray-600 focus:border-teal-500 focus:outline-none"
+                placeholder={`${key} (${
+                  key === "x1" || key === "x2" ? "0-110" : "0-75"
+                })`}
+                className={`p-2 rounded bg-gray-700 text-white border ${
+                  formData[key as keyof FormData] === "" ||
+                  ((key === "x1" || key === "x2") &&
+                    (Number(formData[key as keyof FormData]) < 0 ||
+                      Number(formData[key as keyof FormData]) > 110)) ||
+                  ((key === "y1" || key === "y2") &&
+                    (Number(formData[key as keyof FormData]) < 0 ||
+                      Number(formData[key as keyof FormData]) > 75))
+                    ? "border-red-500"
+                    : "border-gray-600 focus:border-teal-500"
+                } focus:outline-none`}
                 value={formData[key as keyof FormData]}
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    [key as keyof FormData]: e.target.value,
-                  })
-                }
+                onChange={(e) => {
+                  const value = e.target.value;
+                  if (
+                    ((key === "x1" || key === "x2") &&
+                      (value === "" ||
+                        (Number(value) >= 0 && Number(value) <= 110))) ||
+                    ((key === "y1" || key === "y2") &&
+                      (value === "" ||
+                        (Number(value) >= 0 && Number(value) <= 75)))
+                  ) {
+                    setFormData({
+                      ...formData,
+                      [key as keyof FormData]: value,
+                    });
+                  }
+                }}
               />
             ))}
-            {/* Conditionally show xSteps/ySteps or xStepSize/yStepSize */}
             {formData.movementMode === "steps" ? (
               <>
                 <input
                   type="number"
-                  placeholder="xSteps"
-                  className="p-2 rounded bg-gray-700 text-white border border-gray-600 focus:border-teal-500 focus:outline-none"
+                  placeholder="xSteps (int >0)"
+                  className={`p-2 rounded bg-gray-700 text-white border ${
+                    formData.xSteps === "" ||
+                    Number(formData.xSteps) <= 0 ||
+                    !Number.isInteger(Number(formData.xSteps))
+                      ? "border-red-500"
+                      : "border-gray-600 focus:border-teal-500"
+                  } focus:outline-none`}
                   value={formData.xSteps}
-                  onChange={(e) =>
-                    setFormData({ ...formData, xSteps: e.target.value })
-                  }
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    // Only allow integers or empty string
+                    if (
+                      value === "" ||
+                      (Number.isInteger(Number(value)) && Number(value) > 0)
+                    ) {
+                      setFormData({ ...formData, xSteps: value });
+                    }
+                  }}
                 />
                 <input
                   type="number"
-                  placeholder="ySteps"
-                  className="p-2 rounded bg-gray-700 text-white border border-gray-600 focus:border-teal-500 focus:outline-none"
+                  placeholder="ySteps (int >0)"
+                  className={`p-2 rounded bg-gray-700 text-white border ${
+                    formData.ySteps === "" ||
+                    Number(formData.ySteps) <= 0 ||
+                    !Number.isInteger(Number(formData.ySteps))
+                      ? "border-red-500"
+                      : "border-gray-600 focus:border-teal-500"
+                  } focus:outline-none`}
                   value={formData.ySteps}
-                  onChange={(e) =>
-                    setFormData({ ...formData, ySteps: e.target.value })
-                  }
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    if (
+                      value === "" ||
+                      (Number.isInteger(Number(value)) && Number(value) > 0)
+                    ) {
+                      setFormData({ ...formData, ySteps: value });
+                    }
+                  }}
                 />
               </>
             ) : (
               <>
                 <input
                   type="number"
-                  placeholder="xStepSize"
-                  className="p-2 rounded bg-gray-700 text-white border border-gray-600 focus:border-teal-500 focus:outline-none"
+                  placeholder="xStepSize (>0)"
+                  className={`p-2 rounded bg-gray-700 text-white border ${
+                    formData.xStepSize === "" || Number(formData.xStepSize) <= 0
+                      ? "border-red-500"
+                      : "border-gray-600 focus:border-teal-500"
+                  } focus:outline-none`}
                   value={formData.xStepSize}
                   onChange={(e) =>
                     setFormData({ ...formData, xStepSize: e.target.value })
@@ -165,8 +259,12 @@ export default function DeviceControls({
                 />
                 <input
                   type="number"
-                  placeholder="yStepSize"
-                  className="p-2 rounded bg-gray-700 text-white border border-gray-600 focus:border-teal-500 focus:outline-none"
+                  placeholder="yStepSize (>0)"
+                  className={`p-2 rounded bg-gray-700 text-white border ${
+                    formData.yStepSize === "" || Number(formData.yStepSize) <= 0
+                      ? "border-red-500"
+                      : "border-gray-600 focus:border-teal-500"
+                  } focus:outline-none`}
                   value={formData.yStepSize}
                   onChange={(e) =>
                     setFormData({ ...formData, yStepSize: e.target.value })
@@ -179,7 +277,12 @@ export default function DeviceControls({
           <div className="flex space-x-2">
             <button
               onClick={handleSubmit}
-              className="flex-1 bg-teal-600 text-white py-2 rounded hover:bg-teal-700 transition-colors"
+              disabled={!isFormValid}
+              className={`flex-1 py-2 rounded text-white transition-colors ${
+                isFormValid
+                  ? "bg-teal-600 hover:bg-teal-700"
+                  : "bg-gray-600 cursor-not-allowed"
+              }`}
             >
               Start
             </button>
