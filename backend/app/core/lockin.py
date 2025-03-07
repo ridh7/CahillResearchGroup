@@ -75,7 +75,8 @@ class SR865A:
             1e-15,
         ]
 
-    def get_dynamic_units_and_scale(self, value, input_mode):
+    def get_dynamic_units_and_scale(self, value):
+        input_mode = int(self.inst.query("IVMD?"))
         abs_value = abs(value)
 
         if input_mode == 0:
@@ -107,13 +108,16 @@ class SR865A:
         return unit, scale_factor
 
     def read_values(self):
-        unit, scale_factor = self.get_dynamic_units_and_scale()
-        x = float(self.inst.query("OUTP? 0")) * scale_factor
-        y = float(self.inst.query("OUTP? 1")) * scale_factor
-        r = float(self.inst.query("OUTP? 2")) * scale_factor
+        x = float(self.inst.query("OUTP? 0"))
+        y = float(self.inst.query("OUTP? 1"))
+        r = float(self.inst.query("OUTP? 2"))
         theta = float(self.inst.query("OUTP? 3"))
         freq = float(self.inst.query("FREQ?"))
         phase = float(self.inst.query("PHAS?"))
+        unit, scale_factor = self.get_dynamic_units_and_scale(r)
+        x *= scale_factor
+        y *= scale_factor
+        r *= scale_factor
         return {
             "X": x,
             "Y": y,
