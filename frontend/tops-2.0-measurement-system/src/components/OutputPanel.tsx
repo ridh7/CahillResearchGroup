@@ -82,11 +82,17 @@ export default function OutputPanel({
         </div>
         <div className="grid grid-cols-2 gap-2 text-sm">
           <span className="text-gray-400">X:</span>
-          <span className="text-white">{lockinData.X.toFixed(6)}</span>
+          <span className="text-white">
+            {lockinData.X.toFixed(6)} {lockinData.unit}
+          </span>
           <span className="text-gray-400">Y:</span>
-          <span className="text-white">{lockinData.Y.toFixed(6)}</span>
+          <span className="text-white">
+            {lockinData.Y.toFixed(6)} {lockinData.unit}
+          </span>
           <span className="text-gray-400">R:</span>
-          <span className="text-white">{lockinData.R.toFixed(6)}</span>
+          <span className="text-white">
+            {lockinData.R.toFixed(6)} {lockinData.unit}
+          </span>
           <span className="text-gray-400">θ:</span>
           <span className="text-white">{lockinData.theta.toFixed(6)}°</span>
           <span className="text-gray-400">Freq:</span>

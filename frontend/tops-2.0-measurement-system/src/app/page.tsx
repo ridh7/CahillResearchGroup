@@ -30,6 +30,7 @@ export type LockinData = {
   X: number;
   Y: number;
   R: number;
+  unit: string;
   theta: number;
   frequency: number;
   phase: number;
@@ -93,6 +94,7 @@ export default function CalculatePage() {
     X: 0,
     Y: 0,
     R: 0,
+    unit: "",
     theta: 0,
     frequency: 0,
     phase: 0,
@@ -166,6 +168,7 @@ export default function CalculatePage() {
       X: 0,
       Y: 0,
       R: 0,
+      unit: "",
       theta: 0,
       frequency: 0,
       phase: 0,
