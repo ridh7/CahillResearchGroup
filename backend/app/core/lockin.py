@@ -75,35 +75,30 @@ class SR865A:
             1e-15,
         ]
 
-    def get_units_and_scale(self):
-        input_mode = int(self.inst.query("IVMD?"))
-        sensitivity_idx = int(self.inst.query("SCAL?"))
-        sensitivity = (
-            self.volatage_sensitivity_map[sensitivity_idx]
-            if input_mode == 0
-            else self.current_sensitivity_map[sensitivity_idx]
-        )
+    def get_dynamic_units_and_scale(self, value, input_mode):
+        abs_value = abs(value)
+
         if input_mode == 0:
-            if sensitivity >= 1:
+            if abs_value >= 1:
                 unit = "V"
                 scale_factor = 1
-            elif sensitivity >= 1e-3:
+            elif abs_value >= 1e-3:
                 unit = "mV"
                 scale_factor = 1e3
-            elif sensitivity >= 1e-6:
-                unit = "μV"
+            elif abs_value >= 1e-6:
+                unit = "µV"
                 scale_factor = 1e6
             else:
                 unit = "nV"
                 scale_factor = 1e9
         else:
-            if sensitivity >= 1e-6:
-                unit = "μA"
+            if abs_value >= 1e-6:
+                unit = "µA"
                 scale_factor = 1e6
-            elif sensitivity >= 1e-9:
+            elif abs_value >= 1e-9:
                 unit = "nA"
                 scale_factor = 1e9
-            elif sensitivity >= 1e-12:
+            elif abs_value >= 1e-12:
                 unit = "pA"
                 scale_factor = 1e12
             else:
@@ -112,7 +107,7 @@ class SR865A:
         return unit, scale_factor
 
     def read_values(self):
-        unit, scale_factor = self.get_units_and_scale()
+        unit, scale_factor = self.get_dynamic_units_and_scale()
         x = float(self.inst.query("OUTP? 0")) * scale_factor
         y = float(self.inst.query("OUTP? 1")) * scale_factor
         r = float(self.inst.query("OUTP? 2")) * scale_factor
