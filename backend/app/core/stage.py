@@ -96,11 +96,12 @@ class ThorlabsBBD302:
             greater_x, greater_y = max(x1, x2), max(y1, y2)
             smaller_x, smaller_y = min(x1, x2), min(y1, y2)
             data = []
-            x, y = smaller_x, smaller_y
-            self.channel[1].MoveTo(Decimal(x), 60000)
-            self.channel[2].MoveTo(Decimal(y), 60000)
+            y = smaller_y
             while y <= greater_y:
+                self.channel[2].MoveTo(Decimal(y), 60000)
+                x = smaller_x
                 while x <= greater_x:
+                    self.channel[1].MoveTo(Decimal(x), 60000)
                     print(
                         f"---Current position: ({self.channel[1].DevicePosition}, {self.channel[2].DevicePosition})"
                     )
@@ -113,27 +114,7 @@ class ThorlabsBBD302:
                     data.append(values)
                     time.sleep(delay)
                     x += x_step_size
-                    self.channel[1].MoveTo(Decimal(x), 60000)
-                x = smaller_x
-                self.channel[1].MoveTo(Decimal(x), 60000)
                 y += y_step_size
-                self.channel[2].MoveTo(Decimal(y), 60000)
-            # for y in range(smaller_y, greater_y + 1, y_step_size):
-            #     self.channel[2].MoveTo(Decimal(y), 60000)
-            #     for x in range(smaller_x, greater_x + 1, x_step_size):
-            #         self.channel[1].MoveTo(Decimal(x), 60000)
-            #         print(
-            #             f"---Current position: ({self.channel[1].DevicePosition}, {self.channel[2].DevicePosition})"
-            #         )
-            #         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")
-            #         values = global_state.lockin.read_values()
-            #         values["timestamp"] = timestamp
-            #         values["positionX"] = self.channel[1].DevicePosition
-            #         values["positionY"] = self.channel[2].DevicePosition
-            #         values["voltage"] = global_state.multimeter.read_value()
-            #         data.append(values)
-            #         time.sleep(delay)
-
             save_to_file(data)
         except Exception as e:
             print(f"---Error in moving: {e}")
