@@ -12,4 +12,4 @@ class RectangleParams(BaseModel):
     x_step_size: Optional[float] = None
     y_step_size: Optional[float] = None
     movement_mode: str
-    delay: float
+    delay: Optional[float] = None

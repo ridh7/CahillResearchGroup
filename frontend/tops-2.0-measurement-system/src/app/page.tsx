@@ -239,6 +239,7 @@ export default function CalculatePage() {
   const handleSubmit = async () => {
     try {
       setStatus("Processing...");
+      console.log(formData)
       const response = await fetch("http://localhost:8000/start", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -252,7 +253,7 @@ export default function CalculatePage() {
           x_step_size: parseFloat(formData.xStepSize) || null,
           y_step_size: parseFloat(formData.yStepSize) || null,
           movement_mode: formData.movementMode,
-          delay: formData.delay,
+          delay: parseFloat(formData.delay) || null,
         }),
       });
       const data = await response.json();
