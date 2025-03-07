@@ -190,9 +190,9 @@ export default function OutputPanel({
         </div>
         <div className="grid grid-cols-2 gap-2 text-sm">
           <span className="text-gray-400">X:</span>
-          <span className="text-white">{stageData.x}</span>
+          <span className="text-white">{stageData.x} mm</span>
           <span className="text-gray-400">Y:</span>
-          <span className="text-white">{stageData.y}</span>
+          <span className="text-white">{stageData.y} mm</span>
         </div>
       </div>
     </div>

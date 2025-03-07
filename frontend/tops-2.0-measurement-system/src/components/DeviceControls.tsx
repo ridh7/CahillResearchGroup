@@ -165,7 +165,7 @@ export default function DeviceControls({
                 type="number"
                 placeholder={`${key} (${
                   key === "x1" || key === "x2" ? "0-110" : "0-75"
-                })`}
+                }) (mm)`}
                 className={`p-2 rounded bg-gray-700 text-white border ${
                   formData[key as keyof FormData] === "" ||
                   ((key === "x1" || key === "x2") &&
@@ -246,7 +246,7 @@ export default function DeviceControls({
               <>
                 <input
                   type="number"
-                  placeholder="xStepSize (>0)"
+                  placeholder="xStepSize (>0) (mm)"
                   className={`p-2 rounded bg-gray-700 text-white border ${
                     formData.xStepSize === "" || Number(formData.xStepSize) <= 0
                       ? "border-red-500"
@@ -259,7 +259,7 @@ export default function DeviceControls({
                 />
                 <input
                   type="number"
-                  placeholder="yStepSize (>0)"
+                  placeholder="yStepSize (>0) (mm)"
                   className={`p-2 rounded bg-gray-700 text-white border ${
                     formData.yStepSize === "" || Number(formData.yStepSize) <= 0
                       ? "border-red-500"
