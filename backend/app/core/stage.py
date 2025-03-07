@@ -75,7 +75,7 @@ class ThorlabsBBD302:
             print(f"---Error: {e}")
 
     def move_in_rectangle(
-        self, x1, y1, x2, y2, x_steps, y_steps, x_step_size, y_step_size, movement_mode
+        self, x1, y1, x2, y2, x_steps, y_steps, x_step_size, y_step_size, movement_mode, delay=0.1
     ):
         try:
             if movement_mode == "steps":
@@ -104,7 +104,7 @@ class ThorlabsBBD302:
                     values["positionY"] = self.channel[2].DevicePosition
                     values["voltage"] = global_state.multimeter.read_value()
                     data.append(values)
-                    time.sleep(0.1)
+                    time.sleep(delay)
                 x = smaller_x
                 self.channel[1].MoveTo(Decimal(x), 60000)
             save_to_file(data)

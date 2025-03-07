@@ -26,6 +26,7 @@ async def start_movement(params: RectangleParams):
                 params.x_step_size,
                 params.y_step_size,
                 params.movement_mode,
+                params.delay,
             ),
         )
 

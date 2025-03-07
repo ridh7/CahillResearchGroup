@@ -25,6 +25,7 @@ const initialFormData = {
   xStepSize: "",
   yStepSize: "",
   movementMode: "steps",
+  delay: "",
 };
 
 export default function DeviceControls({
@@ -59,6 +60,10 @@ export default function DeviceControls({
       formData.y2 !== "" &&
       Number(formData.y2) >= 0 &&
       Number(formData.y2) <= 75;
+    // Add delay validation (allowing empty string or non-negative number)
+    const delayValid =
+      formData.delay === "" ||
+      (Number(formData.delay) >= 0 && !isNaN(Number(formData.delay)));
 
     if (formData.movementMode === "steps") {
       const xStepsValid =
@@ -70,7 +75,13 @@ export default function DeviceControls({
         Number(formData.ySteps) > 0 &&
         Number.isInteger(Number(formData.ySteps));
       return (
-        x1Valid && x2Valid && y1Valid && y2Valid && xStepsValid && yStepsValid
+        x1Valid &&
+        x2Valid &&
+        y1Valid &&
+        y2Valid &&
+        xStepsValid &&
+        yStepsValid &&
+        delayValid
       );
     } else {
       const xStepSizeValid =
@@ -83,7 +94,8 @@ export default function DeviceControls({
         y1Valid &&
         y2Valid &&
         xStepSizeValid &&
-        yStepSizeValid
+        yStepSizeValid &&
+        delayValid
       );
     }
   }, [formData]);
@@ -211,7 +223,6 @@ export default function DeviceControls({
                   value={formData.xSteps}
                   onChange={(e) => {
                     const value = e.target.value;
-                    // Only allow integers or empty string
                     if (
                       value === "" ||
                       (Number.isInteger(Number(value)) && Number(value) > 0)
@@ -272,6 +283,25 @@ export default function DeviceControls({
                 />
               </>
             )}
+            <input
+              placeholder="delay (>=0) (s)"
+              className={`p-2 rounded bg-gray-700 text-white border ${
+                formData.delay !== "" &&
+                (Number(formData.delay) < 0 || isNaN(Number(formData.delay)))
+                  ? "border-red-500"
+                  : "border-gray-600 focus:border-teal-500"
+              } focus:outline-none`}
+              value={formData.delay}
+              onChange={(e) => {
+                const value = e.target.value;
+                if (
+                  value === "" ||
+                  (Number(value) >= 0 && !isNaN(Number(value)))
+                ) {
+                  setFormData({ ...formData, delay: value });
+                }
+              }}
+            />
           </div>
 
           <div className="flex space-x-2">
