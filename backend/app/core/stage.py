@@ -117,7 +117,7 @@ class ThorlabsBBD302:
                 y += y_step_size
             save_to_file(data)
         except Exception as e:
-            print(f"---Error in moving: {e}")
+            print(f"---Error moving in rectangle: {e}")
 
     def read_values(self):
         try:
@@ -127,3 +127,10 @@ class ThorlabsBBD302:
         except Exception as e:
             print(f"Error reading from stage: {e}")
             return None
+
+    def move(self, x, y):
+        try:
+            self.channel[1].MoveTo(Decimal(x), 60000)
+            self.channel[2].MoveTo(Decimal(y), 60000)
+        except Exception as e:
+            print(f"---Error in moving: {e}")

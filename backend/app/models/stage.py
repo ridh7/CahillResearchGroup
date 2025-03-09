@@ -13,3 +13,8 @@ class RectangleParams(BaseModel):
     y_step_size: Optional[float] = None
     movement_mode: str
     delay: Optional[float] = None
+
+
+class MovementParams(BaseModel):
+    x: float
+    y: float

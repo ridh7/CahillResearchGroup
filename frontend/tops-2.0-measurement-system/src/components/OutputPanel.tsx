@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { LockinData, MultimeterData, StageData } from "../app/page";
 
 type OutputPanelProps = {
@@ -35,6 +36,42 @@ export default function OutputPanel({
   resetMultimeter,
   resetStage,
 }: OutputPanelProps) {
+  const [moveX, setMoveX] = useState("");
+  const [moveY, setMoveY] = useState("");
+
+  const handleMove = async () => {
+    try {
+      const response = await fetch("http://localhost:8000/move", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          x: parseFloat(moveX),
+          y: parseFloat(moveY),
+        }),
+      });
+      const data = await response.json();
+      if (data.status === "success") {
+        console.log("Move successful:", data.message);
+        setMoveX("");
+        setMoveY("");
+      } else {
+        console.error("Move failed:", data.message);
+      }
+    } catch (error) {
+      console.error("Error during move:", error);
+    }
+  };
+
+  const isMoveValid =
+    moveX !== "" &&
+    moveY !== "" &&
+    !isNaN(parseFloat(moveX)) &&
+    !isNaN(parseFloat(moveY)) &&
+    parseFloat(moveX) >= 0 &&
+    parseFloat(moveX) <= 110 &&
+    parseFloat(moveY) >= 0 &&
+    parseFloat(moveY) <= 75;
+
   return (
     <div className="w-1/5 bg-gray-800 p-4 rounded-lg shadow-lg space-y-6">
       {/* Lock-in Amplifier */}
@@ -200,6 +237,57 @@ export default function OutputPanel({
           <span className="text-gray-400">Y:</span>
           <span className="text-white">{stageData.y} mm</span>
         </div>
+        <div className="grid grid-cols-1 gap-2 mt-4">
+          <input
+            type="number"
+            placeholder="X (0-110) (mm)"
+            className={`p-2 rounded bg-gray-700 text-white border ${
+              moveX === "" || parseFloat(moveX) < 0 || parseFloat(moveX) > 110
+                ? "border-red-500"
+                : "border-gray-600 focus:border-teal-500"
+            } focus:outline-none`}
+            value={moveX}
+            onChange={(e) => {
+              const value = e.target.value;
+              if (
+                value === "" ||
+                (parseFloat(value) >= 0 && parseFloat(value) <= 110)
+              ) {
+                setMoveX(value);
+              }
+            }}
+          />
+          <input
+            type="number"
+            placeholder="Y (0-75) (mm)"
+            className={`p-2 rounded bg-gray-700 text-white border ${
+              moveY === "" || parseFloat(moveY) < 0 || parseFloat(moveY) > 75
+                ? "border-red-500"
+                : "border-gray-600 focus:border-teal-500"
+            } focus:outline-none`}
+            value={moveY}
+            onChange={(e) => {
+              const value = e.target.value;
+              if (
+                value === "" ||
+                (parseFloat(value) >= 0 && parseFloat(value) <= 75)
+              ) {
+                setMoveY(value);
+              }
+            }}
+          />
+        </div>
+        <button
+          onClick={handleMove}
+          disabled={!isMoveValid}
+          className={`w-full py-2 rounded text-white transition-colors mt-4 ${
+            isMoveValid
+              ? "bg-teal-600 hover:bg-teal-700"
+              : "bg-gray-600 cursor-not-allowed"
+          }`}
+        >
+          Move
+        </button>
       </div>
     </div>
   );

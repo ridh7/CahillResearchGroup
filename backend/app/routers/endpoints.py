@@ -1,7 +1,7 @@
 from fastapi import APIRouter
 from concurrent.futures import ThreadPoolExecutor
 import asyncio
-from app.models.rectangle import RectangleParams
+from backend.app.models.stage import *
 from app.models.channel import *
 from app.models.state import global_state
 import clr
@@ -9,6 +9,17 @@ from System import Decimal
 
 router = APIRouter()
 executor = ThreadPoolExecutor()
+
+
+@router.post("/move")
+async def move(params: MovementParams):
+    try:
+        await asyncio.get_event_loop().run_in_executor(
+            executor, lambda: global_state.stage.move(params.x, params.y)
+        )
+        return {"status": "success", "message": "Movement completed"}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
 
 
 @router.post("/start")
