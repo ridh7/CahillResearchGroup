@@ -3,6 +3,7 @@ import time
 from datetime import datetime
 from app.models.state import global_state
 from app.utils.file_utils import save_to_file
+from main import pause_lockin_reading, latest_lockin_values, value_lock
 
 clr.AddReference(
     "C:\\Program Files\\Thorlabs\\Kinesis\\Thorlabs.MotionControl.DeviceManagerCLI.dll"
@@ -106,6 +107,12 @@ class ThorlabsBBD302:
                         f"---Current position: ({self.channel[1].DevicePosition}, {self.channel[2].DevicePosition})"
                     )
                     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")
+                    pause_lockin_reading.set()
+                    try:
+                        time.sleep(0.02)
+                        values = global_state.lockin.read_values()
+                    finally:
+                        pause_lockin_reading.clear()
                     values = global_state.lockin.read_values()
                     values["timestamp"] = timestamp
                     values["positionX"] = self.channel[1].DevicePosition

@@ -126,6 +126,7 @@ export default function CalculatePage() {
     channel1: { homingVelocity: "", maxVelocity: "", acceleration: "" },
     channel2: { homingVelocity: "", maxVelocity: "", acceleration: "" },
   });
+  const [isProcessing, setIsProcessing] = useState(false);
 
   const settingsButtonRef = useRef<HTMLButtonElement | null>(null);
   const settingsMenuRef = useRef<HTMLDivElement | null>(null);
@@ -236,10 +237,52 @@ export default function CalculatePage() {
     });
   };
 
+  const waitForCondition = (
+    condition: () => boolean,
+    timeoutMs: number
+  ): Promise<void> => {
+    return new Promise((resolve, reject) => {
+      const startTime = Date.now();
+      const check = () => {
+        if (condition()) {
+          resolve();
+        } else if (Date.now() - startTime > timeoutMs) {
+          reject(new Error("Timeout waiting for condition"));
+        } else {
+          setTimeout(check, 100);
+        }
+      };
+      check();
+    });
+  };
+
   const handleSubmit = async () => {
     try {
+      setStatus("Connecting devices...");
+      if (!lockinConnected) connectLockin();
+      if (!multimeterConnected) connectMultimeter();
+      if (!stageConnected) connectStage();
+      await Promise.all([
+        !lockinConnected
+          ? waitForCondition(() => lockinConnected, 5000)
+          : Promise.resolve(),
+        !multimeterConnected
+          ? waitForCondition(() => multimeterConnected, 5000)
+          : Promise.resolve(),
+        !stageConnected
+          ? waitForCondition(() => stageConnected, 5000)
+          : Promise.resolve(),
+      ]).catch((error) => {
+        throw new Error("Failed to connect all devices: " + error.message);
+      });
+
+      resetLockin();
+      resetMultimeter();
+      resetStage();
+
+      setIsProcessing(true);
       setStatus("Processing...");
-      console.log(formData)
+
       const response = await fetch("http://localhost:8000/start", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -417,6 +460,7 @@ export default function CalculatePage() {
           resetLockin={resetLockin}
           resetMultimeter={resetMultimeter}
           resetStage={resetStage}
+          isProcessing={isProcessing}
         />
       </div>
 

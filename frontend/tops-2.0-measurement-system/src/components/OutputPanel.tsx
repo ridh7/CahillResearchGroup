@@ -16,6 +16,7 @@ type OutputPanelProps = {
   resetLockin: () => void;
   resetMultimeter: () => void;
   resetStage: () => void;
+  isProcessing: boolean;
 };
 
 export default function OutputPanel({
@@ -34,6 +35,7 @@ export default function OutputPanel({
   resetLockin,
   resetMultimeter,
   resetStage,
+  isProcessing,
 }: OutputPanelProps) {
   return (
     <div className="w-1/5 bg-gray-800 p-4 rounded-lg shadow-lg space-y-6">
@@ -46,9 +48,9 @@ export default function OutputPanel({
           <div className="flex gap-2">
             <button
               onClick={connectLockin}
-              disabled={lockinConnected}
+              disabled={lockinConnected || isProcessing}
               className={`p-1 ${
-                lockinConnected
+                lockinConnected || isProcessing
                   ? "text-gray-500"
                   : "text-teal-500 hover:text-teal-400"
               }`}
@@ -59,9 +61,9 @@ export default function OutputPanel({
             </button>
             <button
               onClick={disconnectLockin}
-              disabled={!lockinConnected}
+              disabled={!lockinConnected || isProcessing}
               className={`p-1 ${
-                !lockinConnected
+                !lockinConnected || isProcessing
                   ? "text-gray-500"
                   : "text-red-500 hover:text-red-400"
               }`}
@@ -111,9 +113,9 @@ export default function OutputPanel({
           <div className="flex gap-2">
             <button
               onClick={connectMultimeter}
-              disabled={multimeterConnected}
+              disabled={multimeterConnected || isProcessing}
               className={`p-1 ${
-                multimeterConnected
+                multimeterConnected || isProcessing
                   ? "text-gray-500"
                   : "text-teal-500 hover:text-teal-400"
               }`}
@@ -124,9 +126,9 @@ export default function OutputPanel({
             </button>
             <button
               onClick={disconnectMultimeter}
-              disabled={!multimeterConnected}
+              disabled={!multimeterConnected || isProcessing}
               className={`p-1 ${
-                !multimeterConnected
+                !multimeterConnected || isProcessing
                   ? "text-gray-500"
                   : "text-red-500 hover:text-red-400"
               }`}
@@ -160,9 +162,9 @@ export default function OutputPanel({
           <div className="flex gap-2">
             <button
               onClick={connectStage}
-              disabled={stageConnected}
+              disabled={stageConnected || isProcessing}
               className={`p-1 ${
-                stageConnected
+                stageConnected || isProcessing
                   ? "text-gray-500"
                   : "text-teal-500 hover:text-teal-400"
               }`}
