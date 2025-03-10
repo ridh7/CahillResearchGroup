@@ -8,11 +8,7 @@ from app.core.multimeter import BKPrecision5493C
 from app.core.lockin import SR865A
 import asyncio
 from fastapi.websockets import WebSocketDisconnect
-import threading
-
-latest_lockin_values = None
-value_lock = threading.Lock()
-pause_lockin_reading = asyncio.Event()
+from app.core.shared_state import pause_lockin_reading, value_lock, latest_lockin_values
 
 
 @asynccontextmanager

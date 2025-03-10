@@ -3,7 +3,7 @@ import time
 from datetime import datetime
 from app.models.state import global_state
 from app.utils.file_utils import save_to_file
-from main import pause_lockin_reading, latest_lockin_values, value_lock
+from app.core.shared_state import pause_lockin_reading, latest_lockin_values, value_lock
 
 clr.AddReference(
     "C:\\Program Files\\Thorlabs\\Kinesis\\Thorlabs.MotionControl.DeviceManagerCLI.dll"
