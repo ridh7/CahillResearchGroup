@@ -1,7 +1,7 @@
 from fastapi import APIRouter
 from concurrent.futures import ThreadPoolExecutor
 import asyncio
-from backend.app.models.stage import *
+from app.models.stage import *
 from app.models.channel import *
 from app.models.state import global_state
 import clr
