@@ -177,7 +177,7 @@ export default function OutputPanel({
               onClick={disconnectStage}
               disabled={!stageConnected}
               className={`p-1 ${
-                !stageConnected
+                !stageConnected || isProcessing
                   ? "text-gray-500"
                   : "text-red-500 hover:text-red-400"
               }`}
