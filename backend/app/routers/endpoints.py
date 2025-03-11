@@ -14,7 +14,7 @@ executor = ThreadPoolExecutor()
 @router.post("/start")
 async def start_movement(params: RectangleParams):
     try:
-        await asyncio.get_event_loop().run_in_executor(
+        future = asyncio.get_event_loop().run_in_executor(
             executor,
             lambda: global_state.stage.move_in_rectangle(
                 params.x1,
@@ -29,7 +29,7 @@ async def start_movement(params: RectangleParams):
                 params.delay,
             ),
         )
-
+        await future
         return {"status": "success", "message": "Movement completed"}
     except Exception as e:
         return {"status": "error", "message": str(e)}
