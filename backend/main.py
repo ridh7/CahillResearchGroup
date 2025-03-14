@@ -18,6 +18,16 @@ async def lifespan(app: FastAPI):
     global_state.multimeter = BKPrecision5493C()
     pause_lockin_reading.clear()
     yield
+    for ws in [
+        global_state.ws_lockin,
+        global_state.ws_multimeter,
+        global_state.ws_stage,
+    ]:
+        if ws is not None:
+            try:
+                await ws.close()
+            except:
+                pass
     global_state.stage.device.Disconnect()
 
 
@@ -63,7 +73,13 @@ async def send_stage_data(websocket: WebSocket):
 
 @app.websocket("/ws/lockin")
 async def websocket_endpoint(websocket: WebSocket):
+    if global_state.ws_lockin is not None:
+        try:
+            await global_state.ws_lockin.close()
+        except:
+            pass
     await websocket.accept()
+    global_state.ws_lockin = websocket
     task = asyncio.create_task(send_lockin_data(websocket))
     try:
         await task
@@ -72,6 +88,8 @@ async def websocket_endpoint(websocket: WebSocket):
     except Exception as e:
         print(f"Lockin websocket error: {e}")
         task.cancel()
+        if global_state.ws_lockin == websocket:
+            global_state.ws_lockin = None
         try:
             await websocket.close()
         except:
@@ -80,7 +98,13 @@ async def websocket_endpoint(websocket: WebSocket):
 
 @app.websocket("/ws/multimeter")
 async def websocket_multimeter_endpoint(websocket: WebSocket):
+    if global_state.ws_multimeter is not None:
+        try:
+            await global_state.ws_multimeter.close()
+        except:
+            pass
     await websocket.accept()
+    global_state.ws_multimeter = websocket
     task = asyncio.create_task(send_multimeter_data(websocket))
     try:
         await task
@@ -89,6 +113,8 @@ async def websocket_multimeter_endpoint(websocket: WebSocket):
     except Exception as e:
         print(f"Multimeter websocket error: {e}")
         task.cancel()
+        if global_state.ws_multimeter == websocket:
+            global_state.ws_multimeter = None
         try:
             await websocket.close()
         except:
@@ -97,7 +123,13 @@ async def websocket_multimeter_endpoint(websocket: WebSocket):
 
 @app.websocket("/ws/stage")
 async def websocket_stage_endpoint(websocket: WebSocket):
+    if global_state.ws_stage is not None:
+        try:
+            await global_state.ws_stage.close()
+        except:
+            pass
     await websocket.accept()
+    global_state.ws_stage = websocket
     task = asyncio.create_task(send_stage_data(websocket))
     try:
         await task
@@ -106,6 +138,8 @@ async def websocket_stage_endpoint(websocket: WebSocket):
     except Exception as e:
         print(f"Stage websocket error: {e}")
         task.cancel()
+        if global_state.ws_stage == websocket:
+            global_state.ws_stage = None
         try:
             await websocket.close()
         except:

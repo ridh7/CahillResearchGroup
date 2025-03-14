@@ -466,48 +466,12 @@ export default function CalculatePage() {
     });
   };
 
-  const waitForCondition = (
-    condition: () => boolean,
-    timeoutMs: number
-  ): Promise<void> => {
-    return new Promise((resolve, reject) => {
-      const startTime = Date.now();
-      const check = () => {
-        if (condition()) {
-          resolve();
-        } else if (Date.now() - startTime > timeoutMs) {
-          reject(new Error("Timeout waiting for condition"));
-        } else {
-          setTimeout(check, 100);
-        }
-      };
-      check();
-    });
-  };
-
   const handleSubmit = async () => {
     try {
       setStatus("Connecting devices...");
       if (!lockinConnected) await connectLockin();
       if (!multimeterConnected) await connectMultimeter();
       if (!stageConnected) await connectStage();
-      await Promise.all([
-        !lockinConnected
-          ? waitForCondition(() => lockinConnected, 5000)
-          : Promise.resolve(),
-        !multimeterConnected
-          ? waitForCondition(() => multimeterConnected, 5000)
-          : Promise.resolve(),
-        !stageConnected
-          ? waitForCondition(() => stageConnected, 5000)
-          : Promise.resolve(),
-      ]).catch((error) => {
-        throw new Error("Failed to connect all devices: " + error.message);
-      });
-
-      resetLockin();
-      resetMultimeter();
-      resetStage();
 
       setIsProcessing(true);
       setStatus("Processing...");
@@ -530,21 +494,10 @@ export default function CalculatePage() {
       });
       const data = await response.json();
       setStatus(data.message);
-
       setIsProcessing(false);
-      await Promise.all([
-        disconnectLockin(),
-        disconnectMultimeter(),
-        disconnectStage(),
-      ]);
     } catch (error) {
       console.error("Error:", error);
       setIsProcessing(false);
-      await Promise.all([
-        disconnectLockin(),
-        disconnectMultimeter(),
-        disconnectStage(),
-      ]);
       setStatus("Error occurred");
     }
   };

@@ -30,8 +30,30 @@ async def start_movement(params: RectangleParams):
             ),
         )
         await future
+        for ws in [
+            global_state.ws_lockin,
+            global_state.ws_multimeter,
+            global_state.ws_stage,
+        ]:
+            if ws is not None:
+                try:
+                    await ws.close()
+                    ws = None
+                except Exception as e:
+                    print(f"Error closing {ws} websocket: {e}")
         return {"status": "success", "message": "Movement completed"}
     except Exception as e:
+        for ws in [
+            global_state.ws_lockin,
+            global_state.ws_multimeter,
+            global_state.ws_stage,
+        ]:
+            if ws is not None:
+                try:
+                    await ws.close()
+                    ws = None
+                except Exception as e:
+                    print(f"Error closing {ws} websocket: {e}")
         return {"status": "error", "message": str(e)}
 
 

@@ -113,7 +113,6 @@ class ThorlabsBBD302:
                     values = global_state.lockin.read_values()
                 finally:
                     pause_lockin_reading.clear()
-                values = global_state.lockin.read_values()
                 values["timestamp"] = timestamp
                 values["positionX"] = self.channel[1].DevicePosition
                 values["positionY"] = self.channel[2].DevicePosition
