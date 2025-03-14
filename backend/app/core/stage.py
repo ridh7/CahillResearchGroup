@@ -3,6 +3,7 @@ import time
 from datetime import datetime
 from app.models.state import global_state
 from app.utils.file_utils import save_to_file
+from app.core.shared_state import pause_lockin_reading, latest_lockin_values, value_lock
 
 clr.AddReference(
     "C:\\Program Files\\Thorlabs\\Kinesis\\Thorlabs.MotionControl.DeviceManagerCLI.dll"
@@ -87,37 +88,40 @@ class ThorlabsBBD302:
         movement_mode,
         delay,
     ):
-        try:
-            if delay == None:
-                delay = 1
-            if movement_mode == "steps":
-                x_step_size = abs(x2 - x1) / x_steps
-                y_step_size = abs(y2 - y1) / y_steps
-            greater_x, greater_y = max(x1, x2), max(y1, y2)
-            smaller_x, smaller_y = min(x1, x2), min(y1, y2)
-            data = []
-            y = smaller_y
-            while y <= greater_y:
-                self.channel[2].MoveTo(Decimal(y), 60000)
-                x = smaller_x
-                while x <= greater_x:
-                    self.channel[1].MoveTo(Decimal(x), 60000)
-                    print(
-                        f"---Current position: ({self.channel[1].DevicePosition}, {self.channel[2].DevicePosition})"
-                    )
-                    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")
+
+        if delay == None:
+            delay = 1
+        if movement_mode == "steps":
+            x_step_size = abs(x2 - x1) / x_steps
+            y_step_size = abs(y2 - y1) / y_steps
+        greater_x, greater_y = max(x1, x2), max(y1, y2)
+        smaller_x, smaller_y = min(x1, x2), min(y1, y2)
+        data = []
+        y = smaller_y
+        while y <= greater_y:
+            self.channel[2].MoveTo(Decimal(y), 60000)
+            x = smaller_x
+            while x <= greater_x:
+                self.channel[1].MoveTo(Decimal(x), 60000)
+                print(
+                    f"---Current position: ({self.channel[1].DevicePosition}, {self.channel[2].DevicePosition})"
+                )
+                timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")
+                pause_lockin_reading.set()
+                try:
+                    time.sleep(0.02)
                     values = global_state.lockin.read_values()
-                    values["timestamp"] = timestamp
-                    values["positionX"] = self.channel[1].DevicePosition
-                    values["positionY"] = self.channel[2].DevicePosition
-                    values["voltage"] = global_state.multimeter.read_value()
-                    data.append(values)
-                    time.sleep(delay)
-                    x += x_step_size
-                y += y_step_size
-            save_to_file(data)
-        except Exception as e:
-            print(f"---Error moving in rectangle: {e}")
+                finally:
+                    pause_lockin_reading.clear()
+                values["timestamp"] = timestamp
+                values["positionX"] = self.channel[1].DevicePosition
+                values["positionY"] = self.channel[2].DevicePosition
+                values["voltage"] = global_state.multimeter.read_value()
+                data.append(values)
+                time.sleep(delay)
+                x += x_step_size
+            y += y_step_size
+        save_to_file(data)
 
     def read_values(self):
         try:
