@@ -149,100 +149,86 @@ export default function CalculatePage() {
   };
 
   const connectLockin = () => {
-    return new Promise<void>((resolve, reject) => {
-      if (lockinWs) {
-        switch (lockinWs.readyState) {
-          case WebSocket.OPEN:
-            console.log("Lockin WebSocket already open, reusing it");
+    if (lockinWs) {
+      switch (lockinWs.readyState) {
+        case WebSocket.OPEN:
+          console.log("Lockin WebSocket already open, reusing it");
+          setLockinConnected(true);
+          setLockinStartTime(Date.now());
+          return;
+        case WebSocket.CLOSING:
+        case WebSocket.CLOSED:
+          console.log("Cleaning up stale Lockin WebSocket");
+          lockinWs.close();
+          setLockinWs(null);
+          break;
+        case WebSocket.CONNECTING:
+          console.log("Lockin WebSocket already connecting, waiting...");
+          lockinWs.onopen = () => {
             setLockinConnected(true);
             setLockinStartTime(Date.now());
-            resolve();
-            return;
-          case WebSocket.CLOSING:
-          case WebSocket.CLOSED:
-            console.log("Cleaning up stale Locking WebSocket");
-            lockinWs.close();
-            setLockinWs(null);
-            break;
-          case WebSocket.CONNECTING:
-            console.log("Lockin WebSocket already connecting, waiting...");
-            lockinWs.onopen = () => {
-              setLockinConnected(true);
-              setLockinStartTime(Date.now());
-              resolve();
-            };
-            lockinWs.onerror = () => {
-              reject(new Error("Locking connection failed"));
-            };
-            return;
-        }
+          };
+          lockinWs.onerror = () => {
+            console.error("Lockin connection failed");
+          };
+          return;
       }
+    }
 
-      console.log("Creating new Lockin WebSocket");
-      const ws = new WebSocket("ws://localhost:8000/ws/lockin");
+    console.log("Creating new Lockin WebSocket");
+    const ws = new WebSocket("ws://localhost:8000/ws/lockin");
 
-      ws.onopen = () => {
-        console.log("Lockin WebSocket connected");
-        setLockinConnected(true);
-        setLockinStartTime(Date.now());
-        resolve();
-      };
+    ws.onopen = () => {
+      console.log("Lockin WebSocket connected");
+      setLockinConnected(true);
+      setLockinStartTime(Date.now());
+    };
 
-      ws.onmessage = (event) => {
-        setLockinData(JSON.parse(event.data));
-      };
+    ws.onmessage = (event) => {
+      setLockinData(JSON.parse(event.data));
+    };
 
-      ws.onerror = () => {
-        console.error("Lockin WebSocket error");
-        setLockinConnected(false);
-        setLockinWs(null);
-        reject(new Error("Lockin WebSocket encountered an error"));
-      };
+    ws.onerror = () => {
+      console.error("Lockin WebSocket error");
+      setLockinConnected(false);
+      setLockinWs(null);
+    };
 
-      ws.onclose = () => {
-        console.log("Lockin WebSocket closed");
-        setLockinConnected(false);
-        setLockinWs(null);
-      };
+    ws.onclose = () => {
+      console.log("Lockin WebSocket closed");
+      setLockinConnected(false);
+      setLockinWs(null);
+    };
 
-      setLockinWs(ws);
-    });
+    setLockinWs(ws);
   };
 
   const disconnectLockin = () => {
-    return new Promise<void>((resolve) => {
-      console.log(
-        "Disconnecting lockin, current state: ",
-        lockinWs?.readyState
-      );
-      if (!lockinWs || lockinWs.readyState === WebSocket.CLOSED) {
-        console.log("Locking already closed");
-        setLockinWs(null);
-        setLockinConnected(false);
-        setLockinStartTime(null);
-        resolve();
-        return;
-      }
-      if (lockinWs.readyState === WebSocket.CLOSING) {
-        console.log("Locking already closing");
-        lockinWs.onclose = () => {
-          console.log("Lockin closed");
-          setLockinWs(null);
-          setLockinConnected(false);
-          setLockinStartTime(null);
-          resolve();
-        };
-        return;
-      }
+    console.log("Disconnecting lockin, current state: ", lockinWs?.readyState);
+    if (!lockinWs || lockinWs.readyState === WebSocket.CLOSED) {
+      console.log("Lockin already closed");
+      setLockinWs(null);
+      setLockinConnected(false);
+      setLockinStartTime(null);
+      return;
+    }
+    if (lockinWs.readyState === WebSocket.CLOSING) {
+      console.log("Lockin already closing");
       lockinWs.onclose = () => {
         console.log("Lockin closed");
         setLockinWs(null);
         setLockinConnected(false);
         setLockinStartTime(null);
-        resolve();
       };
-      lockinWs?.close();
-    });
+      return;
+    }
+    lockinWs.onclose = () => {
+      console.log("Lockin closed");
+      setLockinWs(null);
+      setLockinConnected(false);
+      setLockinStartTime(null);
+    };
+    lockinWs?.close();
   };
 
   const resetLockin = () => {
@@ -264,100 +250,89 @@ export default function CalculatePage() {
   };
 
   const connectMultimeter = () => {
-    return new Promise<void>((resolve, reject) => {
-      if (multimeterWs) {
-        switch (multimeterWs.readyState) {
-          case WebSocket.OPEN:
-            console.log("Multimeter WebSocket already open, reusing it");
+    if (multimeterWs) {
+      switch (multimeterWs.readyState) {
+        case WebSocket.OPEN:
+          console.log("Multimeter WebSocket already open, reusing it");
+          setMultimeterConnected(true);
+          setMultimeterStartTime(Date.now());
+          return;
+        case WebSocket.CLOSING:
+        case WebSocket.CLOSED:
+          console.log("Cleaning up stale Multimeter WebSocket");
+          multimeterWs.close();
+          setMultimeterWs(null);
+          break;
+        case WebSocket.CONNECTING:
+          console.log("Multimeter WebSocket already connecting, waiting...");
+          multimeterWs.onopen = () => {
             setMultimeterConnected(true);
             setMultimeterStartTime(Date.now());
-            resolve();
-            return;
-          case WebSocket.CLOSING:
-          case WebSocket.CLOSED:
-            console.log("Cleaning up stale Multimeter WebSocket");
-            multimeterWs.close();
-            setMultimeterWs(null);
-            break;
-          case WebSocket.CONNECTING:
-            console.log("Multimeter WebSocket already connecting, waiting...");
-            multimeterWs.onopen = () => {
-              setMultimeterConnected(true);
-              setMultimeterStartTime(Date.now());
-              resolve();
-            };
-            multimeterWs.onerror = () => {
-              reject(new Error("Multimeter connection failed"));
-            };
-            return;
-        }
+          };
+          multimeterWs.onerror = () => {
+            console.error("Multimeter connection failed");
+          };
+          return;
       }
+    }
 
-      console.log("Creating new Multimeter WebSocket");
-      const ws = new WebSocket("ws://localhost:8000/ws/multimeter");
+    console.log("Creating new Multimeter WebSocket");
+    const ws = new WebSocket("ws://localhost:8000/ws/multimeter");
 
-      ws.onopen = () => {
-        console.log("Multimeter WebSocket connected");
-        setMultimeterConnected(true);
-        setMultimeterStartTime(Date.now());
-        resolve();
-      };
+    ws.onopen = () => {
+      console.log("Multimeter WebSocket connected");
+      setMultimeterConnected(true);
+      setMultimeterStartTime(Date.now());
+    };
 
-      ws.onmessage = (event) => {
-        setMultimeterData(JSON.parse(event.data));
-      };
+    ws.onmessage = (event) => {
+      setMultimeterData(JSON.parse(event.data));
+    };
 
-      ws.onerror = () => {
-        console.error("Multimeter WebSocket error");
-        setMultimeterConnected(false);
-        setMultimeterWs(null);
-        reject(new Error("Multimeter WebSocket encountered an error"));
-      };
+    ws.onerror = () => {
+      console.error("Multimeter WebSocket error");
+      setMultimeterConnected(false);
+      setMultimeterWs(null);
+    };
 
-      ws.onclose = () => {
-        console.log("Multimeter WebSocket closed");
-        setMultimeterConnected(false);
-        setMultimeterWs(null);
-      };
+    ws.onclose = () => {
+      console.log("Multimeter WebSocket closed");
+      setMultimeterConnected(false);
+      setMultimeterWs(null);
+    };
 
-      setMultimeterWs(ws);
-    });
+    setMultimeterWs(ws);
   };
 
   const disconnectMultimeter = () => {
-    return new Promise<void>((resolve) => {
-      console.log(
-        "Disconnecting multimeter, current state: ",
-        multimeterWs?.readyState
-      );
-      if (!multimeterWs || multimeterWs.readyState === WebSocket.CLOSED) {
-        console.log("Multimeter already closed");
-        setMultimeterWs(null);
-        setMultimeterConnected(false);
-        setMultimeterStartTime(null);
-        resolve();
-        return;
-      }
-      if (multimeterWs.readyState === WebSocket.CLOSING) {
-        console.log("Multimeter already closing");
-        multimeterWs.onclose = () => {
-          console.log("Multimeter closed");
-          setMultimeterWs(null);
-          setMultimeterConnected(false);
-          setMultimeterStartTime(null);
-          resolve();
-        };
-        return;
-      }
+    console.log(
+      "Disconnecting multimeter, current state: ",
+      multimeterWs?.readyState
+    );
+    if (!multimeterWs || multimeterWs.readyState === WebSocket.CLOSED) {
+      console.log("Multimeter already closed");
+      setMultimeterWs(null);
+      setMultimeterConnected(false);
+      setMultimeterStartTime(null);
+      return;
+    }
+    if (multimeterWs.readyState === WebSocket.CLOSING) {
+      console.log("Multimeter already closing");
       multimeterWs.onclose = () => {
         console.log("Multimeter closed");
         setMultimeterWs(null);
         setMultimeterConnected(false);
         setMultimeterStartTime(null);
-        resolve();
       };
-      multimeterWs?.close();
-    });
+      return;
+    }
+    multimeterWs.onclose = () => {
+      console.log("Multimeter closed");
+      setMultimeterWs(null);
+      setMultimeterConnected(false);
+      setMultimeterStartTime(null);
+    };
+    multimeterWs?.close();
   };
 
   const resetMultimeter = () => {
@@ -373,90 +348,79 @@ export default function CalculatePage() {
   };
 
   const connectStage = () => {
-    return new Promise<void>((resolve, reject) => {
-      if (stageWs) {
-        switch (stageWs.readyState) {
-          case WebSocket.OPEN:
-            console.log("Stage WebSocket already open, reusing it");
+    if (stageWs) {
+      switch (stageWs.readyState) {
+        case WebSocket.OPEN:
+          console.log("Stage WebSocket already open, reusing it");
+          setStageConnected(true);
+          return;
+        case WebSocket.CLOSING:
+        case WebSocket.CLOSED:
+          console.log("Cleaning up stale Stage WebSocket");
+          stageWs.close();
+          setStageWs(null);
+          break;
+        case WebSocket.CONNECTING:
+          console.log("Stage WebSocket already connecting, waiting...");
+          stageWs.onopen = () => {
             setStageConnected(true);
-            resolve();
-            return;
-          case WebSocket.CLOSING:
-          case WebSocket.CLOSED:
-            console.log("Cleaning up stale Stage WebSocket");
-            stageWs.close();
-            setStageWs(null);
-            break;
-          case WebSocket.CONNECTING:
-            console.log("Stage WebSocket already connecting, waiting...");
-            stageWs.onopen = () => {
-              setStageConnected(true);
-              resolve();
-            };
-            stageWs.onerror = () => {
-              reject(new Error("Stage connection failed"));
-            };
-            return;
-        }
+          };
+          stageWs.onerror = () => {
+            console.error("Stage connection failed");
+          };
+          return;
       }
+    }
 
-      console.log("Creating new Stage WebSocket");
-      const ws = new WebSocket("ws://localhost:8000/ws/stage");
+    console.log("Creating new Stage WebSocket");
+    const ws = new WebSocket("ws://localhost:8000/ws/stage");
 
-      ws.onopen = () => {
-        console.log("Stage WebSocket connected");
-        setStageConnected(true);
-        resolve();
-      };
+    ws.onopen = () => {
+      console.log("Stage WebSocket connected");
+      setStageConnected(true);
+    };
 
-      ws.onmessage = (event) => {
-        setStageData(JSON.parse(event.data));
-      };
+    ws.onmessage = (event) => {
+      setStageData(JSON.parse(event.data));
+    };
 
-      ws.onerror = () => {
-        console.error("Stage WebSocket error");
-        setStageConnected(false);
-        setStageWs(null);
-        reject(new Error("Stage WebSocket encountered an error"));
-      };
+    ws.onerror = () => {
+      console.error("Stage WebSocket error");
+      setStageConnected(false);
+      setStageWs(null);
+    };
 
-      ws.onclose = () => {
-        console.log("Stage WebSocket closed");
-        setStageConnected(false);
-        setStageWs(null);
-      };
+    ws.onclose = () => {
+      console.log("Stage WebSocket closed");
+      setStageConnected(false);
+      setStageWs(null);
+    };
 
-      setStageWs(ws);
-    });
+    setStageWs(ws);
   };
 
   const disconnectStage = () => {
-    return new Promise<void>((resolve) => {
-      console.log("Disconnecting stage, current state: ", stageWs?.readyState);
-      if (!stageWs || stageWs.readyState === WebSocket.CLOSED) {
-        setStageWs(null);
-        setStageConnected(false);
-        resolve();
-        return;
-      }
-      if (stageWs.readyState === WebSocket.CLOSING) {
-        console.log("Stage already closing");
-        stageWs.onclose = () => {
-          console.log("Stage closed");
-          setStageWs(null);
-          setStageConnected(false);
-          resolve();
-        };
-        return;
-      }
+    console.log("Disconnecting stage, current state: ", stageWs?.readyState);
+    if (!stageWs || stageWs.readyState === WebSocket.CLOSED) {
+      setStageWs(null);
+      setStageConnected(false);
+      return;
+    }
+    if (stageWs.readyState === WebSocket.CLOSING) {
+      console.log("Stage already closing");
       stageWs.onclose = () => {
         console.log("Stage closed");
         setStageWs(null);
         setStageConnected(false);
-        resolve();
       };
-      stageWs?.close();
-    });
+      return;
+    }
+    stageWs.onclose = () => {
+      console.log("Stage closed");
+      setStageWs(null);
+      setStageConnected(false);
+    };
+    stageWs?.close();
   };
 
   const resetStage = () => {
