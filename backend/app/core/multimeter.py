@@ -4,20 +4,24 @@ import time
 
 class BKPrecision5493C:
     def __init__(self, resource_name=None):
-        self.rm = pyvisa.ResourceManager()
-        if resource_name is None:
-            resources = self.rm.list_resources()
-            for res in resources:
-                if "W114239033" in res:
-                    resource_name = res
-                    break
-        if resource_name is None:
-            raise Exception("BK Precision 5493C not found!")
-        self.inst = self.rm.open_resource(resource_name)
-        self.inst.timeout = 5000
-        self.inst.write("*RST")
-        self.inst.write("CONF:VOLT:DC")
-        time.sleep(1)
+        try:
+            self.rm = pyvisa.ResourceManager()
+            if resource_name is None:
+                resources = self.rm.list_resources()
+                for res in resources:
+                    if "W114239033" in res:
+                        resource_name = res
+                        break
+            if resource_name is None:
+                raise Exception("BK Precision 5493C not found!")
+            print(f"---Connecting to multimeter: {resource_name}")
+            self.inst = self.rm.open_resource(resource_name)
+            self.inst.timeout = 5000
+            self.inst.write("*RST")
+            self.inst.write("CONF:VOLT:DC")
+            time.sleep(1)
+        except Exception as e:
+            print(f"---Multimeter initialization error: {e}")
 
     def read_value(self):
         try:

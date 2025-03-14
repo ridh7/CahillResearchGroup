@@ -33,7 +33,7 @@ class ThorlabsBBD302:
                 for dev in devices:
                     if dev == "103387864":
                         serial_number = dev
-            print(f"---Connecting to device with serial number: {serial_number}")
+            print(f"---Connecting to stage with serial number: {serial_number}")
             self.device = BenchtopBrushlessMotor.CreateBenchtopBrushlessMotor(
                 serial_number
             )
@@ -56,7 +56,7 @@ class ThorlabsBBD302:
                 self.channel[channel_number].Home(60000)
                 time.sleep(1)
         except Exception as e:
-            print(f"---Device initialization error: {e}")
+            print(f"---Stage initialization error: {e}")
 
     def home_channel(self, channel_number):
         try:
