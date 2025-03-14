@@ -50,7 +50,7 @@ async def send_lockin_data(websocket: WebSocket):
         if pause_lockin_reading.is_set():
             await asyncio.sleep(0.02)
             continue
-        values = global_state.lockin.read_values()
+        values = global_state.lockin.read_values(True)
         with value_lock:
             latest_lockin_values = values
         await websocket.send_json(values)

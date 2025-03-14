@@ -11,7 +11,7 @@ def save_to_file(data, filename=None):
         for measurement in data:
             f.write(
                 f"{measurement['timestamp']},{measurement['positionX']},{measurement['positionY']},"
-                f"{measurement['X']:.6f},{measurement['Y']:.6f},{measurement['R']:.6f},"
+                f"{measurement['X']},{measurement['Y']},{measurement['R']},"
                 f"{measurement['theta']:.2f},{measurement['frequency']:.6f},"
                 f"{measurement['phase']:.2f},{measurement['voltage']}\n"
             )

@@ -111,7 +111,7 @@ class SR865A:
                 scale_factor = 1e15
         return unit, scale_factor
 
-    def read_values(self):
+    def read_values(self, scaled=False):
         x = float(self.inst.query("OUTP? 0"))
         y = float(self.inst.query("OUTP? 1"))
         r = float(self.inst.query("OUTP? 2"))
@@ -119,9 +119,10 @@ class SR865A:
         freq = float(self.inst.query("FREQ?"))
         phase = float(self.inst.query("PHAS?"))
         unit, scale_factor = self.get_dynamic_units_and_scale(r)
-        x *= scale_factor
-        y *= scale_factor
-        r *= scale_factor
+        if scaled:
+            x *= scale_factor
+            y *= scale_factor
+            r *= scale_factor
         return {
             "X": x,
             "Y": y,
