@@ -98,9 +98,13 @@ class ThorlabsBBD302:
         smaller_x, smaller_y = min(x1, x2), min(y1, y2)
         data = []
         y = smaller_y
-        while y <= greater_y:
+        y_iteration = 0
+        while (
+            y <= greater_y + y_step_size / 2
+        ):  # add tolerance because of the floating point inaccuracy in python
             self.channel[2].MoveTo(Decimal(y), 60000)
             x = smaller_x
+            x_iteration = 0
             while x <= greater_x:
                 self.channel[1].MoveTo(Decimal(x), 60000)
                 print(
@@ -119,8 +123,12 @@ class ThorlabsBBD302:
                 values["voltage"] = global_state.multimeter.read_value()
                 data.append(values)
                 time.sleep(delay)
-                x += x_step_size
-            y += y_step_size
+                # Calculate next x position using iteration count to avoid accumulation of floating point error
+                x_iteration += 1
+                x = smaller_x + x_iteration * x_step_size
+            # Calculate next y position using iteration count
+            y_iteration += 1
+            y = smaller_y + y_iteration * y_step_size
         save_to_file(data)
 
     def read_values(self):
