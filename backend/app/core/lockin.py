@@ -114,21 +114,21 @@ class SR865A:
     def read_values(self, scaled=False):
         x = float(self.inst.query("OUTP? 0"))
         y = float(self.inst.query("OUTP? 1"))
-        r = float(self.inst.query("OUTP? 2"))
-        theta = float(self.inst.query("OUTP? 3"))
-        freq = float(self.inst.query("FREQ?"))
-        phase = float(self.inst.query("PHAS?"))
-        unit, scale_factor = self.get_dynamic_units_and_scale(r)
-        if scaled:
-            x *= scale_factor
-            y *= scale_factor
-            r *= scale_factor
+        # r = float(self.inst.query("OUTP? 2"))
+        # theta = float(self.inst.query("OUTP? 3"))
+        # freq = float(self.inst.query("FREQ?"))
+        # phase = float(self.inst.query("PHAS?"))
+        # unit, scale_factor = self.get_dynamic_units_and_scale(r)
+        # if scaled:
+        #     x *= scale_factor
+        #     y *= scale_factor
+        #     r *= scale_factor
         return {
             "X": x,
             "Y": y,
-            "R": r,
-            "unit": unit,
-            "theta": theta,
-            "frequency": freq,
-            "phase": phase,
+            "R": 0,
+            "unit": 0,
+            "theta": 0,
+            "frequency": 0,
+            "phase": 0,
         }
