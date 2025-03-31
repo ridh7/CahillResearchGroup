@@ -9,6 +9,7 @@ from app.core.lockin import SR865A
 import asyncio
 from fastapi.websockets import WebSocketDisconnect
 from app.core.shared_state import shared_state
+import time
 
 
 @asynccontextmanager
@@ -49,29 +50,37 @@ async def send_lockin_data(websocket: WebSocket):
         if shared_state.pause_lockin_reading.is_set():
             await asyncio.sleep(0.02)
             continue
+        start_time = time.time()
         values = global_state.lockin.read_values()
+        elapsed = time.time() - start_time
         with shared_state.value_lock:
             shared_state.latest_lockin_values = values
         await websocket.send_json(values)
+        print(f"---Lock-in read time: {elapsed:.4f}s")
         await asyncio.sleep(0.005)
 
 
 async def send_multimeter_data(websocket: WebSocket):
     while True:
+        start_time = time.time()
         value = global_state.multimeter.read_value()
-        print(f"MULTIMETER: {value}")
+        elapsed = time.time() - start_time
         with shared_state.value_lock:
             shared_state.latest_multimeter_value = value
         await websocket.send_json({"value": value})
+        print(f"---Multimeter read time: {elapsed:.4f}s")
         await asyncio.sleep(0.005)
 
 
 async def send_stage_data(websocket: WebSocket):
     while True:
+        start_time = time.time()
         values = global_state.stage.read_values()
+        elapsed = time.time() - start_time
         with shared_state.value_lock:
             shared_state.latest_stage_values = values
         await websocket.send_json(values)
+        print(f"---Stage read time: {elapsed:.4f}s")
         await asyncio.sleep(0.005)
 
 
