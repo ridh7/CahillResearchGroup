@@ -8,7 +8,7 @@ from app.core.multimeter import BKPrecision5493C
 from app.core.lockin import SR865A
 import asyncio
 from fastapi.websockets import WebSocketDisconnect
-from app.core.shared_state import pause_lockin_reading, value_lock, latest_lockin_values
+from app.core.shared_state import shared_state
 
 
 @asynccontextmanager
@@ -16,7 +16,7 @@ async def lifespan(app: FastAPI):
     global_state.stage = ThorlabsBBD302()
     global_state.lockin = SR865A()
     global_state.multimeter = BKPrecision5493C()
-    pause_lockin_reading.clear()
+    shared_state.pause_lockin_reading.clear()
     yield
     for ws in [
         global_state.ws_lockin,
@@ -47,28 +47,34 @@ app.include_router(endpoints.router)
 async def send_lockin_data(websocket: WebSocket):
     global latest_lockin_values
     while True:
-        if pause_lockin_reading.is_set():
+        if shared_state.pause_lockin_reading.is_set():
             await asyncio.sleep(0.02)
             continue
         values = global_state.lockin.read_values(True)
-        with value_lock:
+        with shared_state.value_lock:
             latest_lockin_values = values
         await websocket.send_json(values)
-        await asyncio.sleep(0.1)
+        await asyncio.sleep(0.005)
 
 
 async def send_multimeter_data(websocket: WebSocket):
+    global latest_multimeter_value
     while True:
         value = global_state.multimeter.read_value()
+        with shared_state.value_lock:
+            latest_multimeter_value = value
         await websocket.send_json({"value": value})
-        await asyncio.sleep(0.1)
+        await asyncio.sleep(0.005)
 
 
 async def send_stage_data(websocket: WebSocket):
+    global latest_stage_values
     while True:
         values = global_state.stage.read_values()
+        with shared_state.value_lock:
+            latest_stage_values = values
         await websocket.send_json(values)
-        await asyncio.sleep(0.1)
+        await asyncio.sleep(0.005)
 
 
 @app.websocket("/ws/lockin")
