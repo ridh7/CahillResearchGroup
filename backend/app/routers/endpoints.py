@@ -22,6 +22,20 @@ async def move(params: MovementParams):
         return {"status": "error", "message": str(e)}
 
 
+@router.post("/move_and_log")
+async def move_and_log(params: MoveAndLogParams):
+    try:
+        await asyncio.get_event_loop().run_in_executor(
+            executor,
+            lambda: global_state.stage.move_and_log(
+                params.x, params.y, params.sample_rate
+            ),
+        )
+        return {"status": "success", "message": "Movement and logging completed"}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+
 @router.post("/start")
 async def start_movement(params: RectangleParams):
     try:
@@ -139,7 +153,7 @@ async def set_movement_params_api(params: Settings):
                 ),
             ),
         )
-
+        print("---Movement params set")
         return {"status": "success", "message": "movement params set"}
     except Exception as e:
         return {"status": "error", "message": str(e)}

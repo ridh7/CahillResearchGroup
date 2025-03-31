@@ -18,3 +18,9 @@ class RectangleParams(BaseModel):
 class MovementParams(BaseModel):
     x: float
     y: float
+
+
+class MoveAndLogParams(BaseModel):
+    x: float
+    y: float
+    sample_rate: float

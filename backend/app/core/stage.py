@@ -4,6 +4,7 @@ from datetime import datetime
 from app.models.state import global_state
 from app.utils.file_utils import save_to_file
 from app.core.shared_state import pause_lockin_reading, latest_lockin_values, value_lock
+from threading import Thread
 
 clr.AddReference(
     "C:\\Program Files\\Thorlabs\\Kinesis\\Thorlabs.MotionControl.DeviceManagerCLI.dll"
@@ -19,6 +20,7 @@ from Thorlabs.MotionControl.DeviceManagerCLI import *
 from Thorlabs.MotionControl.GenericMotorCLI import *
 from Thorlabs.MotionControl.Benchtop.BrushlessMotorCLI import *
 from System import Decimal
+from System import Math
 
 
 class ThorlabsBBD302:
@@ -146,3 +148,83 @@ class ThorlabsBBD302:
             self.channel[2].MoveTo(Decimal(y), 60000)
         except Exception as e:
             print(f"---Error in moving: {e}")
+
+    def move_and_log(self, x, y, sample_rate=0.01):
+        try:
+            target_x = float(x)
+            target_y = float(y)
+            current_x = self.channel[1].DevicePosition
+            current_y = self.channel[2].DevicePosition
+
+            def move_stage():
+                self.channel[1].MoveTo(Decimal(target_x), 60000)
+                self.channel[2].MoveTo(Decimal(target_y), 60000)
+
+            move_thread = Thread(target=move_stage)
+            move_thread.start()
+            print(f"---Started moving to ({target_x}, {target_y})")
+
+            data = []
+            start_time = time.time()
+            sample_count = 0
+
+            while True:
+                current_x = self.channel[1].DevicePosition
+                current_y = self.channel[2].DevicePosition
+                if Math.Abs(current_x - Decimal(target_x)) < Decimal(0.01) and Math.Abs(
+                    current_y - Decimal(target_y)
+                ) < Decimal(0.01):
+                    break
+
+                timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")
+                lockin_values = global_state.lockin.read_values()
+                multimeter_value = global_state.multimeter.read_value()
+                stage_values = self.read_values()
+
+                values = {
+                    "timestamp": timestamp,
+                    "positionX": float(stage_values["x"]),
+                    "positionY": float(stage_values["y"]),
+                    "X": lockin_values["X"],
+                    "Y": lockin_values["Y"],
+                    "R": lockin_values["R"],
+                    "theta": lockin_values["theta"],
+                    "frequency": lockin_values["frequency"],
+                    "phase": lockin_values["phase"],
+                    "voltage": multimeter_value,
+                }
+
+                data.append(values)
+
+                sample_count += 1
+                # elapsed = time.time() - start_time
+                # next_sample = sample_count * sample_rate
+                # sleep_time = max(0, next_sample - elapsed)
+                # time.sleep(sleep_time)
+
+            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")
+            lockin_values = global_state.lockin.read_values()
+            multimeter_value = global_state.multimeter.read_value()
+            stage_values = self.read_values()
+
+            values = {
+                "timestamp": timestamp,
+                "positionX": float(stage_values["x"]),
+                "positionY": float(stage_values["y"]),
+                "X": lockin_values["X"],
+                "Y": lockin_values["Y"],
+                "R": lockin_values["R"],
+                "theta": lockin_values["theta"],
+                "frequency": lockin_values["frequency"],
+                "phase": lockin_values["phase"],
+                "voltage": multimeter_value,
+            }
+            data.append(values)
+
+            move_thread.join()
+            save_to_file(data)
+            print(
+                f"---Logged {len(data)} samples during movement to ({x}, {y}) in {time.time() - start_time}s time"
+            )
+        except Exception as e:
+            print(f"---Error in move_and_log: {e}")

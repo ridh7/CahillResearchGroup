@@ -43,24 +43,25 @@ export default function OutputPanel({
 
   const handleMove = async () => {
     try {
-      const response = await fetch("http://localhost:8000/move", {
+      const response = await fetch("http://localhost:8000/move_and_log", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           x: parseFloat(moveX),
           y: parseFloat(moveY),
+          sample_rate: 0.01
         }),
       });
       const data = await response.json();
       if (data.status === "success") {
-        console.log("Move successful:", data.message);
+        console.log("Move and logging successful:", data.message);
         setMoveX("");
         setMoveY("");
       } else {
-        console.error("Move failed:", data.message);
+        console.error("Move and loggin failed:", data.message);
       }
     } catch (error) {
-      console.error("Error during move:", error);
+      console.error("Error during move and loggin:", error);
     }
   };
 
@@ -288,7 +289,7 @@ export default function OutputPanel({
               : "bg-gray-600 cursor-not-allowed"
           }`}
         >
-          Move
+          Move & Log
         </button>
       </div>
     </div>
