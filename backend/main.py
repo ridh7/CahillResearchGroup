@@ -45,34 +45,32 @@ app.include_router(endpoints.router)
 
 
 async def send_lockin_data(websocket: WebSocket):
-    global latest_lockin_values
     while True:
         if shared_state.pause_lockin_reading.is_set():
             await asyncio.sleep(0.02)
             continue
-        values = global_state.lockin.read_values(True)
+        values = global_state.lockin.read_values()
         with shared_state.value_lock:
-            latest_lockin_values = values
+            shared_state.latest_lockin_values = values
         await websocket.send_json(values)
         await asyncio.sleep(0.005)
 
 
 async def send_multimeter_data(websocket: WebSocket):
-    global latest_multimeter_value
     while True:
         value = global_state.multimeter.read_value()
+        print(f"MULTIMETER: {value}")
         with shared_state.value_lock:
-            latest_multimeter_value = value
+            shared_state.latest_multimeter_value = value
         await websocket.send_json({"value": value})
         await asyncio.sleep(0.005)
 
 
 async def send_stage_data(websocket: WebSocket):
-    global latest_stage_values
     while True:
         values = global_state.stage.read_values()
         with shared_state.value_lock:
-            latest_stage_values = values
+            shared_state.latest_stage_values = values
         await websocket.send_json(values)
         await asyncio.sleep(0.005)
 

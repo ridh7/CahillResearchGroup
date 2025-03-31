@@ -151,6 +151,7 @@ class ThorlabsBBD302:
 
     def move_and_log(self, x, y, sample_rate=0.01):
         try:
+            self.channel[2].StartPolling(5)
             target_x = float(x)
             target_y = float(y)
             current_x = self.channel[1].DevicePosition
@@ -216,6 +217,7 @@ class ThorlabsBBD302:
                 }
                 data.append(values)
                 sample_count += 1
+                time.sleep(sample_rate)
 
             timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")
 
