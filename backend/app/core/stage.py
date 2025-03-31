@@ -5,6 +5,7 @@ from app.models.state import global_state
 from app.utils.file_utils import save_to_file
 from app.core.shared_state import pause_lockin_reading, latest_lockin_values, value_lock
 from threading import Thread
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 clr.AddReference(
     "C:\\Program Files\\Thorlabs\\Kinesis\\Thorlabs.MotionControl.DeviceManagerCLI.dll"
@@ -157,8 +158,8 @@ class ThorlabsBBD302:
             current_y = self.channel[2].DevicePosition
 
             def move_stage():
-                self.channel[1].MoveTo(Decimal(target_x), 60000)
-                self.channel[2].MoveTo(Decimal(target_y), 60000)
+                self.channel[1].MoveTo(Decimal(target_x), 600000)
+                self.channel[2].MoveTo(Decimal(target_y), 600000)
 
             move_thread = Thread(target=move_stage)
             move_thread.start()
@@ -168,18 +169,51 @@ class ThorlabsBBD302:
             start_time = time.time()
             sample_count = 0
 
-            while True:
-                current_x = self.channel[1].DevicePosition
-                current_y = self.channel[2].DevicePosition
-                if Math.Abs(current_x - Decimal(target_x)) < Decimal(0.01) and Math.Abs(
-                    current_y - Decimal(target_y)
-                ) < Decimal(0.01):
-                    break
+            with ThreadPoolExecutor(max_workers=3) as executor:
+                while True:
+                    current_x = self.channel[1].DevicePosition
+                    current_y = self.channel[2].DevicePosition
+                    if Math.Abs(current_x - Decimal(target_x)) < Decimal(
+                        0.01
+                    ) and Math.Abs(current_y - Decimal(target_y)) < Decimal(0.01):
+                        break
 
+                    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")
+
+                    future_lockin = executor.submit(global_state.lockin.read_values)
+                    future_multimeter = executor.submit(
+                        global_state.multimeter.read_value
+                    )
+                    future_stage = executor.submit(self.read_values)
+
+                    lockin_values = future_lockin.result()
+                    multimeter_value = future_multimeter.result()
+                    stage_values = future_stage.result()
+
+                    values = {
+                        "timestamp": timestamp,
+                        "positionX": float(stage_values["x"]),
+                        "positionY": float(stage_values["y"]),
+                        "X": lockin_values["X"],
+                        "Y": lockin_values["Y"],
+                        "R": lockin_values["R"],
+                        "theta": lockin_values["theta"],
+                        "frequency": lockin_values["frequency"],
+                        "phase": lockin_values["phase"],
+                        "voltage": multimeter_value,
+                    }
+                    data.append(values)
+                    sample_count += 1
+                
                 timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")
-                lockin_values = global_state.lockin.read_values()
-                multimeter_value = global_state.multimeter.read_value()
-                stage_values = self.read_values()
+
+                future_lockin = executor.submit(global_state.lockin.read_values)
+                future_multimeter = executor.submit(global_state.multimeter.read_value)
+                future_stage = executor.submit(self.read_values)
+
+                lockin_values = future_lockin.result()
+                multimeter_value = future_multimeter.result()
+                stage_values = future_stage.result()
 
                 values = {
                     "timestamp": timestamp,
@@ -193,38 +227,19 @@ class ThorlabsBBD302:
                     "phase": lockin_values["phase"],
                     "voltage": multimeter_value,
                 }
-
                 data.append(values)
-
-                sample_count += 1
-                # elapsed = time.time() - start_time
-                # next_sample = sample_count * sample_rate
-                # sleep_time = max(0, next_sample - elapsed)
-                # time.sleep(sleep_time)
-
-            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")
-            lockin_values = global_state.lockin.read_values()
-            multimeter_value = global_state.multimeter.read_value()
-            stage_values = self.read_values()
-
-            values = {
-                "timestamp": timestamp,
-                "positionX": float(stage_values["x"]),
-                "positionY": float(stage_values["y"]),
-                "X": lockin_values["X"],
-                "Y": lockin_values["Y"],
-                "R": lockin_values["R"],
-                "theta": lockin_values["theta"],
-                "frequency": lockin_values["frequency"],
-                "phase": lockin_values["phase"],
-                "voltage": multimeter_value,
-            }
-            data.append(values)
 
             move_thread.join()
             save_to_file(data)
+
+            elapsed_time = time.time() - start_time
+            sample_rate_achieved = (
+                sample_count / elapsed_time if elapsed_time > 0 else 0
+            )
+
             print(
-                f"---Logged {len(data)} samples during movement to ({x}, {y}) in {time.time() - start_time}s time"
+                f"---Logged {len(data)} samples during movement to ({x}, {y}) in {elapsed_time}s time\n"
+                f"{sample_rate_achieved:.2f} samples/second"
             )
         except Exception as e:
             print(f"---Error in move_and_log: {e}")
