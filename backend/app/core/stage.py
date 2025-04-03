@@ -151,16 +151,16 @@ class ThorlabsBBD302:
 
     def move_and_log(self, x, y, x_step_size, sample_rate=0.01):
         try:
-            self.channel[2].StartPolling(1)
+            self.channel[2].StartPolling(1)  # 1ms polling for Y channel
             target_x = float(x)
             target_y = float(y)
             x_step_size = float(x_step_size)
-            current_x = self.channel[1].DevicePosition
-            current_y = self.channel[2].DevicePosition
+            current_x = self.channel[1].DevicePosition  # Decimal from DevicePosition
+            current_y = self.channel[2].DevicePosition  # Decimal from DevicePosition
 
             def move_stage(x_pos, y_pos):
-                self.channel[1].MoveTo(x_pos, 600000)
-                self.channel[2].MoveTo(y_pos, 600000)
+                self.channel[1].MoveTo(x_pos, 600000)  # Expects Decimal
+                self.channel[2].MoveTo(y_pos, 600000)  # Expects Decimal
 
             data = []
             start_time = time.time()
@@ -169,10 +169,10 @@ class ThorlabsBBD302:
             # Iterate over X positions
             while current_x <= Decimal(
                 target_x + x_step_size / 2
-            ):  # Tolerance for floating-point
-                print(f"---Starting Y scan at x={current_x}")
+            ):  # Decimal comparison
+                print(f"---Starting upward Y scan at x={current_x}")
 
-                # Log data along Y direction (parallel movement)
+                # Upward Y scan: current_y to target_y (logging)
                 move_thread = Thread(
                     target=move_stage, args=(current_x, Decimal(target_y))
                 )
@@ -180,10 +180,8 @@ class ThorlabsBBD302:
                 print(f"---Started moving to ({current_x}, {target_y})")
 
                 while True:
-                    pos_y = self.channel[2].DevicePosition
-                    if Math.Abs(pos_y - Decimal(target_y)) < Decimal(
-                        0.01
-                    ):  # Check Y completion
+                    pos_y = self.channel[2].DevicePosition  # Decimal
+                    if Math.Abs(pos_y - Decimal(target_y)) < Decimal(0.01):
                         break
 
                     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")
@@ -208,10 +206,7 @@ class ThorlabsBBD302:
                         stage_values = (
                             shared_state.latest_stage_values.copy()
                             if shared_state.latest_stage_values
-                            else {
-                                "x": 0,
-                                "y": 0,
-                            }
+                            else {"x": "0", "y": "0"}  # Strings from read_values
                         )
 
                     values = {
@@ -232,13 +227,69 @@ class ThorlabsBBD302:
 
                 move_thread.join()
 
-                # Move back to starting Y serially, no logging
-                print(f"---Moving back to starting Y ({current_y}) at x={current_x}")
-                self.channel[2].MoveTo(current_y, 600000)  # Blocking move
-
-                # Increment X for next scan
+                # Increment X for downward scan
                 current_x += Decimal(x_step_size)
+                if current_x > Decimal(target_x + x_step_size / 2):
+                    break  # Exit if we've exceeded target_x
+
                 self.channel[1].MoveTo(current_x, 600000)
+
+                print(f"---Starting downward Y scan at x={current_x}")
+                move_thread = Thread(target=move_stage, args=(current_x, current_y))
+                move_thread.start()
+                print(f"---Started moving to ({current_x}, {current_y})")
+
+                # Downward Y scan: target_y to current_y (logging, to be reversed)
+                downward_data = []
+                while True:
+                    pos_y = self.channel[2].DevicePosition  # Decimal
+                    if Math.Abs(pos_y - current_y) < Decimal(0.01):
+                        break
+
+                    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")
+                    with shared_state.value_lock:
+                        lockin_values = (
+                            shared_state.latest_lockin_values.copy()
+                            if shared_state.latest_lockin_values
+                            else {
+                                "X": 0,
+                                "Y": 0,
+                                "R": 0,
+                                "theta": 0,
+                                "frequency": 0,
+                                "phase": 0,
+                            }
+                        )
+                        multimeter_value = (
+                            shared_state.latest_multimeter_value
+                            if shared_state.latest_multimeter_value is not None
+                            else 0
+                        )
+                        stage_values = (
+                            shared_state.latest_stage_values.copy()
+                            if shared_state.latest_stage_values
+                            else {"x": "0", "y": "0"}
+                        )
+
+                    values = {
+                        "timestamp": timestamp,
+                        "positionX": float(stage_values["x"]),
+                        "positionY": float(stage_values["y"]),
+                        "X": lockin_values["X"],
+                        "Y": lockin_values["Y"],
+                        "R": lockin_values["R"],
+                        "theta": lockin_values["theta"],
+                        "frequency": lockin_values["frequency"],
+                        "phase": lockin_values["phase"],
+                        "voltage": multimeter_value,
+                    }
+                    downward_data.append(values)
+                    sample_count += 1
+                    time.sleep(sample_rate)
+
+                move_thread.join()
+                # Reverse downward data and append to main data
+                data.extend(reversed(downward_data))
 
             # Final sample at last position
             timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")
@@ -287,7 +338,7 @@ class ThorlabsBBD302:
                 sample_count / elapsed_time if elapsed_time > 0 else 0
             )
             print(
-                f"---Logged {len(data)} samples during rectangular scan to ({x}, {y}) "
+                f"---Logged {len(data)} samples during rectangular zigzag scan to ({x}, {y}) "
                 f"in {elapsed_time:.2f}s time\n{sample_rate_achieved:.2f} samples/second"
             )
         except Exception as e:
