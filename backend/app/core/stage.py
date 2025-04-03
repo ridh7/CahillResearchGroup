@@ -165,23 +165,28 @@ class ThorlabsBBD302:
             data = []
             start_time = time.time()
             sample_count = 0
+            going_up = True  # Start with upward scan
 
             # Iterate over X positions
             while current_x <= Decimal(
                 target_x + x_step_size / 2
             ):  # Decimal comparison
-                print(f"---Starting upward Y scan at x={current_x}")
+                if going_up:
+                    print(f"---Starting upward Y scan at x={current_x}")
+                    end_y = Decimal(target_y)
+                else:
+                    print(f"---Starting downward Y scan at x={current_x}")
+                    end_y = current_y
 
-                # Upward Y scan: current_y to target_y (logging)
-                move_thread = Thread(
-                    target=move_stage, args=(current_x, Decimal(target_y))
-                )
+                # Move and log in the current direction
+                move_thread = Thread(target=move_stage, args=(current_x, end_y))
                 move_thread.start()
-                print(f"---Started moving to ({current_x}, {target_y})")
+                print(f"---Started moving to ({current_x}, {end_y})")
 
+                scan_data = []
                 while True:
                     pos_y = self.channel[2].DevicePosition  # Decimal
-                    if Math.Abs(pos_y - Decimal(target_y)) < Decimal(0.01):
+                    if Math.Abs(pos_y - end_y) < Decimal(0.01):
                         break
 
                     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")
@@ -206,7 +211,7 @@ class ThorlabsBBD302:
                         stage_values = (
                             shared_state.latest_stage_values.copy()
                             if shared_state.latest_stage_values
-                            else {"x": "0", "y": "0"}  # Strings from read_values
+                            else {"x": 0, "y": 0}
                         )
 
                     values = {
@@ -221,75 +226,22 @@ class ThorlabsBBD302:
                         "phase": lockin_values["phase"],
                         "voltage": multimeter_value,
                     }
-                    data.append(values)
+                    scan_data.append(values)
                     sample_count += 1
                     time.sleep(sample_rate)
 
                 move_thread.join()
 
-                # Increment X for downward scan
+                # Append scan data (reverse if downward to maintain Y increasing order)
+                if going_up:
+                    data.extend(scan_data)
+                else:
+                    data.extend(reversed(scan_data))
+
+                # Increment X and switch direction
                 current_x += Decimal(x_step_size)
-                if current_x > Decimal(target_x + x_step_size / 2):
-                    break  # Exit if we've exceeded target_x
-
                 self.channel[1].MoveTo(current_x, 600000)
-
-                print(f"---Starting downward Y scan at x={current_x}")
-                move_thread = Thread(target=move_stage, args=(current_x, current_y))
-                move_thread.start()
-                print(f"---Started moving to ({current_x}, {current_y})")
-
-                # Downward Y scan: target_y to current_y (logging, to be reversed)
-                downward_data = []
-                while True:
-                    pos_y = self.channel[2].DevicePosition  # Decimal
-                    if Math.Abs(pos_y - current_y) < Decimal(0.01):
-                        break
-
-                    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")
-                    with shared_state.value_lock:
-                        lockin_values = (
-                            shared_state.latest_lockin_values.copy()
-                            if shared_state.latest_lockin_values
-                            else {
-                                "X": 0,
-                                "Y": 0,
-                                "R": 0,
-                                "theta": 0,
-                                "frequency": 0,
-                                "phase": 0,
-                            }
-                        )
-                        multimeter_value = (
-                            shared_state.latest_multimeter_value
-                            if shared_state.latest_multimeter_value is not None
-                            else 0
-                        )
-                        stage_values = (
-                            shared_state.latest_stage_values.copy()
-                            if shared_state.latest_stage_values
-                            else {"x": "0", "y": "0"}
-                        )
-
-                    values = {
-                        "timestamp": timestamp,
-                        "positionX": float(stage_values["x"]),
-                        "positionY": float(stage_values["y"]),
-                        "X": lockin_values["X"],
-                        "Y": lockin_values["Y"],
-                        "R": lockin_values["R"],
-                        "theta": lockin_values["theta"],
-                        "frequency": lockin_values["frequency"],
-                        "phase": lockin_values["phase"],
-                        "voltage": multimeter_value,
-                    }
-                    downward_data.append(values)
-                    sample_count += 1
-                    time.sleep(sample_rate)
-
-                move_thread.join()
-                # Reverse downward data and append to main data
-                data.extend(reversed(downward_data))
+                going_up = not going_up  # Toggle direction
 
             # Final sample at last position
             timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")
