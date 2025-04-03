@@ -56,7 +56,7 @@ async def send_lockin_data(websocket: WebSocket):
         with shared_state.value_lock:
             shared_state.latest_lockin_values = values
         await websocket.send_json(values)
-        print(f"---Lock-in read time: {elapsed:.4f}s")
+        # print(f"---Lock-in read time: {elapsed:.4f}s")
         await asyncio.sleep(0.005)
 
 
@@ -68,7 +68,7 @@ async def send_multimeter_data(websocket: WebSocket):
         with shared_state.value_lock:
             shared_state.latest_multimeter_value = value
         await websocket.send_json({"value": value})
-        print(f"---Multimeter read time: {elapsed:.4f}s")
+        # print(f"---Multimeter read time: {elapsed:.4f}s")
         await asyncio.sleep(0.005)
 
 
@@ -80,7 +80,7 @@ async def send_stage_data(websocket: WebSocket):
         with shared_state.value_lock:
             shared_state.latest_stage_values = values
         await websocket.send_json(values)
-        print(f"---Stage read time: {elapsed:.4f}s")
+        # print(f"---Stage read time: {elapsed:.4f}s")
         await asyncio.sleep(0.005)
 
 

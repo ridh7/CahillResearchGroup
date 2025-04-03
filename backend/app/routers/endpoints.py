@@ -28,7 +28,7 @@ async def move_and_log(params: MoveAndLogParams):
         await asyncio.get_event_loop().run_in_executor(
             executor,
             lambda: global_state.stage.move_and_log(
-                params.x, params.y, params.sample_rate
+                params.x, params.y, params.x_step_size, params.sample_rate
             ),
         )
         return {"status": "success", "message": "Movement and logging completed"}

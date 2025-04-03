@@ -49,7 +49,8 @@ export default function OutputPanel({
         body: JSON.stringify({
           x: parseFloat(moveX),
           y: parseFloat(moveY),
-          sample_rate: 0.01
+          x_step_size: 1,
+          sample_rate: 0.01,
         }),
       });
       const data = await response.json();

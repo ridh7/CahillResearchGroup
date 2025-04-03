@@ -151,34 +151,36 @@ class ThorlabsBBD302:
 
     def move_and_log(self, x, y, x_step_size, sample_rate=0.01):
         try:
-            self.channel[2].StartPolling(5)
+            self.channel[2].StartPolling(1)
             target_x = float(x)
             target_y = float(y)
             x_step_size = float(x_step_size)
-            current_x = float(self.channel[1].DevicePosition)
-            current_y = float(self.channel[2].DevicePosition)
+            current_x = self.channel[1].DevicePosition
+            current_y = self.channel[2].DevicePosition
 
             def move_stage(x_pos, y_pos):
-                self.channel[1].MoveTo(Decimal(x_pos), 600000)
-                self.channel[2].MoveTo(Decimal(y_pos), 600000)
+                self.channel[1].MoveTo(x_pos, 600000)
+                self.channel[2].MoveTo(y_pos, 600000)
 
             data = []
             start_time = time.time()
             sample_count = 0
 
             # Iterate over X positions
-            while (
-                current_x <= target_x + x_step_size / 2
+            while current_x <= Decimal(
+                target_x + x_step_size / 2
             ):  # Tolerance for floating-point
                 print(f"---Starting Y scan at x={current_x}")
 
                 # Log data along Y direction (parallel movement)
-                move_thread = Thread(target=move_stage, args=(current_x, target_y))
+                move_thread = Thread(
+                    target=move_stage, args=(current_x, Decimal(target_y))
+                )
                 move_thread.start()
                 print(f"---Started moving to ({current_x}, {target_y})")
 
                 while True:
-                    pos_y = float(self.channel[2].DevicePosition)
+                    pos_y = self.channel[2].DevicePosition
                     if Math.Abs(pos_y - Decimal(target_y)) < Decimal(
                         0.01
                     ):  # Check Y completion
@@ -232,11 +234,11 @@ class ThorlabsBBD302:
 
                 # Move back to starting Y serially, no logging
                 print(f"---Moving back to starting Y ({current_y}) at x={current_x}")
-                self.channel[2].MoveTo(Decimal(current_y), 600000)  # Blocking move
+                self.channel[2].MoveTo(current_y, 600000)  # Blocking move
 
                 # Increment X for next scan
-                current_x += x_step_size
-                self.channel[1].MoveTo(Decimal(current_x), 600000)
+                current_x += Decimal(x_step_size)
+                self.channel[1].MoveTo(current_x, 600000)
 
             # Final sample at last position
             timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")

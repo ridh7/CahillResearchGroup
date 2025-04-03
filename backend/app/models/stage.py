@@ -23,4 +23,5 @@ class MovementParams(BaseModel):
 class MoveAndLogParams(BaseModel):
     x: float
     y: float
+    x_step_size: float
     sample_rate: float
