@@ -14,7 +14,7 @@ import time
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    global_state.stage = ThorlabsBBD302()
+    # global_state.stage = ThorlabsBBD302()
     global_state.lockin = SR865A()
     global_state.multimeter = BKPrecision5493C()
     shared_state.pause_lockin_reading.clear()
@@ -56,7 +56,7 @@ async def send_lockin_data(websocket: WebSocket):
         with shared_state.value_lock:
             shared_state.latest_lockin_values = values
         await websocket.send_json(values)
-        # print(f"---Lock-in read time: {elapsed:.4f}s")
+        print(f"---Lock-in read time: {elapsed:.4f}s")
         await asyncio.sleep(0.005)
 
 

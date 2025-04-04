@@ -77,61 +77,61 @@ class ThorlabsBBD302:
         except Exception as e:
             print(f"---Error: {e}")
 
-    def move_in_rectangle(
-        self,
-        x1,
-        y1,
-        x2,
-        y2,
-        x_steps,
-        y_steps,
-        x_step_size,
-        y_step_size,
-        movement_mode,
-        delay,
-    ):
+    # def move_in_rectangle(
+    #     self,
+    #     x1,
+    #     y1,
+    #     x2,
+    #     y2,
+    #     x_steps,
+    #     y_steps,
+    #     x_step_size,
+    #     y_step_size,
+    #     movement_mode,
+    #     delay,
+    # ):
 
-        if delay == None:
-            delay = 1
-        if movement_mode == "steps":
-            x_step_size = abs(x2 - x1) / x_steps
-            y_step_size = abs(y2 - y1) / y_steps
-        greater_x, greater_y = max(x1, x2), max(y1, y2)
-        smaller_x, smaller_y = min(x1, x2), min(y1, y2)
-        data = []
-        y = smaller_y
-        y_iteration = 0
-        while (
-            y <= greater_y + y_step_size / 2
-        ):  # add tolerance because of the floating point inaccuracy in python
-            self.channel[2].MoveTo(Decimal(y), 60000)
-            x = smaller_x
-            x_iteration = 0
-            while x <= greater_x:
-                self.channel[1].MoveTo(Decimal(x), 60000)
-                print(
-                    f"---Current position: ({self.channel[1].DevicePosition}, {self.channel[2].DevicePosition})"
-                )
-                timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")
-                pause_lockin_reading.set()
-                try:
-                    time.sleep(0.02)
-                    values = global_state.lockin.read_values()
-                finally:
-                    pause_lockin_reading.clear()
-                values["timestamp"] = timestamp
-                values["positionX"] = self.channel[1].DevicePosition
-                values["positionY"] = self.channel[2].DevicePosition
-                values["voltage"] = global_state.multimeter.read_value()
-                data.append(values)
-                time.sleep(delay)
-                # Calculate next x position using iteration count to avoid accumulation of floating point error
-                x_iteration += 1
-                x = smaller_x + x_iteration * x_step_size
-            # Calculate next y position using iteration count
-            y_iteration += 1
-            y = smaller_y + y_iteration * y_step_size
-        save_to_file(data)
+    #     if delay == None:
+    #         delay = 1
+    #     if movement_mode == "steps":
+    #         x_step_size = abs(x2 - x1) / x_steps
+    #         y_step_size = abs(y2 - y1) / y_steps
+    #     greater_x, greater_y = max(x1, x2), max(y1, y2)
+    #     smaller_x, smaller_y = min(x1, x2), min(y1, y2)
+    #     data = []
+    #     y = smaller_y
+    #     y_iteration = 0
+    #     while (
+    #         y <= greater_y + y_step_size / 2
+    #     ):  # add tolerance because of the floating point inaccuracy in python
+    #         self.channel[2].MoveTo(Decimal(y), 60000)
+    #         x = smaller_x
+    #         x_iteration = 0
+    #         while x <= greater_x:
+    #             self.channel[1].MoveTo(Decimal(x), 60000)
+    #             print(
+    #                 f"---Current position: ({self.channel[1].DevicePosition}, {self.channel[2].DevicePosition})"
+    #             )
+    #             timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")
+    #             pause_lockin_reading.set()
+    #             try:
+    #                 time.sleep(0.02)
+    #                 values = global_state.lockin.read_values()
+    #             finally:
+    #                 pause_lockin_reading.clear()
+    #             values["timestamp"] = timestamp
+    #             values["positionX"] = self.channel[1].DevicePosition
+    #             values["positionY"] = self.channel[2].DevicePosition
+    #             values["voltage"] = global_state.multimeter.read_value()
+    #             data.append(values)
+    #             time.sleep(delay)
+    #             # Calculate next x position using iteration count to avoid accumulation of floating point error
+    #             x_iteration += 1
+    #             x = smaller_x + x_iteration * x_step_size
+    #         # Calculate next y position using iteration count
+    #         y_iteration += 1
+    #         y = smaller_y + y_iteration * y_step_size
+    #     save_to_file(data)
 
     def read_values(self):
         try:
@@ -197,10 +197,7 @@ class ThorlabsBBD302:
                             else {
                                 "X": 0,
                                 "Y": 0,
-                                "R": 0,
-                                "theta": 0,
                                 "frequency": 0,
-                                "phase": 0,
                             }
                         )
                         multimeter_value = (
@@ -220,10 +217,7 @@ class ThorlabsBBD302:
                         "positionY": float(stage_values["y"]),
                         "X": lockin_values["X"],
                         "Y": lockin_values["Y"],
-                        "R": lockin_values["R"],
-                        "theta": lockin_values["theta"],
                         "frequency": lockin_values["frequency"],
-                        "phase": lockin_values["phase"],
                         "voltage": multimeter_value,
                     }
                     scan_data.append(values)
@@ -252,10 +246,7 @@ class ThorlabsBBD302:
                     else {
                         "X": 0,
                         "Y": 0,
-                        "R": 0,
-                        "theta": 0,
                         "frequency": 0,
-                        "phase": 0,
                     }
                 )
                 multimeter_value = (
@@ -275,10 +266,7 @@ class ThorlabsBBD302:
                 "positionY": float(stage_values["y"]),
                 "X": lockin_values["X"],
                 "Y": lockin_values["Y"],
-                "R": lockin_values["R"],
-                "theta": lockin_values["theta"],
                 "frequency": lockin_values["frequency"],
-                "phase": lockin_values["phase"],
                 "voltage": multimeter_value,
             }
             data.append(values)

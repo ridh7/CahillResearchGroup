@@ -16,36 +16,36 @@ class SR865A:
             print(f"---Connecting to lockin: {resource_name}")
             self.inst = self.rm.open_resource(resource_name)
             self.inst.timeout = 5000
-            self.volatage_sensitivity_map = [
-                1.0,
-                0.5,
-                0.2,
-                0.1,
-                0.05,
-                0.02,
-                0.01,
-                5e-3,
-                2e-3,
-                1e-3,
-                5e-4,
-                2e-4,
-                1e-4,
-                5e-5,
-                2e-5,
-                1e-5,
-                5e-6,
-                2e-6,
-                1e-6,
-                5e-7,
-                2e-7,
-                1e-7,
-                5e-8,
-                2e-8,
-                1e-8,
-                5e-9,
-                2e-9,
-                1e-9,
-            ]
+            self.volatage_sensitivity_map = {
+                0: "V",
+                1: "mV",
+                2: "mV",
+                3: "mV",
+                4: "mV",
+                5: "mV",
+                6: "mV",
+                7: "mV",
+                8: "mV",
+                9: "mV",
+                10: "µV",
+                11: "µV",
+                12: "µV",
+                13: "µV",
+                14: "µV",
+                15: "µV",
+                16: "µV",
+                17: "µV",
+                18: "µV",
+                19: "nV",
+                20: "nV",
+                21: "nV",
+                22: "nV",
+                23: "nV",
+                24: "nV",
+                25: "nV",
+                26: "nV",
+                27: "nV",
+            }
             self.current_sensitivity_map = [
                 1e-6,
                 5e-7,
@@ -79,56 +79,15 @@ class SR865A:
         except Exception as e:
             print(f"---Locking initialization error: {e}")
 
-    def get_dynamic_units_and_scale(self, value):
-        input_mode = int(self.inst.query("IVMD?"))
-        abs_value = abs(value)
-
-        if input_mode == 0:
-            if abs_value >= 1:
-                unit = "V"
-                scale_factor = 1
-            elif abs_value >= 1e-3:
-                unit = "mV"
-                scale_factor = 1e3
-            elif abs_value >= 1e-6:
-                unit = "µV"
-                scale_factor = 1e6
-            else:
-                unit = "nV"
-                scale_factor = 1e9
-        else:
-            if abs_value >= 1e-6:
-                unit = "µA"
-                scale_factor = 1e6
-            elif abs_value >= 1e-9:
-                unit = "nA"
-                scale_factor = 1e9
-            elif abs_value >= 1e-12:
-                unit = "pA"
-                scale_factor = 1e12
-            else:
-                unit = "fA"
-                scale_factor = 1e15
-        return unit, scale_factor
-
-    def read_values(self, scaled=False):
+    def read_values(self):
         x = float(self.inst.query("OUTP? 0"))
         y = float(self.inst.query("OUTP? 1"))
-        # r = float(self.inst.query("OUTP? 2"))
-        # theta = float(self.inst.query("OUTP? 3"))
-        # freq = float(self.inst.query("FREQ?"))
-        # phase = float(self.inst.query("PHAS?"))
-        # unit, scale_factor = self.get_dynamic_units_and_scale(r)
-        # if scaled:
-        #     x *= scale_factor
-        #     y *= scale_factor
-        #     r *= scale_factor
+        freq = float(self.inst.query("FREQ?"))
+        sensitivity_code = int(self.inst.query("SCAL?"))
+        unit = self.volatage_sensitivity_map[sensitivity_code]
         return {
             "X": x,
             "Y": y,
-            "R": 0,
-            "unit": 0,
-            "theta": 0,
-            "frequency": 0,
-            "phase": 0,
+            "unit": unit,
+            "frequency": freq,
         }
