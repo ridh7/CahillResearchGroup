@@ -17,14 +17,11 @@ class BKPrecision5493C:
             print(f"---Connecting to multimeter: {resource_name}")
             self.inst = self.rm.open_resource(resource_name)
             self.inst.timeout = 5000
-            # self.inst.write("*RST")
-            time.sleep(0.1)
+            self.inst.write("*RST")
             self.inst.write("CONF:VOLT:DC")
             self.inst.write("SENS:VOLT:DC:NPLC 0.2")
-            print(f"{self.inst.query("ROUT:TERM?")}")
-            self.inst.write("ROUT:TERM FRON")
-            print(f"{self.inst.query("ROUT:TERM?")}")
-            print(f"---Multimeter initialized with rear terminals and 0.2 PLC aperture.")
+            self.inst.write("rear")
+            print(f"---Multimeter initialized with {self.inst.query("ROUT:TERM?")} terminal and {self.inst.query("SENS:VOLT:DC:NPLC?")} PLC aperture.")
         except Exception as e:
             print(f"---Multimeter initialization error: {e}")
 
