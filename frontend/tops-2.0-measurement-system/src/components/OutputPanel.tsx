@@ -40,6 +40,7 @@ export default function OutputPanel({
 }: OutputPanelProps) {
   const [moveX, setMoveX] = useState("");
   const [moveY, setMoveY] = useState("");
+  const [xStepSize, setXStepSize] = useState("");
 
   const handleMove = async () => {
     try {
@@ -49,7 +50,7 @@ export default function OutputPanel({
         body: JSON.stringify({
           x: parseFloat(moveX),
           y: parseFloat(moveY),
-          x_step_size: 1,
+          x_step_size: parseFloat(xStepSize),
           sample_rate: 0.01,
         }),
       });
@@ -58,6 +59,7 @@ export default function OutputPanel({
         console.log("Move and logging successful:", data.message);
         setMoveX("");
         setMoveY("");
+        setXStepSize("");
       } else {
         console.error("Move and loggin failed:", data.message);
       }
@@ -69,12 +71,15 @@ export default function OutputPanel({
   const isMoveValid =
     moveX !== "" &&
     moveY !== "" &&
+    xStepSize !== "" &&
     !isNaN(parseFloat(moveX)) &&
     !isNaN(parseFloat(moveY)) &&
+    !isNaN(parseFloat(xStepSize)) &&
     parseFloat(moveX) >= 0 &&
     parseFloat(moveX) <= 110 &&
     parseFloat(moveY) >= 0 &&
-    parseFloat(moveY) <= 75;
+    parseFloat(moveY) <= 75 &&
+    parseFloat(xStepSize) > 0;
 
   return (
     <div className="w-1/5 bg-gray-800 p-4 rounded-lg shadow-lg space-y-6">
@@ -265,6 +270,22 @@ export default function OutputPanel({
                 (parseFloat(value) >= 0 && parseFloat(value) <= 75)
               ) {
                 setMoveY(value);
+              }
+            }}
+          />
+          <input
+            type="number"
+            placeholder="X Step Size (mm)"
+            className={`p-2 rounded bg-gray-700 text-white border ${
+              moveX === "" || parseFloat(xStepSize) <= 0
+                ? "border-red-500"
+                : "border-gray-600 focus:border-teal-500"
+            } focus:outline-none`}
+            value={xStepSize}
+            onChange={(e) => {
+              const value = e.target.value;
+              if (value === "" || parseFloat(value) > 0) {
+                setXStepSize(value);
               }
             }}
           />
