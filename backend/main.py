@@ -14,7 +14,7 @@ import time
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # global_state.stage = ThorlabsBBD302()
+    global_state.stage = ThorlabsBBD302()
     global_state.lockin = SR865A()
     global_state.multimeter = BKPrecision5493C()
     shared_state.pause_lockin_reading.clear()

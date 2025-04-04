@@ -30,11 +30,7 @@ export type FormData = {
 export type LockinData = {
   X: number;
   Y: number;
-  R: number;
-  unit: string;
-  theta: number;
   frequency: number;
-  phase: number;
 };
 
 export type MultimeterData = {
@@ -95,11 +91,7 @@ export default function CalculatePage() {
   const [lockinData, setLockinData] = useState<LockinData>({
     X: 0,
     Y: 0,
-    R: 0,
-    unit: "",
-    theta: 0,
     frequency: 0,
-    phase: 0,
   });
   const [multimeterData, setMultimeterData] = useState<MultimeterData>({
     value: 0,
@@ -235,11 +227,7 @@ export default function CalculatePage() {
     setLockinData({
       X: 0,
       Y: 0,
-      R: 0,
-      unit: "",
-      theta: 0,
       frequency: 0,
-      phase: 0,
     });
     setResetLockinTrigger(true);
     if (lockinConnected) {

@@ -83,11 +83,10 @@ class SR865A:
         x = float(self.inst.query("OUTP? 0"))
         y = float(self.inst.query("OUTP? 1"))
         freq = float(self.inst.query("FREQ?"))
-        sensitivity_code = int(self.inst.query("SCAL?"))
-        unit = self.volatage_sensitivity_map[sensitivity_code]
+        # sensitivity_code = int(self.inst.query("SCAL?"))
+        # unit = self.volatage_sensitivity_map[sensitivity_code]
         return {
             "X": x,
             "Y": y,
-            "unit": unit,
             "frequency": freq,
         }

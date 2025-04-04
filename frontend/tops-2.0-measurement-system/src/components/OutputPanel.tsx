@@ -123,13 +123,9 @@ export default function OutputPanel({
         </div>
         <div className="grid grid-cols-2 gap-2 text-sm">
           <span className="text-gray-400">X:</span>
-          <span className="text-white">
-            {lockinData.X} {lockinData.unit}
-          </span>
+          <span className="text-white">{lockinData.X} V</span>
           <span className="text-gray-400">Y:</span>
-          <span className="text-white">
-            {lockinData.Y} {lockinData.unit}
-          </span>
+          <span className="text-white">{lockinData.Y} V</span>
           <span className="text-gray-400">Freq:</span>
           <span className="text-white">
             {lockinData.frequency.toFixed(2)} Hz
