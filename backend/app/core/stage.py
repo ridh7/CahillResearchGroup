@@ -88,7 +88,8 @@ class ThorlabsBBD302:
         movement_mode,
         delay,
     ):
-
+        start = time.time()
+        sample_count = 0
         if delay == None:
             delay = 1
         if movement_mode == "steps":
@@ -126,10 +127,15 @@ class ThorlabsBBD302:
                 # Calculate next x position using iteration count to avoid accumulation of floating point error
                 x_iteration += 1
                 x = smaller_x + x_iteration * x_step_size
+                sample_count += 1
             # Calculate next y position using iteration count
             y_iteration += 1
             y = smaller_y + y_iteration * y_step_size
         save_to_file(data)
+        elapsed = time.time() - start
+        print(
+            f"---Logged {sample_count} samples during rectangular zigzag scan in {elapsed}s time\n{sample_count / elapsed} samples/second"
+        )
 
     def read_values(self):
         try:
