@@ -151,6 +151,7 @@ class ThorlabsBBD302:
 
     def move_and_log(self, x, y, x_step_size, sample_rate=0.01):
         try:
+            self.channel[1].StartPolling(1)
             self.channel[2].StartPolling(1)  # 1ms polling for Y channel
             target_x = float(x)
             target_y = float(y)
@@ -191,34 +192,35 @@ class ThorlabsBBD302:
 
                     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")
                     with shared_state.value_lock:
-                        lockin_values = (
-                            shared_state.latest_lockin_values.copy()
-                            if shared_state.latest_lockin_values
-                            else {
-                                "X": 0,
-                                "Y": 0,
-                                "frequency": 0,
-                            }
-                        )
-                        multimeter_value = (
-                            shared_state.latest_multimeter_value
-                            if shared_state.latest_multimeter_value is not None
-                            else 0
-                        )
-                        stage_values = (
-                            shared_state.latest_stage_values.copy()
-                            if shared_state.latest_stage_values
-                            else {"x": 0, "y": 0}
-                        )
+                        # lockin_values = (
+                        #     shared_state.latest_lockin_values.copy()
+                        #     if shared_state.latest_lockin_values
+                        #     else {
+                        #         "X": 0,
+                        #         "Y": 0,
+                        #         "frequency": 0,
+                        #     }
+                        # )
+                        # multimeter_value = (
+                        #     shared_state.latest_multimeter_value
+                        #     if shared_state.latest_multimeter_value is not None
+                        #     else 0
+                        # )
+                        # stage_values = (
+                        #     shared_state.latest_stage_values.copy()
+                        #     if shared_state.latest_stage_values
+                        #     else {"x": 0, "y": 0}
+                        # )
+                        stage_values = self.read_values()
 
                     values = {
                         "timestamp": timestamp,
                         "positionX": float(stage_values["x"]),
                         "positionY": float(stage_values["y"]),
-                        "X": lockin_values["X"],
-                        "Y": lockin_values["Y"],
-                        "frequency": lockin_values["frequency"],
-                        "voltage": multimeter_value,
+                        "X": 0,
+                        "Y": 0,
+                        "frequency": 0,
+                        "voltage": 0,
                     }
                     scan_data.append(values)
                     sample_count += 1
@@ -240,20 +242,20 @@ class ThorlabsBBD302:
             # Final sample at last position
             timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")
             with shared_state.value_lock:
-                lockin_values = (
-                    shared_state.latest_lockin_values.copy()
-                    if shared_state.latest_lockin_values
-                    else {
-                        "X": 0,
-                        "Y": 0,
-                        "frequency": 0,
-                    }
-                )
-                multimeter_value = (
-                    shared_state.latest_multimeter_value
-                    if shared_state.latest_multimeter_value is not None
-                    else 0
-                )
+                # lockin_values = (
+                #     shared_state.latest_lockin_values.copy()
+                #     if shared_state.latest_lockin_values
+                #     else {
+                #         "X": 0,
+                #         "Y": 0,
+                #         "frequency": 0,
+                #     }
+                # )
+                # multimeter_value = (
+                #     shared_state.latest_multimeter_value
+                #     if shared_state.latest_multimeter_value is not None
+                #     else 0
+                # )
                 stage_values = (
                     shared_state.latest_stage_values.copy()
                     if shared_state.latest_stage_values
@@ -264,10 +266,10 @@ class ThorlabsBBD302:
                 "timestamp": timestamp,
                 "positionX": float(stage_values["x"]),
                 "positionY": float(stage_values["y"]),
-                "X": lockin_values["X"],
-                "Y": lockin_values["Y"],
-                "frequency": lockin_values["frequency"],
-                "voltage": multimeter_value,
+                "X": 0,
+                "Y": 0,
+                "frequency": 0,
+                "voltage": 0,
             }
             data.append(values)
 
