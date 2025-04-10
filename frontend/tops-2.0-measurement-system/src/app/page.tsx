@@ -7,6 +7,7 @@ import DeviceControls from "../components/DeviceControls";
 import GraphsPanel from "../components/GraphsPanel";
 import OutputPanel from "../components/OutputPanel";
 import SettingsPanel from "../components/SettingsPanel";
+import HeatmapPanel from "../components/HeatmapPanel";
 
 export type FormData = {
   sampleId: string;
@@ -577,18 +578,10 @@ export default function CalculatePage() {
           />
         </div>
 
-        {/* Center Panel */}
-        <GraphsPanel
-          lockinData={lockinData}
-          multimeterData={multimeterData}
-          lockinConnected={lockinConnected}
-          multimeterConnected={multimeterConnected}
-          resetLockin={resetLockinTrigger}
-          resetMultimeter={resetMultimeterTrigger}
-          onResetComplete={handleResetComplete}
-          lockinStartTime={lockinStartTime}
-          multimeterStartTime={multimeterStartTime}
-        />
+        {/* Center Panel - Updated */}
+        <div className="w-1/3 flex flex-col space-y-4">
+          <HeatmapPanel setStatus={setStatus} />
+        </div>
 
         {/* Right Panel */}
         <OutputPanel

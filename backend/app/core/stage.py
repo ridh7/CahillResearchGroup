@@ -192,20 +192,20 @@ class ThorlabsBBD302:
 
                     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")
                     with shared_state.value_lock:
-                        # lockin_values = (
-                        #     shared_state.latest_lockin_values.copy()
-                        #     if shared_state.latest_lockin_values
-                        #     else {
-                        #         "X": 0,
-                        #         "Y": 0,
-                        #         "frequency": 0,
-                        #     }
-                        # )
-                        # multimeter_value = (
-                        #     shared_state.latest_multimeter_value
-                        #     if shared_state.latest_multimeter_value is not None
-                        #     else 0
-                        # )
+                        lockin_values = (
+                            shared_state.latest_lockin_values.copy()
+                            if shared_state.latest_lockin_values
+                            else {
+                                "X": 0,
+                                "Y": 0,
+                                "frequency": 0,
+                            }
+                        )
+                        multimeter_value = (
+                            shared_state.latest_multimeter_value
+                            if shared_state.latest_multimeter_value is not None
+                            else 0
+                        )
                         # stage_values = (
                         #     shared_state.latest_stage_values.copy()
                         #     if shared_state.latest_stage_values
@@ -215,12 +215,12 @@ class ThorlabsBBD302:
 
                     values = {
                         "timestamp": timestamp,
-                        "positionX": float(stage_values["x"]),
-                        "positionY": float(stage_values["y"]),
-                        "X": 0,
-                        "Y": 0,
-                        "frequency": 0,
-                        "voltage": 0,
+                        "positionX": stage_values["x"],
+                        "positionY": stage_values["y"],
+                        "X": lockin_values["X"],
+                        "Y": lockin_values["Y"],
+                        "frequency": lockin_values["frequency"],
+                        "voltage": multimeter_value,
                     }
                     scan_data.append(values)
                     sample_count += 1
@@ -242,34 +242,35 @@ class ThorlabsBBD302:
             # Final sample at last position
             timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")
             with shared_state.value_lock:
-                # lockin_values = (
-                #     shared_state.latest_lockin_values.copy()
-                #     if shared_state.latest_lockin_values
-                #     else {
-                #         "X": 0,
-                #         "Y": 0,
-                #         "frequency": 0,
-                #     }
-                # )
-                # multimeter_value = (
-                #     shared_state.latest_multimeter_value
-                #     if shared_state.latest_multimeter_value is not None
-                #     else 0
-                # )
-                stage_values = (
-                    shared_state.latest_stage_values.copy()
-                    if shared_state.latest_stage_values
-                    else {"x": "0", "y": "0"}
+                lockin_values = (
+                    shared_state.latest_lockin_values.copy()
+                    if shared_state.latest_lockin_values
+                    else {
+                        "X": 0,
+                        "Y": 0,
+                        "frequency": 0,
+                    }
                 )
+                multimeter_value = (
+                    shared_state.latest_multimeter_value
+                    if shared_state.latest_multimeter_value is not None
+                    else 0
+                )
+                # stage_values = (
+                #     shared_state.latest_stage_values.copy()
+                #     if shared_state.latest_stage_values
+                #     else {"x": "0", "y": "0"}
+                # )
+                stage_values = self.read_values()
 
             values = {
                 "timestamp": timestamp,
-                "positionX": float(stage_values["x"]),
-                "positionY": float(stage_values["y"]),
-                "X": 0,
-                "Y": 0,
-                "frequency": 0,
-                "voltage": 0,
+                "positionX": stage_values["x"],
+                "positionY": stage_values["y"],
+                "X": lockin_values["X"],
+                "Y": lockin_values["Y"],
+                "frequency": lockin_values["frequency"],
+                "voltage": multimeter_value,
             }
             data.append(values)
 
