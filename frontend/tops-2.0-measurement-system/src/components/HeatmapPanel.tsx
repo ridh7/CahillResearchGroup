@@ -56,10 +56,11 @@ export default function HeatmapPanel({ setStatus }: HeatmapPanelProps) {
 
     // Extract and round PositionX and PositionY, keep Voltage(V) unrounded
     const xValues = csvData.map(
-      (row) => Math.round(parseFloat(row.PositionX) * 100) / 100 // Round to 2 decimals
+      (row) => Math.round(parseFloat(row.PositionX) * 10) / 10 // Round to 2 decimals
     );
+
     const yValues = csvData.map(
-      (row) => Math.round(parseFloat(row.PositionY) * 100) / 100 // Round to 2 decimals
+      (row) => Math.round(parseFloat(row.PositionY) * 10) / 10 // Round to 2 decimals
     );
     const zValues = csvData.map((row) => parseFloat(row["Voltage(V)"])); // No rounding
 
