@@ -81,7 +81,7 @@ async def send_stage_data(websocket: WebSocket):
             shared_state.latest_stage_values = values
         await websocket.send_json(values)
         # print(f"---Stage read time: {elapsed:.15f}s")
-        await asyncio.sleep(0.005)
+        await asyncio.sleep(0.001)
 
 
 @app.websocket("/ws/lockin")

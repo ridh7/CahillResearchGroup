@@ -51,7 +51,7 @@ export default function OutputPanel({
           x: parseFloat(moveX),
           y: parseFloat(moveY),
           x_step_size: parseFloat(xStepSize),
-          sample_rate: 0.02,
+          sample_rate: 0.03,
         }),
       });
       const data = await response.json();

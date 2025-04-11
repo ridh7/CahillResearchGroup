@@ -1,5 +1,6 @@
 import clr
 import time
+import traceback
 from datetime import datetime
 from app.models.state import global_state
 from app.utils.file_utils import save_to_file
@@ -149,15 +150,17 @@ class ThorlabsBBD302:
         except Exception as e:
             print(f"---Error in moving: {e}")
 
-    def move_and_log(self, x, y, x_step_size, sample_rate=0.01):
+    def move_and_log(self, x, y, x_step_size, sample_rate):
         try:
             self.channel[1].StartPolling(1)
             self.channel[2].StartPolling(1)  # 1ms polling for Y channel
             target_x = float(x)
             target_y = float(y)
             x_step_size = float(x_step_size)
-            current_x = self.channel[1].DevicePosition  # Decimal from DevicePosition
-            current_y = self.channel[2].DevicePosition  # Decimal from DevicePosition
+            start_x = self.channel[1].DevicePosition  # Decimal, initial X
+            start_y = self.channel[2].DevicePosition  # Decimal, initial Y
+            current_x = start_x
+            current_y = start_y
 
             def move_stage(x_pos, y_pos):
                 self.channel[1].MoveTo(x_pos, 600000)  # Expects Decimal
@@ -165,7 +168,7 @@ class ThorlabsBBD302:
 
             data = []
             start_time = time.time()
-            sample_count = 0
+            actual_sample_count = 0  # Total samples recorded
             going_up = True  # Start with upward scan
 
             # Iterate over X positions
@@ -179,12 +182,38 @@ class ThorlabsBBD302:
                     print(f"---Starting downward Y scan at x={current_x}")
                     end_y = current_y
 
+                # Capture first point before starting movement
+                timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")
+                with shared_state.value_lock:
+                    lockin_values = (
+                        shared_state.latest_lockin_values.copy()
+                        if shared_state.latest_lockin_values
+                        else {"X": 0, "Y": 0, "frequency": 0}
+                    )
+                    multimeter_value = (
+                        shared_state.latest_multimeter_value
+                        if shared_state.latest_multimeter_value is not None
+                        else 0
+                    )
+                    stage_values = self.read_values()
+
+                first_values = {
+                    "timestamp": timestamp,
+                    "positionX": stage_values["x"],
+                    "positionY": stage_values["y"],
+                    "X": lockin_values["X"],
+                    "Y": lockin_values["Y"],
+                    "frequency": lockin_values["frequency"],
+                    "voltage": multimeter_value,
+                }
+                scan_data = [first_values]  # Start scan_data with first point
+                actual_sample_count += 1
+
                 # Move and log in the current direction
                 move_thread = Thread(target=move_stage, args=(current_x, end_y))
                 move_thread.start()
                 print(f"---Started moving to ({current_x}, {end_y})")
 
-                scan_data = []
                 while True:
                     pos_y = self.channel[2].DevicePosition  # Decimal
                     if Math.Abs(pos_y - end_y) < Decimal(0.01):
@@ -195,22 +224,13 @@ class ThorlabsBBD302:
                         lockin_values = (
                             shared_state.latest_lockin_values.copy()
                             if shared_state.latest_lockin_values
-                            else {
-                                "X": 0,
-                                "Y": 0,
-                                "frequency": 0,
-                            }
+                            else {"X": 0, "Y": 0, "frequency": 0}
                         )
                         multimeter_value = (
                             shared_state.latest_multimeter_value
                             if shared_state.latest_multimeter_value is not None
                             else 0
                         )
-                        # stage_values = (
-                        #     shared_state.latest_stage_values.copy()
-                        #     if shared_state.latest_stage_values
-                        #     else {"x": 0, "y": 0}
-                        # )
                         stage_values = self.read_values()
 
                     values = {
@@ -223,7 +243,7 @@ class ThorlabsBBD302:
                         "voltage": multimeter_value,
                     }
                     scan_data.append(values)
-                    sample_count += 1
+                    actual_sample_count += 1
                     time.sleep(sample_rate)
 
                 move_thread.join()
@@ -239,50 +259,63 @@ class ThorlabsBBD302:
                 self.channel[1].MoveTo(current_x, 600000)
                 going_up = not going_up  # Toggle direction
 
-            # Final sample at last position
-            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")
-            with shared_state.value_lock:
-                lockin_values = (
-                    shared_state.latest_lockin_values.copy()
-                    if shared_state.latest_lockin_values
-                    else {
-                        "X": 0,
-                        "Y": 0,
-                        "frequency": 0,
-                    }
-                )
-                multimeter_value = (
-                    shared_state.latest_multimeter_value
-                    if shared_state.latest_multimeter_value is not None
-                    else 0
-                )
-                # stage_values = (
-                #     shared_state.latest_stage_values.copy()
-                #     if shared_state.latest_stage_values
-                #     else {"x": "0", "y": "0"}
-                # )
-                stage_values = self.read_values()
+            # Filter data: bounds and duplicates
+            end_x = Decimal(target_x + x_step_size / 2)
+            end_y = Decimal(target_y + 0.05)
+            filtered_data = []
+            invalid_sample_count = 0
+            prev_pos_x = None  # Initialize previous X position
+            prev_pos_y = None  # Initialize previous Y position
 
-            values = {
-                "timestamp": timestamp,
-                "positionX": stage_values["x"],
-                "positionY": stage_values["y"],
-                "X": lockin_values["X"],
-                "Y": lockin_values["Y"],
-                "frequency": lockin_values["frequency"],
-                "voltage": multimeter_value,
-            }
-            data.append(values)
+            for entry in data:
+                pos_x = Decimal(float(entry["positionX"]))
+                pos_y = Decimal(float(entry["positionY"]))
+                min_y = min(start_y, end_y)
+                max_y = max(start_y, end_y)
 
-            save_to_file(data)
+                # Check bounds
+                within_bounds = (start_x <= pos_x <= end_x) and (
+                    min_y <= pos_y <= max_y
+                )
+
+                # Check for duplicates (skip if same as previous)
+                is_duplicate = prev_pos_y is not None and pos_y == prev_pos_y
+
+                if within_bounds and not is_duplicate:
+                    filtered_data.append(entry)
+                    prev_pos_x = (
+                        pos_x  # Update previous positions only for kept samples
+                    )
+                    prev_pos_y = pos_y
+                else:
+                    if not within_bounds:
+                        print(
+                            f"---Filtered out (bounds): X={pos_x}, Y={pos_y} outside bounds X:[{start_x}, {end_x}], Y:[{min_y}, {max_y}]"
+                        )
+                    elif is_duplicate:
+                        print(
+                            f"---Filtered out (duplicate): X={pos_x}, Y={pos_y} matches previous X={prev_pos_x}, Y={prev_pos_y}"
+                        )
+                    invalid_sample_count += 1
+
+            valid_sample_count = actual_sample_count - invalid_sample_count
+
+            save_to_file(filtered_data)
 
             elapsed_time = time.time() - start_time
             sample_rate_achieved = (
-                sample_count / elapsed_time if elapsed_time > 0 else 0
+                actual_sample_count / elapsed_time if elapsed_time > 0 else 0
             )
             print(
-                f"---Logged {len(data)} samples during rectangular zigzag scan to ({x}, {y}) "
+                f"---Logged {actual_sample_count} actual samples, "
+                f"{invalid_sample_count} invalid samples discarded, "
+                f"{valid_sample_count} valid samples saved during rectangular zigzag scan to ({x}, {y}) "
                 f"in {elapsed_time:.2f}s time\n{sample_rate_achieved:.2f} samples/second"
             )
         except Exception as e:
             print(f"---Error in move_and_log: {e}")
+            traceback.print_exc()
+            tb = traceback.extract_tb(e.__traceback__)
+            if tb:
+                filename, line_number, func_name, text = tb[-1]
+                print(f"---Error occurred at line {line_number} in {filename}: {text}")
