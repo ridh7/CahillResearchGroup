@@ -98,7 +98,7 @@ export default function HeatmapPanel({ setStatus }: HeatmapPanelProps) {
       x: uniqueX,
       y: uniqueY,
       type: "heatmap",
-      colorscale: "Viridis",
+      colorscale: "Greys",
       zsmooth: false, // Disable smoothing for sharp cell edges
       showscale: true, // Show colorbar for reference
       hovertemplate: "X: %{x}<br>Y: %{y}<br>Voltage: %{z} µV<extra></extra>",
