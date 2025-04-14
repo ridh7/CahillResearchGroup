@@ -1,4 +1,3 @@
-// src/components/HeatmapPanel.tsx
 "use client";
 import { useState } from "react";
 import dynamic from "next/dynamic";
@@ -56,20 +55,20 @@ export default function HeatmapPanel({ setStatus }: HeatmapPanelProps) {
 
     // Extract and round PositionX and PositionY
     const xValues = csvData.map(
-      (row) => Math.round(parseFloat(row.PositionX) * 100) / 100 // Round to 2 decimals
+      (row) => Math.round(parseFloat(row.PositionX) * 10) / 10
     );
     const yValues = csvData.map(
-      (row) => Math.round(parseFloat(row.PositionY) * 100) / 100 // Round to 2 decimals
+      (row) => Math.round(parseFloat(row.PositionY) * 10) / 10
     );
     // Extract z-values for each heatmap
-    const voltageValues = csvData.map((row) => parseFloat(row["Voltage(V)"])); // No rounding
+    const voltageValues = csvData.map((row) => parseFloat(row["Voltage(V)"]));
     const xVoltageValues = csvData.map((row) => parseFloat(row["X(V)"]));
     const yVoltageValues = csvData.map((row) => parseFloat(row["Y(V)"]));
     const ratioValues = csvData.map(
       (row) => parseFloat(row["X(V)"]) / parseFloat(row["Y(V)"])
     );
 
-    // Filter out invalid data points (ensure all values are valid)
+    // Filter out invalid data points
     const filteredData = xValues
       .map((x, i) => ({
         x,
@@ -87,7 +86,7 @@ export default function HeatmapPanel({ setStatus }: HeatmapPanelProps) {
           !isNaN(d.xVoltage) &&
           !isNaN(d.yVoltage) &&
           !isNaN(d.ratio) &&
-          isFinite(d.ratio) // Avoid division by zero
+          isFinite(d.ratio)
       );
 
     if (filteredData.length === 0) {
@@ -120,10 +119,10 @@ export default function HeatmapPanel({ setStatus }: HeatmapPanelProps) {
     filteredData.forEach((point) => {
       const xIndex = uniqueX.indexOf(point.x);
       const yIndex = uniqueY.indexOf(point.y);
-      voltageGrid[yIndex][xIndex] = point.voltage * 1e6; // Scale to µV
-      xVoltageGrid[yIndex][xIndex] = point.xVoltage; // Raw value
-      yVoltageGrid[yIndex][xIndex] = point.yVoltage; // Raw value
-      ratioGrid[yIndex][xIndex] = point.ratio; // Raw ratio
+      voltageGrid[yIndex][xIndex] = point.voltage;
+      xVoltageGrid[yIndex][xIndex] = point.xVoltage;
+      yVoltageGrid[yIndex][xIndex] = point.yVoltage;
+      ratioGrid[yIndex][xIndex] = point.ratio;
     });
 
     // Define heatmap data for each plot
@@ -135,14 +134,14 @@ export default function HeatmapPanel({ setStatus }: HeatmapPanelProps) {
       colorscale: "Greys",
       zsmooth: false,
       showscale: true,
-      hovertemplate: "X: %{x}<br>Y: %{y}<br>Voltage: %{z} µV<extra></extra>",
+      hovertemplate: "X: %{x}<br>Y: %{y}<br>Voltage: %{z} V<extra></extra>",
       xaxis: "x1",
       yaxis: "y1",
       colorbar: {
         title: "Voltage (µV)",
-        x: 0.45, // Position to the right of the first plot
-        y: 0.8, // Center vertically in top row
-        len: 0.4, // Length of the colorbar
+        x: 0.4,
+        y: 0.8,
+        len: 0.4,
         thickness: 20,
       },
     };
@@ -160,8 +159,8 @@ export default function HeatmapPanel({ setStatus }: HeatmapPanelProps) {
       yaxis: "y2",
       colorbar: {
         title: "X(V) (V)",
-        x: 1.05, // Position to the right of the second plot
-        y: 0.8, // Center vertically in top row
+        x: 1.0,
+        y: 0.8,
         len: 0.4,
         thickness: 20,
       },
@@ -173,15 +172,16 @@ export default function HeatmapPanel({ setStatus }: HeatmapPanelProps) {
       y: uniqueY,
       type: "heatmap",
       colorscale: "Greys",
+      reversescale: true,
       zsmooth: false,
       showscale: true,
-      hovertemplate: "X: %{x}<br>Y: %{y}<br>Y(V): %{z} V<extra></extra>",
+      hovertemplate: "X: %{y}<br>Y: %{y}<br>Y(V): %{z} V<extra></extra>",
       xaxis: "x3",
       yaxis: "y3",
       colorbar: {
         title: "Y(V) (V)",
-        x: 0.45, // Position to the right of the third plot
-        y: 0.2, // Center vertically in bottom row
+        x: 0.4,
+        y: 0.2,
         len: 0.4,
         thickness: 20,
       },
@@ -193,6 +193,7 @@ export default function HeatmapPanel({ setStatus }: HeatmapPanelProps) {
       y: uniqueY,
       type: "heatmap",
       colorscale: "Greys",
+      reversescale: true,
       zsmooth: false,
       showscale: true,
       hovertemplate: "X: %{x}<br>Y: %{y}<br>X/Y Ratio: %{z}<extra></extra>",
@@ -200,8 +201,8 @@ export default function HeatmapPanel({ setStatus }: HeatmapPanelProps) {
       yaxis: "y4",
       colorbar: {
         title: "X/Y Ratio",
-        x: 1.05, // Position to the right of the fourth plot
-        y: 0.2, // Center vertically in bottom row
+        x: 1.0,
+        y: 0.2,
         len: 0.4,
         thickness: 20,
       },
@@ -240,69 +241,159 @@ export default function HeatmapPanel({ setStatus }: HeatmapPanelProps) {
           layout={{
             title: "Voltage Heatmaps",
             grid: { rows: 2, columns: 2, pattern: "independent" },
-            // Top-left: Voltage(V)
             xaxis: {
-              title: "Position X",
+              title: {
+                text: "Position X",
+                font: {
+                  color: "black",
+                },
+                standoff: 5,
+              },
               showgrid: true,
               gridcolor: "white",
               gridwidth: 1,
-              domain: [0, 0.45], // Left half
+              domain: [0, 0.4],
             },
             yaxis: {
-              title: "Position Y",
+              title: {
+                text: "Position Y",
+                font: {
+                  color: "black",
+                },
+              },
               showgrid: true,
               gridcolor: "white",
               gridwidth: 1,
-              domain: [0.55, 1], // Top half
+              domain: [0.6, 1],
             },
-            // Top-right: X(V)
             xaxis2: {
-              title: "Position X",
+              title: {
+                text: "Position X",
+                font: {
+                  color: "black",
+                },
+                standoff: 5,
+              },
               showgrid: true,
               gridcolor: "white",
               gridwidth: 1,
-              domain: [0.55, 1], // Right half
+              domain: [0.6, 1],
             },
             yaxis2: {
-              title: "Position Y",
+              title: {
+                text: "Position Y",
+                font: {
+                  color: "black",
+                },
+              },
               showgrid: true,
               gridcolor: "white",
               gridwidth: 1,
-              domain: [0.55, 1], // Top half
+              domain: [0.6, 1],
             },
-            // Bottom-left: Y(V)
             xaxis3: {
-              title: "Position X",
+              title: {
+                text: "Position X",
+                font: {
+                  color: "black",
+                },
+                standoff: 5,
+              },
               showgrid: true,
               gridcolor: "white",
               gridwidth: 1,
-              domain: [0, 0.45], // Left half
+              domain: [0, 0.4],
             },
             yaxis3: {
-              title: "Position Y",
+              title: {
+                text: "Position Y",
+                font: {
+                  color: "black",
+                },
+              },
               showgrid: true,
               gridcolor: "white",
               gridwidth: 1,
-              domain: [0, 0.45], // Bottom half
+              domain: [0, 0.4],
             },
-            // Bottom-right: X/Y Ratio
             xaxis4: {
-              title: "Position X",
+              title: {
+                text: "Position X",
+                font: {
+                  color: "black",
+                },
+                standoff: 5,
+              },
               showgrid: true,
               gridcolor: "white",
               gridwidth: 1,
-              domain: [0.55, 1], // Right half
+              domain: [0.6, 1],
             },
             yaxis4: {
-              title: "Position Y",
+              title: {
+                text: "Position Y",
+                font: {
+                  color: "black",
+                },
+              },
               showgrid: true,
-              gridcolor: "white",
+              gridcolor: "black",
               gridwidth: 1,
-              domain: [0, 0.45], // Bottom half
+              domain: [0, 0.4],
             },
-            margin: { t: 50, r: 50, b: 50, l: 50 },
+            margin: { t: 50, r: 75, b: 50, l: 75 },
             plot_bgcolor: "black",
-            paper_bgcolor: "black",
+            paper_bgcolor: "gray",
+            annotations: [
+              
+              {
+                text: "Voltage (V)",
+                xref: "paper",
+                yref: "paper",
+                x: 0.2, 
+                y: 1.0,
+                showarrow: false,
+                font: { size: 14, color: "white" },
+                xanchor: "center",
+                yanchor: "bottom",
+              },
+              
+              {
+                text: "X in-phase (V)",
+                xref: "paper",
+                yref: "paper",
+                x: 0.8, 
+                y: 1.0, 
+                showarrow: false,
+                font: { size: 14, color: "white" },
+                xanchor: "center",
+                yanchor: "bottom",
+              },
+              
+              {
+                text: "Y out-of-phase (V)",
+                xref: "paper",
+                yref: "paper",
+                x: 0.2, 
+                y: 0.4, 
+                showarrow: false,
+                font: { size: 14, color: "white" },
+                xanchor: "center",
+                yanchor: "bottom",
+              },
+              
+              {
+                text: "X/Y Ratio",
+                xref: "paper",
+                yref: "paper",
+                x: 0.8, 
+                y: 0.4, 
+                showarrow: false,
+                font: { size: 14, color: "white" },
+                xanchor: "center",
+                yanchor: "bottom",
+              },
+            ],
           }}
           config={{ responsive: true, displayModeBar: false }}
         />

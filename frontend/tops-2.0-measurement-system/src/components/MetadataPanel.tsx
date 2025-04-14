@@ -17,10 +17,6 @@ export default function MetadataPanel({
 }: MetadataPanelProps) {
   const metadataFields: MetadataField[] = [
     { key: "sampleId", label: "Sample ID" },
-    { key: "sampleName", label: "Sample Name" },
-    { key: "probeLaserPower", label: "Probe Laser Power (mW)" },
-    { key: "pumpLaserPower", label: "Pump Laser Power (mW)" },
-    { key: "aluminumThickness", label: "Aluminum Thickness (nm)" },
     { key: "comments", label: "Comments", type: "textarea" },
   ];
 

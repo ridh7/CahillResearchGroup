@@ -231,7 +231,12 @@ class ThorlabsBBD302:
                             if shared_state.latest_multimeter_value is not None
                             else 0
                         )
-                        stage_values = self.read_values()
+                        # stage_values = self.read_values()
+                        stage_values = (
+                            shared_state.latest_stage_values.copy()
+                            if shared_state.latest_stage_values
+                            else {"x": -1, "y": -1}
+                        )
 
                     values = {
                         "timestamp": timestamp,
@@ -248,6 +253,33 @@ class ThorlabsBBD302:
 
                 move_thread.join()
 
+                # Capture end point after movement completes
+                timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")
+                with shared_state.value_lock:
+                    lockin_values = (
+                        shared_state.latest_lockin_values.copy()
+                        if shared_state.latest_lockin_values
+                        else {"X": 0, "Y": 0, "frequency": 0}
+                    )
+                    multimeter_value = (
+                        shared_state.latest_multimeter_value
+                        if shared_state.latest_multimeter_value is not None
+                        else 0
+                    )
+                    stage_values = self.read_values()
+
+                end_values = {
+                    "timestamp": timestamp,
+                    "positionX": stage_values["x"],
+                    "positionY": stage_values["y"],
+                    "X": lockin_values["X"],
+                    "Y": lockin_values["Y"],
+                    "frequency": lockin_values["frequency"],
+                    "voltage": multimeter_value,
+                }
+                scan_data.append(end_values)  # Add end point to scan_data
+                actual_sample_count += 1
+
                 # Append scan data (reverse if downward to maintain Y increasing order)
                 if going_up:
                     data.extend(scan_data)
@@ -260,7 +292,9 @@ class ThorlabsBBD302:
                 going_up = not going_up  # Toggle direction
 
             # Filter data: bounds and duplicates
+            start_x -= Decimal(x_step_size / 2)
             end_x = Decimal(target_x + x_step_size / 2)
+            start_y -= Decimal(0.05)
             end_y = Decimal(target_y + 0.05)
             filtered_data = []
             invalid_sample_count = 0

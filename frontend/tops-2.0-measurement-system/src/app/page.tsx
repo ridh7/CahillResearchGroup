@@ -11,10 +11,6 @@ import HeatmapPanel from "../components/HeatmapPanel";
 
 export type FormData = {
   sampleId: string;
-  sampleName: string;
-  probeLaserPower: string;
-  pumpLaserPower: string;
-  aluminumThickness: string;
   comments: string;
   x1: string;
   x2: string;
@@ -72,10 +68,6 @@ function useClickOutside(
 export default function CalculatePage() {
   const [formData, setFormData] = useState<FormData>({
     sampleId: "",
-    sampleName: "",
-    probeLaserPower: "",
-    pumpLaserPower: "",
-    aluminumThickness: "",
     comments: "",
     x1: "",
     x2: "",
@@ -579,7 +571,7 @@ export default function CalculatePage() {
         </div>
 
         {/* Center Panel - Updated */}
-        <div className="w-1/3 flex flex-col space-y-4">
+        <div className="w-1/2 flex flex-col space-y-4">
           <HeatmapPanel setStatus={setStatus} />
         </div>
 
