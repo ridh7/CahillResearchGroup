@@ -4,6 +4,7 @@ import asyncio
 from app.models.stage import *
 from app.models.channel import *
 from app.models.lockin import *
+from app.models.multimeter import *
 from app.models.state import global_state
 import clr
 from System import Decimal
@@ -227,6 +228,53 @@ async def change_lockin_time_constant(params: LockinTimeConstantRequest):
             return {"status": "success", "time_constant": new_time_constant}
         else:
             return {"status": "error", "message": "Time constant out of range"}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+
+@router.get("/multimeter/settings")
+async def get_multimeter_settings():
+    try:
+        settings = await asyncio.get_event_loop().run_in_executor(
+            executor,
+            lambda: {
+                "aperture": global_state.multimeter.get_aperture(),
+                "terminal": global_state.multimeter.get_terminal(),
+            },
+        )
+        return {
+            "status": "success",
+            "aperture": settings["aperture"],
+            "terminal": settings["terminal"],
+        }
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+
+@router.post("/multimeter/aperture")
+async def set_multimeter_aperture(params: MultimeterApertureRequest):
+    try:
+        success = await asyncio.get_event_loop().run_in_executor(
+            executor, lambda: global_state.multimeter.set_aperture(params.nplc)
+        )
+        if success:
+            return {"status": "success", "aperture": params.nplc}
+        else:
+            return {"status": "error", "message": "Failed to set aperture"}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+
+@router.post("/multimeter/terminal")
+async def set_multimeter_terminal(params: MultimeterTerminalRequest):
+    try:
+        success = await asyncio.get_event_loop().run_in_executor(
+            executor, lambda: global_state.multimeter.set_terminal(params.terminal)
+        )
+        if success:
+            return {"status": "success", "terminal": params.terminal}
+        else:
+            return {"status": "error", "message": "Failed to set terminal"}
     except Exception as e:
         return {"status": "error", "message": str(e)}
 

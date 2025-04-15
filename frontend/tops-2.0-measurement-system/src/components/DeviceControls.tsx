@@ -8,13 +8,15 @@ type DeviceControlsProps = {
   handleHome: (direction: string) => void;
   status: string;
   lockinSettings: { sensitivity: number; timeConstant: number };
-  setLockinSettings: React.Dispatch<
-    React.SetStateAction<{ sensitivity: number; timeConstant: number }>
-  >;
   changeLockinSensitivity: (increment: boolean) => void;
   changeLockinTimeConstant: (increment: boolean) => void;
   fetchLockinSettings: () => void;
   lockinConnected: boolean;
+  multimeterSettings: { aperture: number; terminal: string };
+  fetchMultimeterSettings: () => Promise<void>;
+  changeMultimeterAperture: (nplc: number) => void;
+  changeMultimeterTerminal: (terminal: string) => void;
+  multimeterConnected: boolean;
 };
 
 const initialFormData = {
@@ -39,11 +41,15 @@ export default function DeviceControls({
   handleHome,
   status,
   lockinSettings,
-  setLockinSettings,
   changeLockinSensitivity,
   changeLockinTimeConstant,
   fetchLockinSettings,
   lockinConnected,
+  multimeterSettings,
+  changeMultimeterAperture,
+  changeMultimeterTerminal,
+  fetchMultimeterSettings,
+  multimeterConnected,
 }: DeviceControlsProps) {
   const [activeTab, setActiveTab] = useState<"stage" | "lockin" | "multimeter">(
     "stage"
@@ -136,7 +142,10 @@ export default function DeviceControls({
           className={`flex-1 py-2 ${
             activeTab === "multimeter" ? "bg-teal-600" : "bg-gray-700"
           } text-white rounded-r`}
-          onClick={() => setActiveTab("multimeter")}
+          onClick={() => {
+            setActiveTab("multimeter");
+            fetchMultimeterSettings();
+          }}
         >
           Multimeter
         </button>
@@ -519,7 +528,107 @@ export default function DeviceControls({
         </div>
       )}
       {activeTab === "multimeter" && (
-        <p className="text-gray-400">Controlled via Output Panel</p>
+        <div className="space-y-4">
+          {/* Aperture Control */}
+          <div className="flex items-center space-x-2">
+            <label className="text-white w-24">Aperture (NPLC)</label>
+            <button
+              onClick={() => {
+                const validNPLC = [0.02, 0.2, 1, 10, 100];
+                const currentIndex = validNPLC.indexOf(
+                  multimeterSettings.aperture
+                );
+                if (currentIndex > 0) {
+                  changeMultimeterAperture(validNPLC[currentIndex - 1]);
+                }
+              }}
+              disabled={
+                multimeterSettings.aperture === 0.02 || multimeterConnected
+              }
+              className="p-2 bg-gray-700 text-white rounded hover:bg-gray-600 disabled:opacity-50"
+            >
+              <svg
+                className="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M5 10l7 7 7-7"
+                />
+              </svg>
+            </button>
+            <input
+              type="text"
+              value={multimeterSettings.aperture.toString()}
+              readOnly
+              className="p-2 rounded bg-gray-700 text-white border border-gray-600 w-24 text-center"
+            />
+            <button
+              onClick={() => {
+                const validNPLC = [0.02, 0.2, 1, 10, 100];
+                const currentIndex = validNPLC.indexOf(
+                  multimeterSettings.aperture
+                );
+                if (currentIndex < validNPLC.length - 1) {
+                  changeMultimeterAperture(validNPLC[currentIndex + 1]);
+                }
+              }}
+              disabled={
+                multimeterSettings.aperture === 100 || multimeterConnected
+              }
+              className="p-2 bg-gray-700 text-white rounded hover:bg-gray-600 disabled:opacity-50"
+            >
+              <svg
+                className="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M19 14l-7-7-7 7"
+                />
+              </svg>
+            </button>
+          </div>
+
+          {/* Terminal Control */}
+          <div className="flex items-center space-x-2">
+            <label className="text-white w-24">Terminal</label>
+            <div className="flex space-x-4">
+              <label className="flex items-center text-white">
+                <input
+                  type="radio"
+                  name="terminal"
+                  value="front"
+                  checked={multimeterSettings.terminal === "fron"}
+                  onChange={() => changeMultimeterTerminal("fron")}
+                  className="mr-2 text-teal-600 focus:ring-teal-500"
+                  disabled={multimeterConnected}
+                />
+                Front
+              </label>
+              <label className="flex items-center text-white">
+                <input
+                  type="radio"
+                  name="terminal"
+                  value="rear"
+                  checked={multimeterSettings.terminal === "rear"}
+                  onChange={() => changeMultimeterTerminal("rear")}
+                  className="mr-2 text-teal-600 focus:ring-teal-500"
+                  disabled={multimeterConnected}
+                />
+                Rear
+              </label>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

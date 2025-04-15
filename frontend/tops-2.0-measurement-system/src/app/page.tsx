@@ -34,8 +34,9 @@ export type LockinData = {
 
 export type MultimeterData = {
   value: number;
+  aperture?: number;
+  terminal?: string;
 };
-
 export type StageData = {
   x: number;
   y: number;
@@ -94,6 +95,10 @@ export default function CalculatePage() {
   });
   const [multimeterData, setMultimeterData] = useState<MultimeterData>({
     value: 0,
+  });
+  const [multimeterSettings, setMultimeterSettings] = useState({
+    aperture: 0, // Default NPLC
+    terminal: "", // Default terminal
   });
   const [stageData, setStageData] = useState<StageData>({
     x: 0,
@@ -588,6 +593,78 @@ export default function CalculatePage() {
     }
   };
 
+  const fetchMultimeterSettings = async () => {
+    try {
+      const response = await fetch("http://localhost:8000/multimeter/settings");
+      const data = await response.json();
+      console.log(data);
+      if (data.status === "success") {
+        setMultimeterSettings({
+          aperture: data.aperture,
+          terminal: data.terminal,
+        });
+      } else {
+        console.error("Failed to fetch multimeter settings:", data.message);
+        setStatus("Error fetching multimeter settings");
+      }
+    } catch (error) {
+      console.error("Error fetching multimeter settings:", error);
+      setStatus("Error fetching multimeter settings");
+    }
+  };
+
+  const changeMultimeterAperture = async (nplc: number) => {
+    try {
+      const response = await fetch(
+        "http://localhost:8000/multimeter/aperture",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ nplc }),
+        }
+      );
+      const data = await response.json();
+      if (data.status === "success") {
+        setMultimeterSettings((prev) => ({
+          ...prev,
+          aperture: data.aperture,
+        }));
+      } else {
+        console.error("Failed to set aperture:", data.message);
+        setStatus("Error setting aperture");
+      }
+    } catch (error) {
+      console.error("Error setting aperture:", error);
+      setStatus("Error setting aperture");
+    }
+  };
+
+  const changeMultimeterTerminal = async (terminal: string) => {
+    try {
+      const response = await fetch(
+        "http://localhost:8000/multimeter/terminal",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ terminal }),
+        }
+      );
+      const data = await response.json();
+      if (data.status === "success") {
+        setMultimeterSettings((prev) => ({
+          ...prev,
+          terminal: data.terminal,
+        }));
+      } else {
+        console.error("Failed to set terminal:", data.message);
+        setStatus("Error setting terminal");
+      }
+    } catch (error) {
+      console.error("Error setting terminal:", error);
+      setStatus("Error setting terminal");
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-900 flex flex-col">
       {/* Top Bar */}
@@ -637,11 +714,15 @@ export default function CalculatePage() {
             handleHome={handleHome}
             status={status}
             lockinSettings={lockinSettings}
-            setLockinSettings={setLockinSettings}
             changeLockinSensitivity={changeLockinSensitivity}
             changeLockinTimeConstant={changeLockinTimeConstant}
             fetchLockinSettings={fetchLockinSettings}
             lockinConnected={lockinConnected}
+            multimeterSettings={multimeterSettings}
+            fetchMultimeterSettings={fetchMultimeterSettings}
+            changeMultimeterAperture={changeMultimeterAperture}
+            changeMultimeterTerminal={changeMultimeterTerminal}
+            multimeterConnected={multimeterConnected}
           />
         </div>
 
