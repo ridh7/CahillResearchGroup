@@ -7,14 +7,18 @@ type DeviceControlsProps = {
   handleSubmit: () => void;
   handleHome: (direction: string) => void;
   status: string;
+  lockinSettings: { sensitivity: number; timeConstant: number };
+  setLockinSettings: React.Dispatch<
+    React.SetStateAction<{ sensitivity: number; timeConstant: number }>
+  >;
+  changeLockinSensitivity: (increment: boolean) => void;
+  changeLockinTimeConstant: (increment: boolean) => void;
+  fetchLockinSettings: () => void;
+  lockinConnected: boolean;
 };
 
 const initialFormData = {
   sampleId: "",
-  sampleName: "",
-  probeLaserPower: "",
-  pumpLaserPower: "",
-  aluminumThickness: "",
   comments: "",
   x1: "",
   x2: "",
@@ -34,6 +38,12 @@ export default function DeviceControls({
   handleSubmit,
   handleHome,
   status,
+  lockinSettings,
+  setLockinSettings,
+  changeLockinSensitivity,
+  changeLockinTimeConstant,
+  fetchLockinSettings,
+  lockinConnected,
 }: DeviceControlsProps) {
   const [activeTab, setActiveTab] = useState<"stage" | "lockin" | "multimeter">(
     "stage"
@@ -115,7 +125,10 @@ export default function DeviceControls({
           className={`flex-1 py-2 ${
             activeTab === "lockin" ? "bg-teal-600" : "bg-gray-700"
           } text-white`}
-          onClick={() => setActiveTab("lockin")}
+          onClick={() => {
+            setActiveTab("lockin");
+            fetchLockinSettings();
+          }}
         >
           Lock-in
         </button>
@@ -347,7 +360,163 @@ export default function DeviceControls({
         </div>
       )}
       {activeTab === "lockin" && (
-        <p className="text-gray-400">Controlled via Output Panel</p>
+        <div className="space-y-4">
+          {/* Sensitivity Control */}
+          <div className="flex items-center space-x-2">
+            <label className="text-white w-24">Sensitivity</label>
+            <button
+              onClick={() => changeLockinSensitivity(true)}
+              disabled={lockinSettings.sensitivity === 27 || lockinConnected}
+              className="p-2 bg-gray-700 text-white rounded hover:bg-gray-600 disabled:opacity-50"
+            >
+              <svg
+                className="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M5 10l7 7 7-7"
+                />
+              </svg>
+            </button>
+            <input
+              type="text"
+              value={
+                {
+                  0: "1 V",
+                  1: "500 mV",
+                  2: "200 mV",
+                  3: "100 mV",
+                  4: "50 mV",
+                  5: "20 mV",
+                  6: "10 mV",
+                  7: "5 mV",
+                  8: "2 mV",
+                  9: "1 mV",
+                  10: "500 µV",
+                  11: "200 µV",
+                  12: "100 µV",
+                  13: "50 µV",
+                  14: "20 µV",
+                  15: "10 µV",
+                  16: "5 µV",
+                  17: "2 µV",
+                  18: "1 µV",
+                  19: "500 nV",
+                  20: "200 nV",
+                  21: "100 nV",
+                  22: "50 nV",
+                  23: "20 nV",
+                  24: "10 nV",
+                  25: "5 nV",
+                  26: "2 nV",
+                  27: "1 nV",
+                }[lockinSettings.sensitivity] || "Unknown"
+              }
+              readOnly
+              className="p-2 rounded bg-gray-700 text-white border border-gray-600 w-24 text-center"
+            />
+            <button
+              onClick={() => changeLockinSensitivity(false)}
+              disabled={lockinSettings.sensitivity === 0 || lockinConnected}
+              className="p-2 bg-gray-700 text-white rounded hover:bg-gray-600 disabled:opacity-50"
+            >
+              <svg
+                className="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M19 14l-7-7-7 7"
+                />
+              </svg>
+            </button>
+          </div>
+
+          {/* Time Constant Control */}
+          <div className="flex items-center space-x-2">
+            <label className="text-white w-24">Time Constant</label>
+            <button
+              onClick={() => changeLockinTimeConstant(false)}
+              disabled={lockinSettings.timeConstant === 0 || lockinConnected}
+              className="p-2 bg-gray-700 text-white rounded hover:bg-gray-600 disabled:opacity-50"
+            >
+              <svg
+                className="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M5 10l7 7 7-7"
+                />
+              </svg>
+            </button>
+            <input
+              type="text"
+              value={
+                {
+                  0: "1 µs",
+                  1: "3 µs",
+                  2: "10 µs",
+                  3: "30 µs",
+                  4: "100 µs",
+                  5: "300 µs",
+                  6: "1 ms",
+                  7: "3 ms",
+                  8: "10 ms",
+                  9: "30 ms",
+                  10: "100 ms",
+                  11: "300 ms",
+                  12: "1 s",
+                  13: "3 s",
+                  14: "10 s",
+                  15: "30 s",
+                  16: "100 s",
+                  17: "300 s",
+                  18: "1 ks",
+                  19: "3 ks",
+                  20: "10 ks",
+                  21: "30 ks",
+                  22: "100 ks",
+                  23: "300 ks",
+                }[lockinSettings.timeConstant] || "Unknown"
+              }
+              readOnly
+              className="p-2 rounded bg-gray-700 text-white border border-gray-600 w-24 text-center"
+            />
+            <button
+              onClick={() => changeLockinTimeConstant(true)}
+              disabled={lockinSettings.timeConstant === 23 || lockinConnected} // Adjust to 30 if extending time constant map
+              className="p-2 bg-gray-700 text-white rounded hover:bg-gray-600 disabled:opacity-50"
+            >
+              <svg
+                className="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M19 14l-7-7-7 7"
+                />
+              </svg>
+            </button>
+          </div>
+        </div>
       )}
       {activeTab === "multimeter" && (
         <p className="text-gray-400">Controlled via Output Panel</p>

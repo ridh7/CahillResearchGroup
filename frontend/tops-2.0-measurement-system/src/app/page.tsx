@@ -28,6 +28,8 @@ export type LockinData = {
   X: number;
   Y: number;
   frequency: number;
+  sensitivity?: number;
+  timeConstant?: number;
 };
 
 export type MultimeterData = {
@@ -85,6 +87,10 @@ export default function CalculatePage() {
     X: 0,
     Y: 0,
     frequency: 0,
+  });
+  const [lockinSettings, setLockinSettings] = useState({
+    sensitivity: 0, // Initial sensitivity code (0-27)
+    timeConstant: 0, // Initial time constant code (0-30)
   });
   const [multimeterData, setMultimeterData] = useState<MultimeterData>({
     value: 0,
@@ -186,6 +192,24 @@ export default function CalculatePage() {
     };
 
     setLockinWs(ws);
+  };
+  const fetchLockinSettings = async () => {
+    try {
+      const response = await fetch("http://localhost:8000/lockin/settings");
+      const data = await response.json();
+      if (data.status === "success") {
+        setLockinSettings({
+          sensitivity: data.sensitivity,
+          timeConstant: data.time_constant,
+        });
+      } else {
+        console.error("Failed to fetch lock-in settings:", data.message);
+        setStatus("Error fetching lock-in settings");
+      }
+    } catch (error) {
+      console.error("Error fetching lock-in settings:", error);
+      setStatus("Error fetching lock-in settings");
+    }
   };
 
   const disconnectLockin = () => {
@@ -519,6 +543,51 @@ export default function CalculatePage() {
     setResetMultimeterTrigger(false);
   };
 
+  const changeLockinSensitivity = async (increment: boolean) => {
+    try {
+      const response = await fetch("http://localhost:8000/lockin/sensitivity", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ increment }),
+      });
+      const data = await response.json();
+      console.log(data);
+      if (data.status === "success") {
+        setLockinSettings((prev) => ({
+          ...prev,
+          sensitivity: data.sensitivity,
+        }));
+      }
+    } catch (error) {
+      console.error("Error changing sensitivity:", error);
+      setStatus("Error changing sensitivity");
+    }
+  };
+
+  const changeLockinTimeConstant = async (increment: boolean) => {
+    try {
+      const response = await fetch(
+        "http://localhost:8000/lockin/time_constant",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ increment }),
+        }
+      );
+      const data = await response.json();
+      console.log(data);
+      if (data.status === "success") {
+        setLockinSettings((prev) => ({
+          ...prev,
+          timeConstant: data.time_constant,
+        }));
+      }
+    } catch (error) {
+      console.error("Error changing time constant:", error);
+      setStatus("Error changing time constant");
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-900 flex flex-col">
       {/* Top Bar */}
@@ -567,6 +636,12 @@ export default function CalculatePage() {
             handleSubmit={handleSubmit}
             handleHome={handleHome}
             status={status}
+            lockinSettings={lockinSettings}
+            setLockinSettings={setLockinSettings}
+            changeLockinSensitivity={changeLockinSensitivity}
+            changeLockinTimeConstant={changeLockinTimeConstant}
+            fetchLockinSettings={fetchLockinSettings}
+            lockinConnected={lockinConnected}
           />
         </div>
 

@@ -3,6 +3,7 @@ from concurrent.futures import ThreadPoolExecutor
 import asyncio
 from app.models.stage import *
 from app.models.channel import *
+from app.models.lockin import *
 from app.models.state import global_state
 import clr
 from System import Decimal
@@ -172,6 +173,62 @@ async def get_current_position():
         return {"status": "success", "x": f"{position[0]}", "y": f"{position[1]}"}
     except Exception as e:
         return {"status": "error", "x": "NaN", "y": "NaN"}
+
+
+@router.get("/lockin/settings")
+async def get_lockin_settings():
+    try:
+        settings = await asyncio.get_event_loop().run_in_executor(
+            executor,
+            lambda: {
+                "sensitivity": global_state.lockin.get_sensitivity(),
+                "time_constant": global_state.lockin.get_time_constant(),
+            },
+        )
+        return {
+            "status": "success",
+            "sensitivity": settings["sensitivity"],
+            "time_constant": settings["time_constant"],
+        }
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+
+@router.post("/lockin/sensitivity")
+async def change_lockin_sensitivity(params: LockinSensitivityRequest):
+    try:
+        current_sensitivity = await asyncio.get_event_loop().run_in_executor(
+            executor, lambda: global_state.lockin.get_sensitivity()
+        )
+        new_sensitivity = current_sensitivity + (1 if params.increment else -1)
+        if 0 <= new_sensitivity <= 27:
+            await asyncio.get_event_loop().run_in_executor(
+                executor, lambda: global_state.lockin.set_sensitivity(new_sensitivity)
+            )
+            return {"status": "success", "sensitivity": new_sensitivity}
+        else:
+            return {"status": "error", "message": "Sensitivity out of range"}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+
+@router.post("/lockin/time_constant")
+async def change_lockin_time_constant(params: LockinTimeConstantRequest):
+    try:
+        current_time_constant = await asyncio.get_event_loop().run_in_executor(
+            executor, lambda: global_state.lockin.get_time_constant()
+        )
+        new_time_constant = current_time_constant + (1 if params.increment else -1)
+        if 0 <= new_time_constant <= 23:
+            await asyncio.get_event_loop().run_in_executor(
+                executor,
+                lambda: global_state.lockin.set_time_constant(new_time_constant),
+            )
+            return {"status": "success", "time_constant": new_time_constant}
+        else:
+            return {"status": "error", "message": "Time constant out of range"}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
 
 
 @router.get("/")

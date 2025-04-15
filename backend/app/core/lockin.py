@@ -76,6 +76,32 @@ class SR865A:
                 2e-15,
                 1e-15,
             ]
+            self.time_constant_map = {
+                0: "1 µs",
+                1: "3 µs",
+                2: "10 µs",
+                3: "30 µs",
+                4: "100 µs",
+                5: "300 µs",
+                6: "1 ms",
+                7: "3 ms",
+                8: "10 ms",
+                9: "30 ms",
+                10: "100 ms",
+                11: "300 ms",
+                12: "1 s",
+                13: "3 s",
+                14: "10 s",
+                15: "30 s",
+                16: "100 s",
+                17: "300 s",
+                18: "1 ks",
+                19: "3 ks",
+                20: "10 ks",
+                21: "30 ks",
+                22: "100 ks",
+                23: "300 ks",
+            }
         except Exception as e:
             print(f"---Locking initialization error: {e}")
 
@@ -90,3 +116,21 @@ class SR865A:
             "Y": y,
             "frequency": freq,
         }
+
+    def get_sensitivity(self):
+        return int(self.inst.query("SCAL?"))
+
+    def set_sensitivity(self, code):
+        if 0 <= code <= 27:
+            self.inst.write(f"SCAL {code}")
+        else:
+            raise ValueError("Sensitivity code must be between 0 and 27")
+
+    def get_time_constant(self):
+        return int(self.inst.query("OFLT?"))
+
+    def set_time_constant(self, code):
+        if 0 <= code <= 23:
+            self.inst.write(f"OFLT {code}")
+        else:
+            raise ValueError("Time constant code must be between 0 and 30")
