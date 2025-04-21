@@ -1,6 +1,7 @@
 """Functions for thermal modeling in FD-PBD analysis."""
 
 import numpy as np
+import time
 from scipy.integrate import quad
 from scipy.special import j1
 from integration import romberg_integration
@@ -153,62 +154,53 @@ def delta_bo_theta(
     x_offset: float,
 ) -> np.ndarray:
     """
-    Compute the photothermal beam deflection response.
+    Compute the photothermal beam deflection response using
+    a fixed k‐grid and trapezoidal integration.
 
-    Args:
-        niu: Poisson's ratio.
-        coef: Scaling coefficient for thermal expansion.
-        freq: Frequency array (Hz).
-        lambda_down, c_down, h_down, eta_down: Sample parameters.
-        lambda_up, c_up, h_up, eta_up: Air parameters.
-        r_pump, r_probe: Beam radii.
-        a_pump: Absorbed pump power.
-        x_offset: Beam offset (m).
-
-    Returns:
-        Complex array of beam deflection angles.
+    Returns a complex array of deflection angles at each frequency.
     """
-    k_max = 2 / np.sqrt(r_pump**2 + r_probe**2)
-    omega = 2 * np.pi * freq
-    alpha_down = lambda_down[2] / c_down[2]  # Substrate (CaF2)
-    q2 = 1j * omega / alpha_down
-    c_probe = 0.7  # Calibration constant for CaF2
+    # 1) build fixed k‐grid and k‐only factors
+    Nk = 200  # grid resolution (tune for accuracy vs. speed)
+    k_max = 2.0 / np.sqrt(r_pump**2 + r_probe**2)
+    k = np.linspace(0.0, k_max, Nk)
+    weight = 8 * np.pi**2 * k**2
+    bessel = -j1(2 * np.pi * k * x_offset)
+    # These two aren’t used below but could be reused if needed:
+    # S_probe = np.exp(- (np.pi**2 * r_probe**2)/2 * k**2)
+    # P_pump  = a_pump * np.exp(- (np.pi**2 * r_pump**2)/2 * k**2)
 
-    delta_theta = np.zeros(len(freq), dtype=complex)
+    alpha_sub = lambda_down[2] / c_down[2]  # CaF2 substrate diffusivity
+    c_probe = 0.7  # calibration constant
 
-    for n, f in enumerate(freq):
+    # 2) allocate output
+    delta_theta = np.zeros(freq.shape, dtype=complex)
 
-        def integrand(k):
-            # Ensure scalar computation
-            k = float(k)  # Force scalar
-            q_k = np.sqrt(4 * np.pi**2 * eta_down[2] * k**2 + q2[n].item())
-            deflection = (2 * (1 + niu) * coef) / (q_k + 2 * np.pi * k)
-            bessel_term = -j1(2 * np.pi * k * x_offset)
-            weight = 8 * np.pi**2 * k**2
-            temp = bi_fdtr_bo_temp(
-                k,
-                f,
-                lambda_up,
-                c_up,
-                h_up,
-                eta_up,
-                lambda_down,
-                c_down,
-                h_down,
-                eta_down,
-                r_pump,
-                r_probe,
-                a_pump,
-            )
-            return -c_probe * weight * bessel_term * deflection * temp
+    # 3) loop over frequencies, integrate vectorized over k
+    for i, f in enumerate(freq):
+        ω = 2 * np.pi * f
+        q2 = 1j * ω / alpha_sub  # scalar
+        qk = np.sqrt(4 * np.pi**2 * eta_down[2] * k**2 + q2)  # (Nk,)
+        defl = (2 * (1 + niu) * coef) / (qk + 2 * np.pi * k)  # (Nk,)
 
-        # Integrate real and imaginary parts separately
-        real_part, _ = quad(
-            lambda k: np.real(integrand(k)), 0, k_max, epsabs=1e-4, epsrel=1e-4
-        )
-        imag_part, _ = quad(
-            lambda k: np.imag(integrand(k)), 0, k_max, epsabs=1e-4, epsrel=1e-4
-        )
-        delta_theta[n] = real_part + 1j * imag_part
+        # get the layered G(k,f)*S(k)*P(k) vector
+        temp = bi_fdtr_bo_temp(
+            k,
+            f,
+            lambda_up,
+            c_up,
+            h_up,
+            eta_up,
+            lambda_down,
+            c_down,
+            h_down,
+            eta_down,
+            r_pump,
+            r_probe,
+            a_pump,
+        )  # returns array of length Nk
+
+        # full integrand and trapz
+        integrand = -c_probe * weight * bessel * defl * temp
+        delta_theta[i] = np.trapz(integrand, k)
 
     return delta_theta
