@@ -53,7 +53,8 @@ def compute_steady_state_heat(
 
     # Integrate and take real part (steady-state should be real)
     result = romberg_integration(integrand, k_min, k_max)
-    return np.real(result)
+    output = np.real(result)
+    return output
 
 
 def bi_fdtr_bo_temp(
@@ -203,10 +204,10 @@ def delta_bo_theta(
 
         # Integrate real and imaginary parts separately
         real_part, _ = quad(
-            lambda k: np.real(integrand(k)), 0, k_max, epsabs=1e-8, epsrel=1e-8
+            lambda k: np.real(integrand(k)), 0, k_max, epsabs=1e-4, epsrel=1e-4
         )
         imag_part, _ = quad(
-            lambda k: np.imag(integrand(k)), 0, k_max, epsabs=1e-8, epsrel=1e-8
+            lambda k: np.imag(integrand(k)), 0, k_max, epsabs=1e-4, epsrel=1e-4
         )
         delta_theta[n] = real_part + 1j * imag_part
 
