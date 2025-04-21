@@ -75,8 +75,8 @@ def main():
     print(f"Steady-state temperature rise: {t_ss_heat:.2f} K")
 
     # Determine fitting frequency range
-    sorted_data = np.sort(np.column_stack((np.abs(v_corr_out), freq)), axis=0)
-    fc = sorted_data[-1, 1]
+    idx_peak = np.argmax(np.abs(v_corr_out))
+    fc = freq[idx_peak]
     mask = (freq >= fc / 10) & (freq <= fc * 10)
     freq_fit = freq[mask]
     v_corr_in_fit = v_corr_in[mask]
@@ -111,8 +111,8 @@ def main():
     lambda_measure = x_sol[0]
     coef_fitted = x_sol[1]
     alpha_t_fitted = coef_fitted / (2 * 37 * v_sum_avg / np.sqrt(2))
-    print(f"Fitted thermal conductivity: {lambda_measure:.2f} W/m-K")
-    print(f"Fitted thermal expansion: {alpha_t_fitted:.2e} /K")
+    print(f"Fitted thermal conductivity: {lambda_measure:.4f} W/m-K")
+    print(f"Fitted thermal expansion: {alpha_t_fitted:.4e} /K")
 
     # Compute model for plotting
     delta_theta = delta_bo_theta(
@@ -124,7 +124,7 @@ def main():
         H_DOWN,
         ETA_DOWN,
         LAMBDA_UP,
-        C_DOWN,
+        C_UP,
         H_UP,
         ETA_UP,
         R_PUMP,
