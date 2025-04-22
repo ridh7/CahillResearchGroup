@@ -220,9 +220,9 @@ export default function FDPBDPage() {
                 <p className="text-white">
                   Thermal Expansion: {result.alpha_t_fitted.toExponential(4)} /K
                 </p>
-                <p className="text-white">
+                {/* <p className="text-white">
                   Steady-State Temperature Rise: {result.t_ss_heat.toFixed(2)} K
-                </p>
+                </p> */}
               </div>
               <div className="bg-gray-800 p-4 rounded-lg shadow-md">
                 <h2 className="text-white text-lg font-semibold mb-4">
@@ -267,20 +267,49 @@ export default function FDPBDPage() {
                     layout={{
                       title: "In/Out-of-phase",
                       xaxis: {
-                        title: "Frequency (Hz)",
+                        title: {
+                          text: "Frequency (Hz)",
+                          font: { size: 14, color: "black" },
+                          standoff: 10,
+                        },
                         type: "log",
-                        gridcolor: "rgba(255, 255, 255, 0.2)",
+                        showgrid: false,
+                        tickfont: { size: 12, color: "black" },
+                        showticklabels: true,
+                        tickmode: "auto",
+                        nticks: 3, // Limit to major ticks
                       },
                       yaxis: {
-                        title: "In/Out-of-phase (V)",
-                        gridcolor: "rgba(255, 255, 255, 0.2)",
+                        title: {
+                          text: "In/Out-of-phase (V)",
+                          font: { size: 14, color: "black" },
+                          standoff: 10,
+                        },
+                        showgrid: false,
+                        tickfont: { size: 12, color: "black" },
+                        showticklabels: true,
+                        tickmode: "auto",
+                        nticks: 5, // Limit to major ticks
                       },
                       legend: { x: 1, xanchor: "right", y: 1 },
-                      plot_bgcolor: "rgba(0, 0, 0, 0)",
-                      paper_bgcolor: "rgba(0, 0, 0, 0)",
-                      font: { color: "white" },
+                      plot_bgcolor: "white",
+                      paper_bgcolor: "white",
+                      font: { color: "black" },
                       width: 800,
                       height: 400,
+                      margin: { l: 60, r: 40, t: 60, b: 60 },
+                      shapes: [
+                        {
+                          type: "rect",
+                          xref: "paper",
+                          yref: "paper",
+                          x0: 0,
+                          y0: 0,
+                          x1: 1,
+                          y1: 1,
+                          line: { color: "black", width: 2 },
+                        },
+                      ],
                     }}
                   />
                   <Plot
@@ -305,21 +334,50 @@ export default function FDPBDPage() {
                     layout={{
                       title: "Ratio",
                       xaxis: {
-                        title: "Frequency (Hz)",
+                        title: {
+                          text: "Frequency (Hz)",
+                          font: { size: 14, color: "black" },
+                          standoff: 10,
+                        },
                         type: "log",
-                        gridcolor: "rgba(255, 255, 255, 0.2)",
+                        showgrid: false,
+                        tickfont: { size: 12, color: "black" },
+                        showticklabels: true,
+                        tickmode: "auto",
+                        nticks: 3, // Limit to major ticks
                       },
                       yaxis: {
-                        title: "Ratio",
+                        title: {
+                          text: "Ratio",
+                          font: { size: 14, color: "black" },
+                          standoff: 10,
+                        },
                         type: "log",
-                        gridcolor: "rgba(255, 255, 255, 0.2)",
+                        showgrid: false,
+                        tickfont: { size: 12, color: "black" },
+                        showticklabels: true,
+                        tickmode: "auto",
+                        nticks: 5, // Limit to major ticks
                       },
                       legend: { x: 1, xanchor: "right", y: 1 },
-                      plot_bgcolor: "rgba(0, 0, 0, 0)",
-                      paper_bgcolor: "rgba(0, 0, 0, 0)",
-                      font: { color: "white" },
+                      plot_bgcolor: "white",
+                      paper_bgcolor: "white",
+                      font: { color: "black" },
                       width: 800,
                       height: 400,
+                      margin: { l: 60, r: 40, t: 60, b: 60 },
+                      shapes: [
+                        {
+                          type: "rect",
+                          xref: "paper",
+                          yref: "paper",
+                          x0: 0,
+                          y0: 0,
+                          x1: 1,
+                          y1: 1,
+                          line: { color: "black", width: 2 },
+                        },
+                      ],
                     }}
                   />
                 </div>
