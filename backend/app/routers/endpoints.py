@@ -1,4 +1,4 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, UploadFile, File, HTTPException, Form
 from concurrent.futures import ThreadPoolExecutor
 import asyncio
 from app.models.stage import *
@@ -6,8 +6,11 @@ from app.models.channel import *
 from app.models.lockin import *
 from app.models.multimeter import *
 from app.models.state import global_state
+from app.models.fdpbd import FDPBDParams, FDPBDResult
+from app.services.fdpbd_service import analyze_fdpbd
 import clr
 from System import Decimal
+import json
 
 router = APIRouter()
 executor = ThreadPoolExecutor()
@@ -277,6 +280,25 @@ async def set_multimeter_terminal(params: MultimeterTerminalRequest):
             return {"status": "error", "message": "Failed to set terminal"}
     except Exception as e:
         return {"status": "error", "message": str(e)}
+
+
+@router.post("/fdpbd/analyze", response_model=FDPBDResult)
+async def fdpbd_analyze(params: str = Form(...), file: UploadFile = File(...)):
+    """Analyze FD-PBD data with given parameters and uploaded file."""
+    try:
+        # Parse params string as JSON
+        params_dict = json.loads(params)
+        # Validate with FDPBDParams
+        validated_params = FDPBDParams(**params_dict)
+        # Await the async analyze_fdpbd function directly
+        result = await analyze_fdpbd(validated_params.dict(), file)
+        return result
+    except json.JSONDecodeError:
+        raise HTTPException(status_code=400, detail="Invalid JSON format in params")
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/")

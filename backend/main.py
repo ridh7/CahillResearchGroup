@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.routers import endpoints
 from contextlib import asynccontextmanager
 from app.models.state import global_state
-from app.core.stage import ThorlabsBBD302
+# from app.core.stage import ThorlabsBBD302
 from app.core.multimeter import BKPrecision5493C
 from app.core.lockin import SR865A
 import asyncio
@@ -14,9 +14,9 @@ import time
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    global_state.stage = ThorlabsBBD302()
-    global_state.lockin = SR865A()
-    global_state.multimeter = BKPrecision5493C()
+    # global_state.stage = ThorlabsBBD302()
+    # global_state.lockin = SR865A()
+    # global_state.multimeter = BKPrecision5493C()
     shared_state.pause_lockin_reading.clear()
     yield
     for ws in [
