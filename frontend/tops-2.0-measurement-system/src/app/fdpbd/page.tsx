@@ -139,7 +139,7 @@ export default function FDPBDPage() {
     <div className="min-h-screen bg-gray-900 flex flex-col">
       {/* Header */}
       <header className="bg-gray-800 p-4 flex justify-between items-center">
-        <h1 className="text-white text-xl font-semibold">FD-PBD Analysis</h1>
+        <h1 className="text-white text-xl font-semibold">Analysis</h1>
         <a href="/" className="text-white hover:text-teal-400">
           Back to Dashboard
         </a>

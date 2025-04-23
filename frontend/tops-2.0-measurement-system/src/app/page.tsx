@@ -675,7 +675,7 @@ export default function CalculatePage() {
         </h1>
         <div className="flex space-x-4">
           <Link href="/fdpbd" className="text-white hover:text-teal-400">
-            FD-PBD Analysis
+            Analysis
           </Link>
           <button
             ref={settingsButtonRef}
