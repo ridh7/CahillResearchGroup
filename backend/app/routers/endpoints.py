@@ -288,13 +288,21 @@ async def fdpbd_analyze(params: str = Form(...), file: UploadFile = File(...)):
     try:
         # Parse params string as JSON
         params_dict = json.loads(params)
+        # Convert eta_down from comma-separated string to list of floats
+        if isinstance(params_dict.get("eta_down"), str):
+            params_dict["eta_down"] = [
+                float(x) for x in params_dict["eta_down"].split(",") if x.strip()
+            ]
         # Validate with FDPBDParams
         validated_params = FDPBDParams(**params_dict)
-        # Await the async analyze_fdpbd function directly
         result = await analyze_fdpbd(validated_params.dict(), file)
         return result
     except json.JSONDecodeError:
         raise HTTPException(status_code=400, detail="Invalid JSON format in params")
+    except ValueError as e:
+        raise HTTPException(
+            status_code=400, detail=f"Invalid eta_down format: {str(e)}"
+        )
     except HTTPException as e:
         raise e
     except Exception as e:
