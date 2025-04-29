@@ -8,7 +8,7 @@ type FDPBDParams = {
   delay_1: string;
   delay_2: string;
   lambda_down: string[];
-  eta_down: string;
+  eta_down: string[];
   c_down: string[];
   h_down: string[];
   niu: string;
@@ -26,6 +26,11 @@ type FDPBDParams = {
   lens_transmittance: string;
   detector_gain: string;
   phi: string;
+  rho: string;
+  alphaT: string;
+  C11_0: string;
+  C12_0: string;
+  C44_0: string;
 };
 
 type PlotData = {
@@ -51,7 +56,7 @@ export default function FDPBDPage() {
     delay_1: "0.0000089",
     delay_2: "-1.3e-11",
     lambda_down: ["149.0", "0.1", "9.7"],
-    eta_down: "1.0,1.0,1.0",
+    eta_down: ["1.0", "1.0", "1.0"],
     c_down: ["2440000", "100000", "2730000"],
     h_down: ["7e-8", "1e-9", "1e-6"],
     niu: "0.26",
@@ -69,6 +74,11 @@ export default function FDPBDPage() {
     lens_transmittance: "0.93",
     detector_gain: "74.0",
     phi: "0",
+    rho: "2.70e3",
+    alphaT: "23.1e-6",
+    C11_0: "107.4e9",
+    C12_0: "60.5e9",
+    C44_0: "28.3e9",
   });
   const fieldUnits: Record<string, string> = {
     f_amp: "Hz",
@@ -93,6 +103,11 @@ export default function FDPBDPage() {
     lens_transmittance: "",
     detector_gain: "V/rad",
     phi: "degrees",
+    rho: "kg/m³",
+    alphaT: "1/K",
+    C11_0: "Pa",
+    C12_0: "Pa",
+    C44_0: "Pa",
   };
   const [file, setFile] = useState<File | null>(null);
   const [result, setResult] = useState<FDPBDResult | null>(null);
@@ -116,12 +131,6 @@ export default function FDPBDPage() {
     if (Array.isArray(value)) {
       return value.every((v) => v !== "" && !isNaN(parseFloat(v)));
     }
-    if (value.includes(",")) {
-      // For eta_down (comma-separated)
-      return value
-        .split(",")
-        .every((v) => v.trim() !== "" && !isNaN(parseFloat(v.trim())));
-    }
     return value !== "" && !isNaN(parseFloat(value));
   };
 
@@ -133,7 +142,9 @@ export default function FDPBDPage() {
       params.lambda_down[0],
       params.lambda_down[1],
       params.lambda_down[2],
-      params.eta_down,
+      ...(isotropyOption === "isotropy"
+        ? [params.eta_down[0], params.eta_down[1], params.eta_down[2]]
+        : []),
       params.c_down[0],
       params.c_down[1],
       params.c_down[2],
@@ -153,7 +164,16 @@ export default function FDPBDPage() {
       params.k_al,
       params.lens_transmittance,
       params.detector_gain,
-      ...(isotropyOption === "anisotropy" ? [params.phi] : []),
+      ...(isotropyOption === "anisotropy"
+        ? [
+            params.phi,
+            params.rho,
+            params.alphaT,
+            params.C11_0,
+            params.C12_0,
+            params.C44_0,
+          ]
+        : []),
     ];
     return fields.every((field) => isValidDecimal(field)) && file !== null;
   };
@@ -224,7 +244,9 @@ export default function FDPBDPage() {
     }
     if (
       (["lambda_down", "c_down", "h_down"].includes(field) && index === 0) ||
-      ["n_al", "k_al"].includes(field)
+      ["n_al", "k_al", "rho", "alphaT", "C11_0", "C12_0", "C44_0"].includes(
+        field
+      )
     ) {
       const alValues = {
         lambda_down_0: "149.0",
@@ -232,6 +254,11 @@ export default function FDPBDPage() {
         h_down_0: "7e-8",
         n_al: "2.9",
         k_al: "8.2",
+        rho: "2.70e3",
+        alphaT: "23.1e-6",
+        C11_0: "107.4e9",
+        C12_0: "60.5e9",
+        C44_0: "28.3e9",
       };
       const updatedParams =
         index !== undefined
@@ -245,11 +272,19 @@ export default function FDPBDPage() {
             }
           : { ...params, [field]: value };
       if (
-        updatedParams.lambda_down[0] !== alValues.lambda_down_0 ||
-        updatedParams.c_down[0] !== alValues.c_down_0 ||
-        updatedParams.h_down[0] !== alValues.h_down_0 ||
-        updatedParams.n_al !== alValues.n_al ||
-        updatedParams.k_al !== alValues.k_al
+        !(
+          updatedParams.lambda_down[0] === alValues.lambda_down_0 &&
+          updatedParams.c_down[0] === alValues.c_down_0 &&
+          updatedParams.h_down[0] === alValues.h_down_0 &&
+          updatedParams.n_al === alValues.n_al &&
+          updatedParams.k_al === alValues.k_al &&
+          (isotropyOption === "isotropy" ||
+            (updatedParams.rho === alValues.rho &&
+              updatedParams.alphaT === alValues.alphaT &&
+              updatedParams.C11_0 === alValues.C11_0 &&
+              updatedParams.C12_0 === alValues.C12_0 &&
+              updatedParams.C44_0 === alValues.C44_0))
+        )
       ) {
         setTransducerOption("custom");
       }
@@ -275,9 +310,12 @@ export default function FDPBDPage() {
         setMediumOption("custom");
       }
     }
-    if (field === "eta_down") {
-      const isotropyValue = "1.0,1.0,1.0";
-      if (value !== isotropyValue) {
+    if (field === "eta_down" && index !== undefined) {
+      const isotropyValue = ["1.0", "1.0", "1.0"];
+      const updatedArray = [...params.eta_down];
+      updatedArray[index] = value;
+      setParams((prev) => ({ ...prev, eta_down: updatedArray }));
+      if (updatedArray.join(",") !== isotropyValue.join(",")) {
         setIsotropyOption("anisotropy");
       }
     }
@@ -369,6 +407,11 @@ export default function FDPBDPage() {
         h_down: ["7e-8", prev.h_down[1], prev.h_down[2]],
         n_al: "2.9",
         k_al: "8.2",
+        rho: isotropyOption === "anisotropy" ? "2.70e3" : prev.rho,
+        alphaT: isotropyOption === "anisotropy" ? "23.1e-6" : prev.alphaT,
+        C11_0: isotropyOption === "anisotropy" ? "107.4e9" : prev.C11_0,
+        C12_0: isotropyOption === "anisotropy" ? "60.5e9" : prev.C12_0,
+        C44_0: isotropyOption === "anisotropy" ? "28.3e9" : prev.C44_0,
       }));
     }
   };
@@ -391,7 +434,7 @@ export default function FDPBDPage() {
     if (option === "isotropy") {
       setParams((prev) => ({
         ...prev,
-        eta_down: "1.0,1.0,1.0",
+        eta_down: ["1.0", "1.0", "1.0"],
       }));
     }
   };
@@ -432,7 +475,7 @@ export default function FDPBDPage() {
       delay_1: "",
       delay_2: "",
       lambda_down: ["", "", ""],
-      eta_down: "",
+      eta_down: ["", "", ""],
       c_down: ["", "", ""],
       h_down: ["", "", ""],
       niu: "",
@@ -450,6 +493,11 @@ export default function FDPBDPage() {
       lens_transmittance: "",
       detector_gain: "",
       phi: "",
+      rho: "",
+      alphaT: "",
+      C11_0: "",
+      C12_0: "",
+      C44_0: "",
     });
     setFile(null);
     setLensOption("custom");
@@ -483,9 +531,21 @@ export default function FDPBDPage() {
     formData.append("file", file);
     const visibleParams = {
       ...params,
+      eta_down:
+        isotropyOption === "isotropy" ? params.eta_down.join(",") : undefined,
       ...(isotropyOption === "anisotropy"
-        ? { eta_up: undefined, h_up: undefined }
-        : { phi: undefined }),
+        ? {
+            eta_up: undefined,
+            h_up: undefined,
+          }
+        : {
+            phi: undefined,
+            rho: undefined,
+            alphaT: undefined,
+            C11_0: undefined,
+            C12_0: undefined,
+            C44_0: undefined,
+          }),
     };
     formData.append("params", JSON.stringify(visibleParams));
 
@@ -818,6 +878,19 @@ export default function FDPBDPage() {
                     index: 0,
                     label: `H Down [${fieldUnits.h_down}]`,
                   },
+                  ...(isotropyOption === "isotropy"
+                    ? [
+                        {
+                          field: "eta_down",
+                          index: 0,
+                          label: `Eta Down ${
+                            fieldUnits.eta_down
+                              ? `[${fieldUnits.eta_down}]`
+                              : ""
+                          }`,
+                        },
+                      ]
+                    : []),
                   {
                     field: "n_al",
                     label: `Refractive Index (N) ${
@@ -830,6 +903,18 @@ export default function FDPBDPage() {
                       fieldUnits.k_al ? `[${fieldUnits.k_al}]` : ""
                     }`,
                   },
+                  ...(isotropyOption === "anisotropy"
+                    ? [
+                        { field: "rho", label: `Rho [${fieldUnits.rho}]` },
+                        {
+                          field: "alphaT",
+                          label: `Alpha T [${fieldUnits.alphaT}]`,
+                        },
+                        { field: "C11_0", label: `C11 [${fieldUnits.C11_0}]` },
+                        { field: "C12_0", label: `C12 [${fieldUnits.C12_0}]` },
+                        { field: "C44_0", label: `C44 [${fieldUnits.C44_0}]` },
+                      ]
+                    : []),
                 ].map((param) => (
                   <div
                     key={`${param.field}${param.index ?? ""}`}
@@ -893,6 +978,19 @@ export default function FDPBDPage() {
                     index: 1,
                     label: `H Down [${fieldUnits.h_down}]`,
                   },
+                  ...(isotropyOption === "isotropy"
+                    ? [
+                        {
+                          field: "eta_down",
+                          index: 1,
+                          label: `Eta Down ${
+                            fieldUnits.eta_down
+                              ? `[${fieldUnits.eta_down}]`
+                              : ""
+                          }`,
+                        },
+                      ]
+                    : []),
                 ].map((param) => (
                   <div
                     key={`${param.field}${param.index}`}
@@ -948,12 +1046,19 @@ export default function FDPBDPage() {
                     index: 2,
                     label: `H Down [${fieldUnits.h_down}]`,
                   },
-                  {
-                    field: "eta_down",
-                    label: `Eta Down ${
-                      fieldUnits.eta_down ? `[${fieldUnits.eta_down}]` : ""
-                    }`,
-                  },
+                  ...(isotropyOption === "isotropy"
+                    ? [
+                        {
+                          field: "eta_down",
+                          index: 2,
+                          label: `Eta Down ${
+                            fieldUnits.eta_down
+                              ? `[${fieldUnits.eta_down}]`
+                              : ""
+                          }`,
+                        },
+                      ]
+                    : []),
                   {
                     field: "alpha_t",
                     label: `Alpha T [${fieldUnits.alpha_t}]`,
@@ -971,8 +1076,8 @@ export default function FDPBDPage() {
                       {param.label}
                     </label>
                     <input
-                      type={param.field === "eta_down" ? "text" : "number"}
-                      step={param.field === "eta_down" ? undefined : "any"}
+                      type="number"
+                      step="any"
                       value={
                         param.index !== undefined
                           ? params[param.field as keyof FDPBDParams][
