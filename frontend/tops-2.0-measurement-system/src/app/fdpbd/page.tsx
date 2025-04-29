@@ -31,15 +31,15 @@ type FDPBDParams = {
   C11_0: string;
   C12_0: string;
   C44_0: string;
-  lambda_down_x: string;
-  lambda_down_y: string;
-  lambda_down_z: string;
-  rho_interface: string; // Use rho_interface to distinguish from rho in Transducer Layer
-  C11_0_interface: string;
-  C12_0_interface: string;
-  C13_0_interface: string;
-  C33_0_interface: string;
-  C44_0_interface: string;
+  lambda_down_x_sample: string;
+  lambda_down_y_sample: string;
+  lambda_down_z_sample: string;
+  rho_sample: string;
+  C11_0_sample: string;
+  C12_0_sample: string;
+  C13_0_sample: string;
+  C33_0_sample: string;
+  C44_0_sample: string;
   alphaT_perp: string;
   alphaT_para: string;
 };
@@ -90,15 +90,15 @@ export default function FDPBDPage() {
     C11_0: "107.4e9",
     C12_0: "60.5e9",
     C44_0: "28.3e9",
-    lambda_down_x: "0.3",
-    lambda_down_y: "0.5",
-    lambda_down_z: "0.3",
-    rho_interface: "0",
-    C11_0_interface: "12.11e9",
-    C12_0_interface: "5.06e9",
-    C13_0_interface: "5.68e9",
-    C33_0_interface: "7.06e9",
-    C44_0_interface: "1.20e9",
+    lambda_down_x_sample: "0.3",
+    lambda_down_y_sample: "0.5",
+    lambda_down_z_sample: "0.3",
+    rho_sample: "0",
+    C11_0_sample: "12.11e9",
+    C12_0_sample: "5.06e9",
+    C13_0_sample: "5.68e9",
+    C33_0_sample: "7.06e9",
+    C44_0_sample: "1.20e9",
     alphaT_perp: "70e-6",
     alphaT_para: "60e-6",
   });
@@ -130,15 +130,15 @@ export default function FDPBDPage() {
     C11_0: "Pa",
     C12_0: "Pa",
     C44_0: "Pa",
-    lambda_down_x: "W/m-K",
-    lambda_down_y: "W/m-K",
-    lambda_down_z: "W/m-K",
-    rho_interface: "kg/m³",
-    C11_0_interface: "Pa",
-    C12_0_interface: "Pa",
-    C13_0_interface: "Pa",
-    C33_0_interface: "Pa",
-    C44_0_interface: "Pa",
+    lambda_down_x_sample: "W/m-K",
+    lambda_down_y_sample: "W/m-K",
+    lambda_down_z_sample: "W/m-K",
+    rho_sample: "kg/m³",
+    C11_0_sample: "Pa",
+    C12_0_sample: "Pa",
+    C13_0_sample: "Pa",
+    C33_0_sample: "Pa",
+    C44_0_sample: "Pa",
     alphaT_perp: "1/K",
     alphaT_para: "1/K",
   };
@@ -184,8 +184,7 @@ export default function FDPBDPage() {
       params.h_down[0],
       params.h_down[1],
       params.h_down[2],
-      params.niu,
-      params.alpha_t,
+      ...(isotropyOption === "isotropy" ? [params.niu, params.alpha_t] : []),
       params.lambda_up,
       ...(isotropyOption === "isotropy" ? [params.eta_up, params.h_up] : []),
       params.c_up,
@@ -205,15 +204,15 @@ export default function FDPBDPage() {
             params.C11_0,
             params.C12_0,
             params.C44_0,
-            params.lambda_down_x,
-            params.lambda_down_y,
-            params.lambda_down_z,
-            params.rho_interface,
-            params.C11_0_interface,
-            params.C12_0_interface,
-            params.C13_0_interface,
-            params.C33_0_interface,
-            params.C44_0_interface,
+            params.lambda_down_x_sample,
+            params.lambda_down_y_sample,
+            params.lambda_down_z_sample,
+            params.rho_sample,
+            params.C11_0_sample,
+            params.C12_0_sample,
+            params.C13_0_sample,
+            params.C33_0_sample,
+            params.C44_0_sample,
             params.alphaT_perp,
             params.alphaT_para,
           ]
@@ -221,6 +220,7 @@ export default function FDPBDPage() {
     ];
     return fields.every((field) => isValidDecimal(field)) && file !== null;
   };
+
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement>,
     field: keyof FDPBDParams,
@@ -541,15 +541,15 @@ export default function FDPBDPage() {
       C11_0: "",
       C12_0: "",
       C44_0: "",
-      lambda_down_x: "",
-      lambda_down_y: "",
-      lambda_down_z: "",
-      rho_interface: "",
-      C11_0_interface: "",
-      C12_0_interface: "",
-      C13_0_interface: "",
-      C33_0_interface: "",
-      C44_0_interface: "",
+      lambda_down_x_sample: "",
+      lambda_down_y_sample: "",
+      lambda_down_z_sample: "",
+      rho_sample: "",
+      C11_0_sample: "",
+      C12_0_sample: "",
+      C13_0_sample: "",
+      C33_0_sample: "",
+      C44_0_sample: "",
       alphaT_perp: "",
       alphaT_para: "",
     });
@@ -591,12 +591,10 @@ export default function FDPBDPage() {
         ? {
             eta_up: undefined,
             h_up: undefined,
-            lambda_down: [
-              params.lambda_down[0],
-              undefined,
-              params.lambda_down[2],
-            ],
-            h_down: [params.h_down[0], undefined, params.h_down[2]],
+            lambda_down: [params.lambda_down[0], undefined, undefined],
+            h_down: [params.h_down[0], undefined, undefined],
+            niu: undefined,
+            alpha_t: undefined,
           }
         : {
             phi: undefined,
@@ -605,15 +603,15 @@ export default function FDPBDPage() {
             C11_0: undefined,
             C12_0: undefined,
             C44_0: undefined,
-            lambda_down_x: undefined,
-            lambda_down_y: undefined,
-            lambda_down_z: undefined,
-            rho_interface: undefined,
-            C11_0_interface: undefined,
-            C12_0_interface: undefined,
-            C13_0_interface: undefined,
-            C33_0_interface: undefined,
-            C44_0_interface: undefined,
+            lambda_down_x_sample: undefined,
+            lambda_down_y_sample: undefined,
+            lambda_down_z_sample: undefined,
+            rho_sample: undefined,
+            C11_0_sample: undefined,
+            C12_0_sample: undefined,
+            C13_0_sample: undefined,
+            C33_0_sample: undefined,
+            C44_0_sample: undefined,
             alphaT_perp: undefined,
             alphaT_para: undefined,
           }),
@@ -1029,79 +1027,155 @@ export default function FDPBDPage() {
                 ))}
               </div>
               {/* Interface Layer */}
+              {isotropyOption === "isotropy" && (
+                <div className="bg-gray-700 p-4 rounded-lg mb-4">
+                  <h4 className="text-white text-sm font-semibold mb-2">
+                    Interface Layer
+                  </h4>
+                  {[
+                    {
+                      field: "lambda_down",
+                      index: 1,
+                      label: `Lambda Down [${fieldUnits.lambda_down}]`,
+                    },
+                    {
+                      field: "c_down",
+                      index: 1,
+                      label: `C Down [${fieldUnits.c_down}]`,
+                    },
+                    {
+                      field: "h_down",
+                      index: 1,
+                      label: `H Down [${fieldUnits.h_down}]`,
+                    },
+                    {
+                      field: "eta_down",
+                      index: 1,
+                      label: `Eta Down ${
+                        fieldUnits.eta_down ? `[${fieldUnits.eta_down}]` : ""
+                      }`,
+                    },
+                  ].map((param) => (
+                    <div
+                      key={`${param.field}${param.index}`}
+                      className="flex flex-col mb-2"
+                    >
+                      <label className="text-white text-sm mb-1">
+                        {param.label}
+                      </label>
+                      <input
+                        type="number"
+                        step="any"
+                        value={
+                          params[param.field as keyof FDPBDParams][param.index]
+                        }
+                        onChange={(e) =>
+                          handleInputChange(
+                            e,
+                            param.field as keyof FDPBDParams,
+                            param.index
+                          )
+                        }
+                        className={`bg-gray-800 text-white p-2 rounded focus:outline-none border-2 ${
+                          isValidDecimal(
+                            params[param.field as keyof FDPBDParams][
+                              param.index
+                            ]
+                          )
+                            ? "border-gray-600 focus:border-teal-500"
+                            : "border-red-500"
+                        }`}
+                        disabled={isProcessing}
+                        required
+                      />
+                    </div>
+                  ))}
+                </div>
+              )}
+              {/* Sample Layer */}
               <div className="bg-gray-700 p-4 rounded-lg mb-4">
                 <h4 className="text-white text-sm font-semibold mb-2">
-                  Interface Layer
+                  Sample Layer
                 </h4>
                 {[
                   ...(isotropyOption === "isotropy"
                     ? [
                         {
                           field: "lambda_down",
-                          index: 1,
+                          index: 2,
                           label: `Lambda Down [${fieldUnits.lambda_down}]`,
                         },
                         {
                           field: "c_down",
-                          index: 1,
+                          index: 2,
                           label: `C Down [${fieldUnits.c_down}]`,
                         },
                         {
                           field: "h_down",
-                          index: 1,
+                          index: 2,
                           label: `H Down [${fieldUnits.h_down}]`,
                         },
                         {
                           field: "eta_down",
-                          index: 1,
+                          index: 2,
                           label: `Eta Down ${
                             fieldUnits.eta_down
                               ? `[${fieldUnits.eta_down}]`
                               : ""
                           }`,
                         },
+                        {
+                          field: "alpha_t",
+                          label: `Alpha T [${fieldUnits.alpha_t}]`,
+                        },
+                        {
+                          field: "niu",
+                          label: `Niu ${
+                            fieldUnits.niu ? `[${fieldUnits.niu}]` : ""
+                          }`,
+                        },
                       ]
                     : [
                         {
-                          field: "lambda_down_x",
-                          label: `Lambda Down X [${fieldUnits.lambda_down_x}]`,
+                          field: "lambda_down_x_sample",
+                          label: `Lambda Down X [${fieldUnits.lambda_down_x_sample}]`,
                         },
                         {
-                          field: "lambda_down_y",
-                          label: `Lambda Down Y [${fieldUnits.lambda_down_y}]`,
+                          field: "lambda_down_y_sample",
+                          label: `Lambda Down Y [${fieldUnits.lambda_down_y_sample}]`,
                         },
                         {
-                          field: "lambda_down_z",
-                          label: `Lambda Down Z [${fieldUnits.lambda_down_z}]`,
+                          field: "lambda_down_z_sample",
+                          label: `Lambda Down Z [${fieldUnits.lambda_down_z_sample}]`,
                         },
                         {
                           field: "c_down",
-                          index: 1,
+                          index: 2,
                           label: `C Down [${fieldUnits.c_down}]`,
                         },
                         {
-                          field: "rho_interface",
-                          label: `Rho [${fieldUnits.rho_interface}]`,
+                          field: "rho_sample",
+                          label: `Rho [${fieldUnits.rho_sample}]`,
                         },
                         {
-                          field: "C11_0_interface",
-                          label: `C11 [${fieldUnits.C11_0_interface}]`,
+                          field: "C11_0_sample",
+                          label: `C11 [${fieldUnits.C11_0_sample}]`,
                         },
                         {
-                          field: "C12_0_interface",
-                          label: `C12 [${fieldUnits.C12_0_interface}]`,
+                          field: "C12_0_sample",
+                          label: `C12 [${fieldUnits.C12_0_sample}]`,
                         },
                         {
-                          field: "C13_0_interface",
-                          label: `C13 [${fieldUnits.C13_0_interface}]`,
+                          field: "C13_0_sample",
+                          label: `C13 [${fieldUnits.C13_0_sample}]`,
                         },
                         {
-                          field: "C33_0_interface",
-                          label: `C33 [${fieldUnits.C33_0_interface}]`,
+                          field: "C33_0_sample",
+                          label: `C33 [${fieldUnits.C33_0_sample}]`,
                         },
                         {
-                          field: "C44_0_interface",
-                          label: `C44 [${fieldUnits.C44_0_interface}]`,
+                          field: "C44_0_sample",
+                          label: `C44 [${fieldUnits.C44_0_sample}]`,
                         },
                         {
                           field: "alphaT_perp",
@@ -1112,90 +1186,6 @@ export default function FDPBDPage() {
                           label: `Alpha T Parallel [${fieldUnits.alphaT_para}]`,
                         },
                       ]),
-                ].map((param) => (
-                  <div
-                    key={`${param.field}${param.index ?? ""}`}
-                    className="flex flex-col mb-2"
-                  >
-                    <label className="text-white text-sm mb-1">
-                      {param.label}
-                    </label>
-                    <input
-                      type="number"
-                      step="any"
-                      value={
-                        param.index !== undefined
-                          ? params[param.field as keyof FDPBDParams][
-                              param.index
-                            ]
-                          : params[param.field as keyof FDPBDParams]
-                      }
-                      onChange={(e) =>
-                        handleInputChange(
-                          e,
-                          param.field as keyof FDPBDParams,
-                          param.index
-                        )
-                      }
-                      className={`bg-gray-800 text-white p-2 rounded focus:outline-none border-2 ${
-                        isValidDecimal(
-                          param.index !== undefined
-                            ? params[param.field as keyof FDPBDParams][
-                                param.index
-                              ]
-                            : params[param.field as keyof FDPBDParams]
-                        )
-                          ? "border-gray-600 focus:border-teal-500"
-                          : "border-red-500"
-                      }`}
-                      disabled={isProcessing}
-                      required
-                    />
-                  </div>
-                ))}
-              </div>
-              {/* Sample Layer */}
-              <div className="bg-gray-700 p-4 rounded-lg mb-4">
-                <h4 className="text-white text-sm font-semibold mb-2">
-                  Sample Layer
-                </h4>
-                {[
-                  {
-                    field: "lambda_down",
-                    index: 2,
-                    label: `Lambda Down [${fieldUnits.lambda_down}]`,
-                  },
-                  {
-                    field: "c_down",
-                    index: 2,
-                    label: `C Down [${fieldUnits.c_down}]`,
-                  },
-                  {
-                    field: "h_down",
-                    index: 2,
-                    label: `H Down [${fieldUnits.h_down}]`,
-                  },
-                  ...(isotropyOption === "isotropy"
-                    ? [
-                        {
-                          field: "eta_down",
-                          index: 2,
-                          label: `Eta Down ${
-                            fieldUnits.eta_down
-                              ? `[${fieldUnits.eta_down}]`
-                              : ""
-                          }`,
-                        },
-                      ]
-                    : []),
-                  {
-                    field: "alpha_t",
-                    label: `Alpha T [${fieldUnits.alpha_t}]`,
-                  },
-                  {
-                    field: "niu",
-                    label: `Niu ${fieldUnits.niu ? `[${fieldUnits.niu}]` : ""}`,
-                  },
                 ].map((param) => (
                   <div
                     key={`${param.field}${param.index ?? ""}`}
