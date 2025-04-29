@@ -25,6 +25,7 @@ type FDPBDParams = {
   k_al: string;
   lens_transmittance: string;
   detector_gain: string;
+  phi: string;
 };
 
 type PlotData = {
@@ -67,6 +68,7 @@ export default function FDPBDPage() {
     k_al: "8.2",
     lens_transmittance: "0.93",
     detector_gain: "74.0",
+    phi: "0",
   });
   const fieldUnits: Record<string, string> = {
     f_amp: "Hz",
@@ -90,6 +92,7 @@ export default function FDPBDPage() {
     k_al: "",
     lens_transmittance: "",
     detector_gain: "V/rad",
+    phi: "degrees",
   };
   const [file, setFile] = useState<File | null>(null);
   const [result, setResult] = useState<FDPBDResult | null>(null);
@@ -105,6 +108,9 @@ export default function FDPBDPage() {
   const [isotropyOption, setIsotropyOption] = useState<
     "isotropy" | "anisotropy"
   >("isotropy");
+  const [laserOption, setLaserOption] = useState<
+    "TOPS 1" | "TOPS 2" | "custom"
+  >("TOPS 1");
 
   const isValidDecimal = (value: string | string[]) => {
     if (Array.isArray(value)) {
@@ -148,6 +154,7 @@ export default function FDPBDPage() {
       params.k_al,
       params.lens_transmittance,
       params.detector_gain,
+      ...(isotropyOption === "anisotropy" ? [params.phi] : []),
     ];
     return fields.every((field) => isValidDecimal(field)) && file !== null;
   };
@@ -170,11 +177,14 @@ export default function FDPBDPage() {
       return { ...prev, [field]: value };
     });
 
-    // Update radio button to custom/anisotropy if value differs
     if (
-      ["r_rms", "x_offset", "lens_transmittance", "detector_gain"].includes(
-        field
-      )
+      [
+        "r_rms",
+        "x_offset",
+        "lens_transmittance",
+        "detector_gain",
+        "phi",
+      ].includes(field)
     ) {
       const lensValues = {
         "5x": {
@@ -182,18 +192,21 @@ export default function FDPBDPage() {
           x_offset: "0.0000126",
           lens_transmittance: "0.93",
           detector_gain: "74.0",
+          phi: "0",
         },
         "10x": {
           r_rms: "0.0000056",
           x_offset: "0.0000063",
           lens_transmittance: "0.85",
           detector_gain: "37.0",
+          phi: "0",
         },
         "20x": {
           r_rms: "0.0000028",
           x_offset: "0.00000315",
           lens_transmittance: "0.80",
           detector_gain: "18.5",
+          phi: "0",
         },
       };
       const updatedParams = { ...params, [field]: value };
@@ -203,7 +216,8 @@ export default function FDPBDPage() {
             vals.r_rms === updatedParams.r_rms &&
             vals.x_offset === updatedParams.x_offset &&
             vals.lens_transmittance === updatedParams.lens_transmittance &&
-            vals.detector_gain === updatedParams.detector_gain
+            vals.detector_gain === updatedParams.detector_gain &&
+            vals.phi === updatedParams.phi
         )
       ) {
         setLensOption("custom");
@@ -264,6 +278,45 @@ export default function FDPBDPage() {
         setIsotropyOption("anisotropy");
       }
     }
+    if (
+      [
+        "f_amp",
+        "delay_1",
+        "delay_2",
+        "incident_pump",
+        "incident_probe",
+      ].includes(field)
+    ) {
+      const laserValues = {
+        "TOPS 1": {
+          f_amp: "95000",
+          delay_1: "0.0000089",
+          delay_2: "-1.3e-11",
+          incident_pump: "0.00106",
+          incident_probe: "0.00085",
+        },
+        "TOPS 2": {
+          f_amp: "95000",
+          delay_1: "0.0000089",
+          delay_2: "-1.3e-11",
+          incident_pump: "0.00106",
+          incident_probe: "0.00085",
+        },
+      };
+      const updatedParams = { ...params, [field]: value };
+      if (
+        !Object.values(laserValues).some(
+          (vals) =>
+            vals.f_amp === updatedParams.f_amp &&
+            vals.delay_1 === updatedParams.delay_1 &&
+            vals.delay_2 === updatedParams.delay_2 &&
+            vals.incident_pump === updatedParams.incident_pump &&
+            vals.incident_probe === updatedParams.incident_probe
+        )
+      ) {
+        setLaserOption("custom");
+      }
+    }
   };
 
   const handleLensOptionChange = (option: "5x" | "10x" | "20x" | "custom") => {
@@ -275,18 +328,21 @@ export default function FDPBDPage() {
           x_offset: "0.0000126",
           lens_transmittance: "0.93",
           detector_gain: "74.0",
+          phi: "0",
         },
         "10x": {
           r_rms: "0.0000056",
           x_offset: "0.0000063",
           lens_transmittance: "0.85",
           detector_gain: "37.0",
+          phi: "0",
         },
         "20x": {
           r_rms: "0.0000028",
           x_offset: "0.00000315",
           lens_transmittance: "0.80",
           detector_gain: "18.5",
+          phi: "0",
         },
       };
       setParams((prev) => ({
@@ -295,6 +351,7 @@ export default function FDPBDPage() {
         x_offset: values[option].x_offset,
         lens_transmittance: values[option].lens_transmittance,
         detector_gain: values[option].detector_gain,
+        phi: values[option].phi,
       }));
     }
   };
@@ -336,6 +393,36 @@ export default function FDPBDPage() {
     }
   };
 
+  const handleLaserOptionChange = (option: "TOPS 1" | "TOPS 2" | "custom") => {
+    setLaserOption(option);
+    if (option !== "custom") {
+      const values = {
+        "TOPS 1": {
+          f_amp: "95000",
+          delay_1: "0.0000089",
+          delay_2: "-1.3e-11",
+          incident_pump: "0.00106",
+          incident_probe: "0.00085",
+        },
+        "TOPS 2": {
+          f_amp: "95000",
+          delay_1: "0.0000089",
+          delay_2: "-1.3e-11",
+          incident_pump: "0.00106",
+          incident_probe: "0.00085",
+        },
+      };
+      setParams((prev) => ({
+        ...prev,
+        f_amp: values[option].f_amp,
+        delay_1: values[option].delay_1,
+        delay_2: values[option].delay_2,
+        incident_pump: values[option].incident_pump,
+        incident_probe: values[option].incident_probe,
+      }));
+    }
+  };
+
   const handleClear = () => {
     setParams({
       f_amp: "",
@@ -359,12 +446,14 @@ export default function FDPBDPage() {
       k_al: "",
       lens_transmittance: "",
       detector_gain: "",
+      phi: "",
     });
     setFile(null);
     setLensOption("custom");
     setTransducerOption("custom");
     setMediumOption("custom");
     setIsotropyOption("anisotropy");
+    setLaserOption("custom");
     setStatus("");
   };
 
@@ -389,10 +478,18 @@ export default function FDPBDPage() {
 
     const formData = new FormData();
     formData.append("file", file);
-    formData.append("params", JSON.stringify(params));
+    const visibleParams = {
+      ...params,
+      ...(isotropyOption === "anisotropy" ? {} : { phi: undefined }), // Exclude phi for isotropy
+    };
+    formData.append("params", JSON.stringify(visibleParams));
 
     try {
-      const response = await fetch("http://localhost:8000/fdpbd/analyze", {
+      const endpoint =
+        isotropyOption === "isotropy"
+          ? "http://localhost:8000/fdpbd/analyze"
+          : "http://localhost:8000/fdpbd/analyze_anisotropy";
+      const response = await fetch(endpoint, {
         method: "POST",
         body: formData,
       });
@@ -448,6 +545,32 @@ export default function FDPBDPage() {
               <h3 className="text-white text-md font-semibold mb-2">
                 Experimental Inputs
               </h3>
+              {/* Isotropy */}
+              <div className="bg-gray-700 p-4 rounded-lg mb-4">
+                <h4 className="text-white text-sm font-semibold mb-2">
+                  Isotropy
+                </h4>
+                <div className="flex space-x-4 mb-2">
+                  {["isotropy", "anisotropy"].map((opt) => (
+                    <label key={opt} className="flex items-center text-white">
+                      <input
+                        type="radio"
+                        name="isotropy"
+                        value={opt}
+                        checked={isotropyOption === opt}
+                        onChange={() =>
+                          handleIsotropyOptionChange(
+                            opt as "isotropy" | "anisotropy"
+                          )
+                        }
+                        className="mr-2"
+                        disabled={isProcessing}
+                      />
+                      {opt}
+                    </label>
+                  ))}
+                </div>
+              </div>
               {/* Lens Magnification */}
               <div className="bg-gray-700 p-4 rounded-lg mb-4">
                 <h4 className="text-white text-sm font-semibold mb-2">
@@ -491,6 +614,9 @@ export default function FDPBDPage() {
                     field: "detector_gain",
                     label: `Detector Gain [${fieldUnits.detector_gain}]`,
                   },
+                  ...(isotropyOption === "anisotropy"
+                    ? [{ field: "phi", label: `Phi [${fieldUnits.phi}]` }]
+                    : []),
                 ].map((param) => (
                   <div key={param.field} className="flex flex-col mb-2">
                     <label className="text-white text-sm mb-1">
@@ -517,6 +643,26 @@ export default function FDPBDPage() {
               {/* Laser */}
               <div className="bg-gray-700 p-4 rounded-lg">
                 <h4 className="text-white text-sm font-semibold mb-2">Laser</h4>
+                <div className="flex space-x-4 mb-2">
+                  {["TOPS 1", "TOPS 2", "custom"].map((opt) => (
+                    <label key={opt} className="flex items-center text-white">
+                      <input
+                        type="radio"
+                        name="laser"
+                        value={opt}
+                        checked={laserOption === opt}
+                        onChange={() =>
+                          handleLaserOptionChange(
+                            opt as "TOPS 1" | "TOPS 2" | "custom"
+                          )
+                        }
+                        className="mr-2"
+                        disabled={isProcessing}
+                      />
+                      {opt}
+                    </label>
+                  ))}
+                </div>
                 {[
                   { field: "f_amp", label: `F Amp [${fieldUnits.f_amp}]` },
                   {
@@ -848,32 +994,6 @@ export default function FDPBDPage() {
                     />
                   </div>
                 ))}
-              </div>
-              {/* Isotropy */}
-              <div className="bg-gray-700 p-4 rounded-lg mb-4">
-                <h4 className="text-white text-sm font-semibold mb-2">
-                  Isotropy
-                </h4>
-                <div className="flex space-x-4 mb-2">
-                  {["isotropy", "anisotropy"].map((opt) => (
-                    <label key={opt} className="flex items-center text-white">
-                      <input
-                        type="radio"
-                        name="isotropy"
-                        value={opt}
-                        checked={isotropyOption === opt}
-                        onChange={() =>
-                          handleIsotropyOptionChange(
-                            opt as "isotropy" | "anisotropy"
-                          )
-                        }
-                        className="mr-2"
-                        disabled={isProcessing}
-                      />
-                      {opt}
-                    </label>
-                  ))}
-                </div>
               </div>
             </div>
 
