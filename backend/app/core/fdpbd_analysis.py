@@ -29,6 +29,7 @@ def run_fdpbd_analysis(params, data_filename):
     n_al = params["n_al"]
     k_al = params["k_al"]
     lens_transmittance = params["lens_transmittance"]
+    detector_gain = params["detector_gain"]
 
     # Derived parameters
     refl_al = abs(n_al - 1 + 1j * k_al) ** 2 / abs(n_al + 1 + 1j * k_al) ** 2
@@ -47,7 +48,7 @@ def run_fdpbd_analysis(params, data_filename):
 
     # Calculate average sum voltage
     v_sum_avg = np.mean(v_sum)
-    coef = alpha_t * 2 * 37.0 * v_sum_avg / np.sqrt(2)  # For 10x objective
+    coef = alpha_t * detector_gain * v_sum_avg / np.sqrt(2)  # For 10x objective
 
     # Compute steady-state heating
     t_ss_heat = compute_steady_state_heat(
@@ -100,7 +101,7 @@ def run_fdpbd_analysis(params, data_filename):
     )
     lambda_measure = x_sol[0]
     coef_fitted = x_sol[1]
-    alpha_t_fitted = coef_fitted / (2 * 37 * v_sum_avg / np.sqrt(2))
+    alpha_t_fitted = coef_fitted / (detector_gain * v_sum_avg / np.sqrt(2))
 
     # Compute model for plotting
     delta_theta = delta_bo_theta(

@@ -23,6 +23,7 @@ class FDPBDParams(BaseModel):
     n_al: float
     k_al: float
     lens_transmittance: float
+    detector_gain: float
 
 
 class PlotData(BaseModel):

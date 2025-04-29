@@ -24,6 +24,7 @@ type FDPBDParams = {
   n_al: string;
   k_al: string;
   lens_transmittance: string;
+  detector_gain: string;
 };
 
 type PlotData = {
@@ -65,6 +66,7 @@ export default function FDPBDPage() {
     n_al: "2.9",
     k_al: "8.2",
     lens_transmittance: "0.93",
+    detector_gain: "74.0",
   });
   const fieldUnits: Record<string, string> = {
     f_amp: "Hz",
@@ -87,6 +89,7 @@ export default function FDPBDPage() {
     n_al: "",
     k_al: "",
     lens_transmittance: "",
+    detector_gain: "V/rad",
   };
   const [file, setFile] = useState<File | null>(null);
   const [result, setResult] = useState<FDPBDResult | null>(null);
@@ -144,6 +147,7 @@ export default function FDPBDPage() {
       params.n_al,
       params.k_al,
       params.lens_transmittance,
+      params.detector_gain,
     ];
     return fields.every((field) => isValidDecimal(field)) && file !== null;
   };
@@ -167,18 +171,29 @@ export default function FDPBDPage() {
     });
 
     // Update radio button to custom/anisotropy if value differs
-    if (["r_rms", "x_offset", "lens_transmittance"].includes(field)) {
+    if (
+      ["r_rms", "x_offset", "lens_transmittance", "detector_gain"].includes(
+        field
+      )
+    ) {
       const lensValues = {
         "5x": {
           r_rms: "0.00001120",
           x_offset: "0.0000126",
           lens_transmittance: "0.93",
+          detector_gain: "74.0",
         },
-        "10x": { r_rms: "0.0000056", x_offset: "0.0000063", lens_transmittance: "0.85" },
+        "10x": {
+          r_rms: "0.0000056",
+          x_offset: "0.0000063",
+          lens_transmittance: "0.85",
+          detector_gain: "37.0",
+        },
         "20x": {
           r_rms: "0.0000028",
           x_offset: "0.00000315",
           lens_transmittance: "0.80",
+          detector_gain: "18.5",
         },
       };
       const updatedParams = { ...params, [field]: value };
@@ -187,7 +202,8 @@ export default function FDPBDPage() {
           (vals) =>
             vals.r_rms === updatedParams.r_rms &&
             vals.x_offset === updatedParams.x_offset &&
-            vals.lens_transmittance === updatedParams.lens_transmittance
+            vals.lens_transmittance === updatedParams.lens_transmittance &&
+            vals.detector_gain === updatedParams.detector_gain
         )
       ) {
         setLensOption("custom");
@@ -258,12 +274,19 @@ export default function FDPBDPage() {
           r_rms: "0.00001120",
           x_offset: "0.0000126",
           lens_transmittance: "0.93",
+          detector_gain: "74.0",
         },
-        "10x": { r_rms: "", x_offset: "0.0000063", lens_transmittance: "0.85" },
+        "10x": {
+          r_rms: "0.0000056",
+          x_offset: "0.0000063",
+          lens_transmittance: "0.85",
+          detector_gain: "37.0",
+        },
         "20x": {
-          r_rms: "",
+          r_rms: "0.0000028",
           x_offset: "0.00000315",
           lens_transmittance: "0.80",
+          detector_gain: "18.5",
         },
       };
       setParams((prev) => ({
@@ -271,6 +294,7 @@ export default function FDPBDPage() {
         r_rms: values[option].r_rms,
         x_offset: values[option].x_offset,
         lens_transmittance: values[option].lens_transmittance,
+        detector_gain: values[option].detector_gain,
       }));
     }
   };
@@ -334,6 +358,7 @@ export default function FDPBDPage() {
       n_al: "",
       k_al: "",
       lens_transmittance: "",
+      detector_gain: "",
     });
     setFile(null);
     setLensOption("custom");
@@ -461,6 +486,10 @@ export default function FDPBDPage() {
                         ? `[${fieldUnits.lens_transmittance}]`
                         : ""
                     }`,
+                  },
+                  {
+                    field: "detector_gain",
+                    label: `Detector Gain [${fieldUnits.detector_gain}]`,
                   },
                 ].map((param) => (
                   <div key={param.field} className="flex flex-col mb-2">
