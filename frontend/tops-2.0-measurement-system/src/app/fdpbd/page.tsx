@@ -31,6 +31,17 @@ type FDPBDParams = {
   C11_0: string;
   C12_0: string;
   C44_0: string;
+  lambda_down_x: string;
+  lambda_down_y: string;
+  lambda_down_z: string;
+  rho_interface: string; // Use rho_interface to distinguish from rho in Transducer Layer
+  C11_0_interface: string;
+  C12_0_interface: string;
+  C13_0_interface: string;
+  C33_0_interface: string;
+  C44_0_interface: string;
+  alphaT_perp: string;
+  alphaT_para: string;
 };
 
 type PlotData = {
@@ -79,6 +90,17 @@ export default function FDPBDPage() {
     C11_0: "107.4e9",
     C12_0: "60.5e9",
     C44_0: "28.3e9",
+    lambda_down_x: "0.3",
+    lambda_down_y: "0.5",
+    lambda_down_z: "0.3",
+    rho_interface: "0",
+    C11_0_interface: "12.11e9",
+    C12_0_interface: "5.06e9",
+    C13_0_interface: "5.68e9",
+    C33_0_interface: "7.06e9",
+    C44_0_interface: "1.20e9",
+    alphaT_perp: "70e-6",
+    alphaT_para: "60e-6",
   });
   const fieldUnits: Record<string, string> = {
     f_amp: "Hz",
@@ -108,6 +130,17 @@ export default function FDPBDPage() {
     C11_0: "Pa",
     C12_0: "Pa",
     C44_0: "Pa",
+    lambda_down_x: "W/m-K",
+    lambda_down_y: "W/m-K",
+    lambda_down_z: "W/m-K",
+    rho_interface: "kg/m³",
+    C11_0_interface: "Pa",
+    C12_0_interface: "Pa",
+    C13_0_interface: "Pa",
+    C33_0_interface: "Pa",
+    C44_0_interface: "Pa",
+    alphaT_perp: "1/K",
+    alphaT_para: "1/K",
   };
   const [file, setFile] = useState<File | null>(null);
   const [result, setResult] = useState<FDPBDResult | null>(null);
@@ -172,12 +205,22 @@ export default function FDPBDPage() {
             params.C11_0,
             params.C12_0,
             params.C44_0,
+            params.lambda_down_x,
+            params.lambda_down_y,
+            params.lambda_down_z,
+            params.rho_interface,
+            params.C11_0_interface,
+            params.C12_0_interface,
+            params.C13_0_interface,
+            params.C33_0_interface,
+            params.C44_0_interface,
+            params.alphaT_perp,
+            params.alphaT_para,
           ]
         : []),
     ];
     return fields.every((field) => isValidDecimal(field)) && file !== null;
   };
-
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement>,
     field: keyof FDPBDParams,
@@ -498,6 +541,17 @@ export default function FDPBDPage() {
       C11_0: "",
       C12_0: "",
       C44_0: "",
+      lambda_down_x: "",
+      lambda_down_y: "",
+      lambda_down_z: "",
+      rho_interface: "",
+      C11_0_interface: "",
+      C12_0_interface: "",
+      C13_0_interface: "",
+      C33_0_interface: "",
+      C44_0_interface: "",
+      alphaT_perp: "",
+      alphaT_para: "",
     });
     setFile(null);
     setLensOption("custom");
@@ -537,6 +591,12 @@ export default function FDPBDPage() {
         ? {
             eta_up: undefined,
             h_up: undefined,
+            lambda_down: [
+              params.lambda_down[0],
+              undefined,
+              params.lambda_down[2],
+            ],
+            h_down: [params.h_down[0], undefined, params.h_down[2]],
           }
         : {
             phi: undefined,
@@ -545,6 +605,17 @@ export default function FDPBDPage() {
             C11_0: undefined,
             C12_0: undefined,
             C44_0: undefined,
+            lambda_down_x: undefined,
+            lambda_down_y: undefined,
+            lambda_down_z: undefined,
+            rho_interface: undefined,
+            C11_0_interface: undefined,
+            C12_0_interface: undefined,
+            C13_0_interface: undefined,
+            C33_0_interface: undefined,
+            C44_0_interface: undefined,
+            alphaT_perp: undefined,
+            alphaT_para: undefined,
           }),
     };
     formData.append("params", JSON.stringify(visibleParams));
@@ -963,23 +1034,23 @@ export default function FDPBDPage() {
                   Interface Layer
                 </h4>
                 {[
-                  {
-                    field: "lambda_down",
-                    index: 1,
-                    label: `Lambda Down [${fieldUnits.lambda_down}]`,
-                  },
-                  {
-                    field: "c_down",
-                    index: 1,
-                    label: `C Down [${fieldUnits.c_down}]`,
-                  },
-                  {
-                    field: "h_down",
-                    index: 1,
-                    label: `H Down [${fieldUnits.h_down}]`,
-                  },
                   ...(isotropyOption === "isotropy"
                     ? [
+                        {
+                          field: "lambda_down",
+                          index: 1,
+                          label: `Lambda Down [${fieldUnits.lambda_down}]`,
+                        },
+                        {
+                          field: "c_down",
+                          index: 1,
+                          label: `C Down [${fieldUnits.c_down}]`,
+                        },
+                        {
+                          field: "h_down",
+                          index: 1,
+                          label: `H Down [${fieldUnits.h_down}]`,
+                        },
                         {
                           field: "eta_down",
                           index: 1,
@@ -990,10 +1061,60 @@ export default function FDPBDPage() {
                           }`,
                         },
                       ]
-                    : []),
+                    : [
+                        {
+                          field: "lambda_down_x",
+                          label: `Lambda Down X [${fieldUnits.lambda_down_x}]`,
+                        },
+                        {
+                          field: "lambda_down_y",
+                          label: `Lambda Down Y [${fieldUnits.lambda_down_y}]`,
+                        },
+                        {
+                          field: "lambda_down_z",
+                          label: `Lambda Down Z [${fieldUnits.lambda_down_z}]`,
+                        },
+                        {
+                          field: "c_down",
+                          index: 1,
+                          label: `C Down [${fieldUnits.c_down}]`,
+                        },
+                        {
+                          field: "rho_interface",
+                          label: `Rho [${fieldUnits.rho_interface}]`,
+                        },
+                        {
+                          field: "C11_0_interface",
+                          label: `C11 [${fieldUnits.C11_0_interface}]`,
+                        },
+                        {
+                          field: "C12_0_interface",
+                          label: `C12 [${fieldUnits.C12_0_interface}]`,
+                        },
+                        {
+                          field: "C13_0_interface",
+                          label: `C13 [${fieldUnits.C13_0_interface}]`,
+                        },
+                        {
+                          field: "C33_0_interface",
+                          label: `C33 [${fieldUnits.C33_0_interface}]`,
+                        },
+                        {
+                          field: "C44_0_interface",
+                          label: `C44 [${fieldUnits.C44_0_interface}]`,
+                        },
+                        {
+                          field: "alphaT_perp",
+                          label: `Alpha T Perpendicular [${fieldUnits.alphaT_perp}]`,
+                        },
+                        {
+                          field: "alphaT_para",
+                          label: `Alpha T Parallel [${fieldUnits.alphaT_para}]`,
+                        },
+                      ]),
                 ].map((param) => (
                   <div
-                    key={`${param.field}${param.index}`}
+                    key={`${param.field}${param.index ?? ""}`}
                     className="flex flex-col mb-2"
                   >
                     <label className="text-white text-sm mb-1">
@@ -1003,7 +1124,11 @@ export default function FDPBDPage() {
                       type="number"
                       step="any"
                       value={
-                        params[param.field as keyof FDPBDParams][param.index]
+                        param.index !== undefined
+                          ? params[param.field as keyof FDPBDParams][
+                              param.index
+                            ]
+                          : params[param.field as keyof FDPBDParams]
                       }
                       onChange={(e) =>
                         handleInputChange(
@@ -1014,7 +1139,11 @@ export default function FDPBDPage() {
                       }
                       className={`bg-gray-800 text-white p-2 rounded focus:outline-none border-2 ${
                         isValidDecimal(
-                          params[param.field as keyof FDPBDParams][param.index]
+                          param.index !== undefined
+                            ? params[param.field as keyof FDPBDParams][
+                                param.index
+                              ]
+                            : params[param.field as keyof FDPBDParams]
                         )
                           ? "border-gray-600 focus:border-teal-500"
                           : "border-red-500"
