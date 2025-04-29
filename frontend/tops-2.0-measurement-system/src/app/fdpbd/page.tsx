@@ -143,9 +143,8 @@ export default function FDPBDPage() {
       params.niu,
       params.alpha_t,
       params.lambda_up,
-      params.eta_up,
+      ...(isotropyOption === "isotropy" ? [params.eta_up, params.h_up] : []),
       params.c_up,
-      params.h_up,
       params.r_rms,
       params.x_offset,
       params.incident_pump,
@@ -264,10 +263,14 @@ export default function FDPBDPage() {
       };
       const updatedParams = { ...params, [field]: value };
       if (
-        updatedParams.lambda_up !== airValues.lambda_up ||
-        updatedParams.eta_up !== airValues.eta_up ||
-        updatedParams.c_up !== airValues.c_up ||
-        updatedParams.h_up !== airValues.h_up
+        !(
+          updatedParams.lambda_up === airValues.lambda_up &&
+          (isotropyOption === "anisotropy" ||
+            updatedParams.eta_up === airValues.eta_up) &&
+          updatedParams.c_up === airValues.c_up &&
+          (isotropyOption === "anisotropy" ||
+            updatedParams.h_up === airValues.h_up)
+        )
       ) {
         setMediumOption("custom");
       }
@@ -376,9 +379,9 @@ export default function FDPBDPage() {
       setParams((prev) => ({
         ...prev,
         lambda_up: "0.028",
-        eta_up: "1.0",
+        eta_up: isotropyOption === "isotropy" ? "1.0" : prev.eta_up,
         c_up: "1192.0",
-        h_up: "0.001",
+        h_up: isotropyOption === "isotropy" ? "0.001" : prev.h_up,
       }));
     }
   };
@@ -480,7 +483,9 @@ export default function FDPBDPage() {
     formData.append("file", file);
     const visibleParams = {
       ...params,
-      ...(isotropyOption === "anisotropy" ? {} : { phi: undefined }), // Exclude phi for isotropy
+      ...(isotropyOption === "anisotropy"
+        ? { eta_up: undefined, h_up: undefined }
+        : { phi: undefined }),
     };
     formData.append("params", JSON.stringify(visibleParams));
 
@@ -739,14 +744,18 @@ export default function FDPBDPage() {
                     field: "lambda_up",
                     label: `Lambda Up [${fieldUnits.lambda_up}]`,
                   },
-                  {
-                    field: "eta_up",
-                    label: `Eta Up ${
-                      fieldUnits.eta_up ? `[${fieldUnits.eta_up}]` : ""
-                    }`,
-                  },
                   { field: "c_up", label: `C Up [${fieldUnits.c_up}]` },
-                  { field: "h_up", label: `H Up [${fieldUnits.h_up}]` },
+                  ...(isotropyOption === "isotropy"
+                    ? [
+                        {
+                          field: "eta_up",
+                          label: `Eta Up ${
+                            fieldUnits.eta_up ? `[${fieldUnits.eta_up}]` : ""
+                          }`,
+                        },
+                        { field: "h_up", label: `H Up [${fieldUnits.h_up}]` },
+                      ]
+                    : []),
                 ].map((param) => (
                   <div key={param.field} className="flex flex-col mb-2">
                     <label className="text-white text-sm mb-1">
