@@ -3,6 +3,43 @@
 import { useState } from "react";
 import Plot from "react-plotly.js";
 
+type IsotropicPlotData = {
+  freq_fit: number[];
+  v_corr_in_fit: number[];
+  v_corr_out_fit: number[];
+  v_corr_ratio_fit: number[];
+  delta_in: number[];
+  delta_out: number[];
+  delta_ratio: number[];
+};
+
+type AnisotropicPlotData = {
+  model_freqs: number[];
+  in_model: number[];
+  out_model: number[];
+  ratio_model: number[];
+  exp_freqs: number[];
+  in_exp: number[];
+  out_exp: number[];
+  ratio_exp: number[];
+};
+
+type FDPBDResult = {
+  lambda_measure: number;
+  alpha_t_fitted: number;
+  t_ss_heat: number;
+  plot_data: IsotropicPlotData;
+};
+
+type AnisotropicFDPBDResult = {
+  f_peak: number | null;
+  ratio_at_peak: number | null;
+  lambda_measure: number | null;
+  alpha_t_fitted: number | null;
+  t_ss_heat: number | null;
+  plot_data: AnisotropicPlotData;
+};
+
 type FDPBDParams = {
   f_amp: string;
   delay_1: string;
@@ -52,13 +89,6 @@ type PlotData = {
   delta_in: number[];
   delta_out: number[];
   delta_ratio: number[];
-};
-
-type FDPBDResult = {
-  lambda_measure: number;
-  alpha_t_fitted: number;
-  t_ss_heat: number;
-  plot_data: PlotData;
 };
 
 export default function FDPBDPage() {
@@ -143,7 +173,9 @@ export default function FDPBDPage() {
     alphaT_para: "1/K",
   };
   const [file, setFile] = useState<File | null>(null);
-  const [result, setResult] = useState<FDPBDResult | null>(null);
+  const [result, setResult] = useState<
+    FDPBDResult | AnisotropicFDPBDResult | null
+  >(null);
   const [status, setStatus] = useState<string>("");
   const [isProcessing, setIsProcessing] = useState(false);
   const [lensOption, setLensOption] = useState<"5x" | "10x" | "20x" | "custom">(
@@ -1271,169 +1303,378 @@ export default function FDPBDPage() {
                 <h2 className="text-white text-lg font-semibold mb-4">
                   Results
                 </h2>
-                <p className="text-white">
-                  Thermal Conductivity: {result.lambda_measure.toFixed(3)} W/m-K
-                </p>
-                <p className="text-white">
-                  Thermal Expansion: {result.alpha_t_fitted.toExponential(3)} /K
-                </p>
+                {result && (
+                  <>
+                    {isotropyOption === "isotropy" &&
+                      (() => {
+                        const isotropicResult = result as FDPBDResult;
+                        return (
+                          <>
+                            <p className="text-white">
+                              Thermal Conductivity:{" "}
+                              {isotropicResult.lambda_measure.toFixed(3)} W/m-K
+                            </p>
+                            <p className="text-white">
+                              Thermal Expansion:{" "}
+                              {isotropicResult.alpha_t_fitted.toExponential(3)}{" "}
+                              /K
+                            </p>
+                          </>
+                        );
+                      })()}
+                    {isotropyOption === "anisotropy" &&
+                      (() => {
+                        const anisotropicResult =
+                          result as AnisotropicFDPBDResult;
+                        return (
+                          <>
+                            <p className="text-white">
+                              Peak Frequency:{" "}
+                              {anisotropicResult.f_peak
+                                ? anisotropicResult.f_peak.toFixed(2)
+                                : "N/A"}{" "}
+                              Hz
+                            </p>
+                            <p className="text-white">
+                              Ratio at Peak:{" "}
+                              {anisotropicResult.ratio_at_peak
+                                ? anisotropicResult.ratio_at_peak.toFixed(4)
+                                : "N/A"}
+                            </p>
+                          </>
+                        );
+                      })()}
+                  </>
+                )}
               </div>
               <div className="bg-gray-800 p-4 rounded-lg shadow-md">
                 <h2 className="text-white text-lg font-semibold mb-4">
                   Graphs
                 </h2>
                 <div className="flex flex-col space-y-4">
-                  <Plot
-                    data={[
-                      {
-                        x: result.plot_data.freq_fit,
-                        y: result.plot_data.v_corr_in_fit,
-                        type: "scatter",
-                        mode: "markers",
-                        name: "In-phase (data)",
-                        marker: { color: "black" },
-                      },
-                      {
-                        x: result.plot_data.freq_fit,
-                        y: result.plot_data.v_corr_out_fit,
-                        type: "scatter",
-                        mode: "markers",
-                        name: "Out-of-phase (data)",
-                        marker: { color: "black" },
-                      },
-                      {
-                        x: result.plot_data.freq_fit,
-                        y: result.plot_data.delta_in,
-                        type: "scatter",
-                        mode: "lines",
-                        name: "In-phase (model)",
-                        line: { color: "blue" },
-                      },
-                      {
-                        x: result.plot_data.freq_fit,
-                        y: result.plot_data.delta_out,
-                        type: "scatter",
-                        mode: "lines",
-                        name: "Out-of-phase (model)",
-                        line: { color: "red" },
-                      },
-                    ]}
-                    layout={{
-                      title: "In/Out-of-phase",
-                      xaxis: {
-                        title: {
-                          text: "Frequency (Hz)",
-                          font: { size: 14, color: "black" },
-                          standoff: 10,
-                        },
-                        type: "log",
-                        showgrid: false,
-                        tickfont: { size: 12, color: "black" },
-                        showticklabels: true,
-                        tickmode: "auto",
-                        nticks: 3, // Limit to major ticks
-                      },
-                      yaxis: {
-                        title: {
-                          text: "In/Out-of-phase (V)",
-                          font: { size: 14, color: "black" },
-                          standoff: 10,
-                        },
-                        showgrid: false,
-                        tickfont: { size: 12, color: "black" },
-                        showticklabels: true,
-                        tickmode: "auto",
-                        nticks: 5, // Limit to major ticks
-                      },
-                      legend: { x: 1, xanchor: "right", y: 1 },
-                      plot_bgcolor: "white",
-                      paper_bgcolor: "white",
-                      font: { color: "black" },
-                      width: 800,
-                      height: 400,
-                      margin: { l: 60, r: 40, t: 60, b: 60 },
-                      shapes: [
-                        {
-                          type: "rect",
-                          xref: "paper",
-                          yref: "paper",
-                          x0: 0,
-                          y0: 0,
-                          x1: 1,
-                          y1: 1,
-                          line: { color: "black", width: 2 },
-                        },
-                      ],
-                    }}
-                  />
-                  <Plot
-                    data={[
-                      {
-                        x: result.plot_data.freq_fit,
-                        y: result.plot_data.v_corr_ratio_fit,
-                        type: "scatter",
-                        mode: "markers",
-                        name: "Ratio (data)",
-                        marker: { color: "black" },
-                      },
-                      {
-                        x: result.plot_data.freq_fit,
-                        y: result.plot_data.delta_ratio,
-                        type: "scatter",
-                        mode: "lines",
-                        name: "Ratio (model)",
-                        line: { color: "blue" },
-                      },
-                    ]}
-                    layout={{
-                      title: "Ratio",
-                      xaxis: {
-                        title: {
-                          text: "Frequency (Hz)",
-                          font: { size: 14, color: "black" },
-                          standoff: 10,
-                        },
-                        type: "log",
-                        showgrid: false,
-                        tickfont: { size: 12, color: "black" },
-                        showticklabels: true,
-                        tickmode: "auto",
-                        nticks: 3, // Limit to major ticks
-                      },
-                      yaxis: {
-                        title: {
-                          text: "Ratio",
-                          font: { size: 14, color: "black" },
-                          standoff: 10,
-                        },
-                        type: "log",
-                        showgrid: false,
-                        tickfont: { size: 12, color: "black" },
-                        showticklabels: true,
-                        tickmode: "auto",
-                        nticks: 5, // Limit to major ticks
-                      },
-                      legend: { x: 1, xanchor: "right", y: 1 },
-                      plot_bgcolor: "white",
-                      paper_bgcolor: "white",
-                      font: { color: "black" },
-                      width: 800,
-                      height: 400,
-                      margin: { l: 60, r: 40, t: 60, b: 60 },
-                      shapes: [
-                        {
-                          type: "rect",
-                          xref: "paper",
-                          yref: "paper",
-                          x0: 0,
-                          y0: 0,
-                          x1: 1,
-                          y1: 1,
-                          line: { color: "black", width: 2 },
-                        },
-                      ],
-                    }}
-                  />
+                  {isotropyOption === "isotropy" && result && (
+                    <>
+                      <Plot
+                        data={[
+                          {
+                            x: (result as FDPBDResult).plot_data.freq_fit,
+                            y: (result as FDPBDResult).plot_data.v_corr_in_fit,
+                            type: "scatter",
+                            mode: "markers",
+                            name: "In-phase (data)",
+                            marker: { color: "black" },
+                          },
+                          {
+                            x: (result as FDPBDResult).plot_data.freq_fit,
+                            y: (result as FDPBDResult).plot_data.v_corr_out_fit,
+                            type: "scatter",
+                            mode: "markers",
+                            name: "Out-of-phase (data)",
+                            marker: { color: "black" },
+                          },
+                          {
+                            x: (result as FDPBDResult).plot_data.freq_fit,
+                            y: (result as FDPBDResult).plot_data.delta_in,
+                            type: "scatter",
+                            mode: "lines",
+                            name: "In-phase (model)",
+                            line: { color: "blue" },
+                          },
+                          {
+                            x: (result as FDPBDResult).plot_data.freq_fit,
+                            y: (result as FDPBDResult).plot_data.delta_out,
+                            type: "scatter",
+                            mode: "lines",
+                            name: "Out-of-phase (model)",
+                            line: { color: "red" },
+                          },
+                        ]}
+                        layout={{
+                          title: "In/Out-of-phase",
+                          xaxis: {
+                            title: {
+                              text: "Frequency (Hz)",
+                              font: { size: 14, color: "black" },
+                              standoff: 10,
+                            },
+                            type: "log",
+                            showgrid: false,
+                            tickfont: { size: 12, color: "black" },
+                            showticklabels: true,
+                            tickmode: "auto",
+                            nticks: 3,
+                          },
+                          yaxis: {
+                            title: {
+                              text: "In/Out-of-phase (V)",
+                              font: { size: 14, color: "black" },
+                              standoff: 10,
+                            },
+                            showgrid: false,
+                            tickfont: { size: 12, color: "black" },
+                            showticklabels: true,
+                            tickmode: "auto",
+                            nticks: 5,
+                          },
+                          legend: { x: 1, xanchor: "right", y: 1 },
+                          plot_bgcolor: "white",
+                          paper_bgcolor: "white",
+                          font: { color: "black" },
+                          width: 800,
+                          height: 400,
+                          margin: { l: 60, r: 40, t: 60, b: 60 },
+                          shapes: [
+                            {
+                              type: "rect",
+                              xref: "paper",
+                              yref: "paper",
+                              x0: 0,
+                              y0: 0,
+                              x1: 1,
+                              y1: 1,
+                              line: { color: "black", width: 2 },
+                            },
+                          ],
+                        }}
+                      />
+                      <Plot
+                        data={[
+                          {
+                            x: (result as FDPBDResult).plot_data.freq_fit,
+                            y: (result as FDPBDResult).plot_data
+                              .v_corr_ratio_fit,
+                            type: "scatter",
+                            mode: "markers",
+                            name: "Ratio (data)",
+                            marker: { color: "black" },
+                          },
+                          {
+                            x: (result as FDPBDResult).plot_data.freq_fit,
+                            y: (result as FDPBDResult).plot_data.delta_ratio,
+                            type: "scatter",
+                            mode: "lines",
+                            name: "Ratio (model)",
+                            line: { color: "blue" },
+                          },
+                        ]}
+                        layout={{
+                          title: "Ratio",
+                          xaxis: {
+                            title: {
+                              text: "Frequency (Hz)",
+                              font: { size: 14, color: "black" },
+                              standoff: 10,
+                            },
+                            type: "log",
+                            showgrid: false,
+                            tickfont: { size: 12, color: "black" },
+                            showticklabels: true,
+                            tickmode: "auto",
+                            nticks: 3,
+                          },
+                          yaxis: {
+                            title: {
+                              text: "Ratio",
+                              font: { size: 14, color: "black" },
+                              standoff: 10,
+                            },
+                            type: "log",
+                            showgrid: false,
+                            tickfont: { size: 12, color: "black" },
+                            showticklabels: true,
+                            tickmode: "auto",
+                            nticks: 5,
+                          },
+                          legend: { x: 1, xanchor: "right", y: 1 },
+                          plot_bgcolor: "white",
+                          paper_bgcolor: "white",
+                          font: { color: "black" },
+                          width: 800,
+                          height: 400,
+                          margin: { l: 60, r: 40, t: 60, b: 60 },
+                          shapes: [
+                            {
+                              type: "rect",
+                              xref: "paper",
+                              yref: "paper",
+                              x0: 0,
+                              y0: 0,
+                              x1: 1,
+                              y1: 1,
+                              line: { color: "black", width: 2 },
+                            },
+                          ],
+                        }}
+                      />
+                    </>
+                  )}
+                  {isotropyOption === "anisotropy" && result && (
+                    <>
+                      <Plot
+                        data={[
+                          {
+                            x: (result as AnisotropicFDPBDResult).plot_data
+                              .exp_freqs,
+                            y: (result as AnisotropicFDPBDResult).plot_data
+                              .in_exp,
+                            type: "scatter",
+                            mode: "markers",
+                            name: "In-phase (data)",
+                            marker: { color: "black" },
+                          },
+                          {
+                            x: (result as AnisotropicFDPBDResult).plot_data
+                              .exp_freqs,
+                            y: (result as AnisotropicFDPBDResult).plot_data
+                              .out_exp,
+                            type: "scatter",
+                            mode: "markers",
+                            name: "Out-of-phase (data)",
+                            marker: { color: "black" },
+                          },
+                          {
+                            x: (result as AnisotropicFDPBDResult).plot_data
+                              .model_freqs,
+                            y: (result as AnisotropicFDPBDResult).plot_data
+                              .in_model,
+                            type: "scatter",
+                            mode: "lines",
+                            name: "In-phase (model)",
+                            line: { color: "blue" },
+                          },
+                          {
+                            x: (result as AnisotropicFDPBDResult).plot_data
+                              .model_freqs,
+                            y: (result as AnisotropicFDPBDResult).plot_data
+                              .out_model,
+                            type: "scatter",
+                            mode: "lines",
+                            name: "Out-of-phase (model)",
+                            line: { color: "red" },
+                          },
+                        ]}
+                        layout={{
+                          title: "In/Out-of-phase",
+                          xaxis: {
+                            title: {
+                              text: "Frequency (Hz)",
+                              font: { size: 14, color: "black" },
+                              standoff: 10,
+                            },
+                            type: "log",
+                            showgrid: false,
+                            tickfont: { size: 12, color: "black" },
+                            showticklabels: true,
+                            tickmode: "auto",
+                            nticks: 3,
+                          },
+                          yaxis: {
+                            title: {
+                              text: "In/Out-of-phase (V)",
+                              font: { size: 14, color: "black" },
+                              standoff: 10,
+                            },
+                            showgrid: false,
+                            tickfont: { size: 12, color: "black" },
+                            showticklabels: true,
+                            tickmode: "auto",
+                            nticks: 5,
+                          },
+                          legend: { x: 1, xanchor: "right", y: 1 },
+                          plot_bgcolor: "white",
+                          paper_bgcolor: "white",
+                          font: { color: "black" },
+                          width: 800,
+                          height: 400,
+                          margin: { l: 60, r: 40, t: 60, b: 60 },
+                          shapes: [
+                            {
+                              type: "rect",
+                              xref: "paper",
+                              yref: "paper",
+                              x0: 0,
+                              y0: 0,
+                              x1: 1,
+                              y1: 1,
+                              line: { color: "black", width: 2 },
+                            },
+                          ],
+                        }}
+                      />
+                      <Plot
+                        data={[
+                          {
+                            x: (result as AnisotropicFDPBDResult).plot_data
+                              .exp_freqs,
+                            y: (result as AnisotropicFDPBDResult).plot_data
+                              .ratio_exp,
+                            type: "scatter",
+                            mode: "markers",
+                            name: "Ratio (data)",
+                            marker: { color: "black" },
+                          },
+                          {
+                            x: (result as AnisotropicFDPBDResult).plot_data
+                              .model_freqs,
+                            y: (result as AnisotropicFDPBDResult).plot_data
+                              .ratio_model,
+                            type: "scatter",
+                            mode: "lines",
+                            name: "Ratio (model)",
+                            line: { color: "blue" },
+                          },
+                        ]}
+                        layout={{
+                          title: "Ratio",
+                          xaxis: {
+                            title: {
+                              text: "Frequency (Hz)",
+                              font: { size: 14, color: "black" },
+                              standoff: 10,
+                            },
+                            type: "log",
+                            showgrid: false,
+                            tickfont: { size: 12, color: "black" },
+                            showticklabels: true,
+                            tickmode: "auto",
+                            nticks: 3,
+                          },
+                          yaxis: {
+                            title: {
+                              text: "Ratio",
+                              font: { size: 14, color: "black" },
+                              standoff: 10,
+                            },
+                            type: "log",
+                            showgrid: false,
+                            tickfont: { size: 12, color: "black" },
+                            showticklabels: true,
+                            tickmode: "auto",
+                            nticks: 5,
+                          },
+                          legend: { x: 1, xanchor: "right", y: 1 },
+                          plot_bgcolor: "white",
+                          paper_bgcolor: "white",
+                          font: { color: "black" },
+                          width: 800,
+                          height: 400,
+                          margin: { l: 60, r: 40, t: 60, b: 60 },
+                          shapes: [
+                            {
+                              type: "rect",
+                              xref: "paper",
+                              yref: "paper",
+                              x0: 0,
+                              y0: 0,
+                              x1: 1,
+                              y1: 1,
+                              line: { color: "black", width: 2 },
+                            },
+                          ],
+                        }}
+                      />
+                    </>
+                  )}
                 </div>
               </div>
             </>

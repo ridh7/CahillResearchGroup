@@ -20,7 +20,7 @@ def load_data(
     if not os.path.exists(filepath):
         raise FileNotFoundError(f"Data file {filepath} not found.")
 
-    data = np.loadtxt(filepath, max_rows=100).T
+    data = np.loadtxt(filepath).T
     v_in = data[0]
     v_out = data[1]
     freq = data[2]
