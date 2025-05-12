@@ -123,7 +123,7 @@ export default function FDPBDPage() {
     lambda_down_x_sample: "0.3",
     lambda_down_y_sample: "0.5",
     lambda_down_z_sample: "0.3",
-    rho_sample: "0",
+    rho_sample: "1.38",
     C11_0_sample: "12.11",
     C12_0_sample: "5.06",
     C13_0_sample: "5.68",
@@ -296,7 +296,7 @@ export default function FDPBDPage() {
           phi: "0",
         },
         "20x": {
-          w_rms: "2.80",
+          w_rms: "2.825",
           x_offset: "3.15",
           lens_transmittance: "0.80",
           detector_factor: "18.5",
@@ -454,7 +454,7 @@ export default function FDPBDPage() {
           phi: "0",
         },
         "20x": {
-          w_rms: "2.80",
+          w_rms: "2.825",
           x_offset: "3.15",
           lens_transmittance: "0.80",
           detector_factor: "18.5",
