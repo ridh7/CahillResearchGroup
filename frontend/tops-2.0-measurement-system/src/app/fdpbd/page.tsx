@@ -107,7 +107,7 @@ export default function FDPBDPage() {
     c_up: "1192.0",
     h_up: "0.001",
     w_rms: "11.20",
-    x_offset: "0.0000126",
+    x_offset: "12.60",
     incident_pump: "0.00106",
     incident_probe: "0.00085",
     n_al: "2.9",
@@ -147,7 +147,7 @@ export default function FDPBDPage() {
     c_up: "J/m³-K",
     h_up: "m",
     w_rms: "µm",
-    x_offset: "m",
+    x_offset: "µm",
     incident_pump: "W",
     incident_probe: "W",
     n_al: "",
@@ -283,21 +283,21 @@ export default function FDPBDPage() {
       const lensValues = {
         "5x": {
           w_rms: "11.20",
-          x_offset: "0.0000126",
+          x_offset: "12.60",
           lens_transmittance: "0.93",
           detector_factor: "74.0",
           phi: "0",
         },
         "10x": {
           w_rms: "5.60",
-          x_offset: "0.0000063",
+          x_offset: "6.30",
           lens_transmittance: "0.85",
           detector_factor: "37.0",
           phi: "0",
         },
         "20x": {
           w_rms: "2.80",
-          x_offset: "0.00000315",
+          x_offset: "3.15",
           lens_transmittance: "0.80",
           detector_factor: "18.5",
           phi: "0",
@@ -441,21 +441,21 @@ export default function FDPBDPage() {
       const values = {
         "5x": {
           w_rms: "11.20",
-          x_offset: "0.0000126",
+          x_offset: "12.60",
           lens_transmittance: "0.93",
           detector_factor: "74.0",
           phi: "0",
         },
         "10x": {
           w_rms: "5.60",
-          x_offset: "0.0000063",
+          x_offset: "6.30",
           lens_transmittance: "0.85",
           detector_factor: "37.0",
           phi: "0",
         },
         "20x": {
           w_rms: "2.80",
-          x_offset: "0.00000315",
+          x_offset: "3.15",
           lens_transmittance: "0.80",
           detector_factor: "18.5",
           phi: "0",
@@ -619,6 +619,7 @@ export default function FDPBDPage() {
     const modifiedParams = {
       ...params,
       w_rms: (parseFloat(params.w_rms) * 1e-6).toString(),
+      x_offset: (parseFloat(params.x_offset) * 1e-6).toString(),
     };
 
     const visibleParams = {
