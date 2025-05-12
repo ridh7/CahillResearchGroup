@@ -30,14 +30,14 @@ def load_data(
 
 
 def calculate_leaking(
-    freq: np.ndarray, f_amp: float, delay_1: float, delay_2: float
+    freq: np.ndarray, f_rolloff: float, delay_1: float, delay_2: float
 ) -> np.ndarray:
     """
     Calculate the complex leaking correction factor.
 
     Args:
         freq: Frequency array (Hz).
-        f_amp: Amplitude frequency (Hz).
+        f_rolloff: Amplitude frequency (Hz).
         delay_1: First delay parameter (s).
         delay_2: Second delay parameter (s).
 
@@ -46,7 +46,7 @@ def calculate_leaking(
     """
     return (
         1.0
-        / (1 + 1j * freq / f_amp)
+        / (1 + 1j * freq / f_rolloff)
         / np.exp(1j * (delay_1 * freq + delay_2 * freq**2))
     )
 

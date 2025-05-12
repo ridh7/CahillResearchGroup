@@ -1,5 +1,5 @@
 {
-    "f_amp": 95000,
+    "f_rolloff": 95000,
     "delay_1": 0.0000089,
     "delay_2": -1.3e-11,
     "lambda_down": [

@@ -41,7 +41,7 @@ type AnisotropicFDPBDResult = {
 };
 
 type FDPBDParams = {
-  f_amp: string;
+  f_rolloff: string;
   delay_1: string;
   delay_2: string;
   lambda_down: string[];
@@ -93,7 +93,7 @@ type PlotData = {
 
 export default function FDPBDPage() {
   const [params, setParams] = useState<FDPBDParams>({
-    f_amp: "95000",
+    f_rolloff: "95000",
     delay_1: "0.0000089",
     delay_2: "-1.3e-11",
     lambda_down: ["149.0", "0.1", "9.7"],
@@ -133,7 +133,7 @@ export default function FDPBDPage() {
     alphaT_para: "60e-6",
   });
   const fieldUnits: Record<string, string> = {
-    f_amp: "Hz",
+    f_rolloff: "Hz",
     delay_1: "s",
     delay_2: "s",
     lambda_down: "W/m-K",
@@ -201,7 +201,7 @@ export default function FDPBDPage() {
 
   const isFormValid = () => {
     const fields = [
-      params.f_amp,
+      params.f_rolloff,
       params.delay_1,
       params.delay_2,
       params.lambda_down[0],
@@ -396,7 +396,7 @@ export default function FDPBDPage() {
     }
     if (
       [
-        "f_amp",
+        "f_rolloff",
         "delay_1",
         "delay_2",
         "incident_pump",
@@ -405,14 +405,14 @@ export default function FDPBDPage() {
     ) {
       const laserValues = {
         "TOPS 1": {
-          f_amp: "95000",
+          f_rolloff: "95000",
           delay_1: "0.0000089",
           delay_2: "-1.3e-11",
           incident_pump: "0.00106",
           incident_probe: "0.00085",
         },
         "TOPS 2": {
-          f_amp: "95000",
+          f_rolloff: "95000",
           delay_1: "0.0000089",
           delay_2: "-1.3e-11",
           incident_pump: "0.00106",
@@ -423,7 +423,7 @@ export default function FDPBDPage() {
       if (
         !Object.values(laserValues).some(
           (vals) =>
-            vals.f_amp === updatedParams.f_amp &&
+            vals.f_rolloff === updatedParams.f_rolloff &&
             vals.delay_1 === updatedParams.delay_1 &&
             vals.delay_2 === updatedParams.delay_2 &&
             vals.incident_pump === updatedParams.incident_pump &&
@@ -519,14 +519,14 @@ export default function FDPBDPage() {
     if (option !== "custom") {
       const values = {
         "TOPS 1": {
-          f_amp: "95000",
+          f_rolloff: "95000",
           delay_1: "0.0000089",
           delay_2: "-1.3e-11",
           incident_pump: "0.00106",
           incident_probe: "0.00085",
         },
         "TOPS 2": {
-          f_amp: "95000",
+          f_rolloff: "95000",
           delay_1: "0.0000089",
           delay_2: "-1.3e-11",
           incident_pump: "0.00106",
@@ -535,7 +535,7 @@ export default function FDPBDPage() {
       };
       setParams((prev) => ({
         ...prev,
-        f_amp: values[option].f_amp,
+        f_rolloff: values[option].f_rolloff,
         delay_1: values[option].delay_1,
         delay_2: values[option].delay_2,
         incident_pump: values[option].incident_pump,
@@ -546,7 +546,7 @@ export default function FDPBDPage() {
 
   const handleClear = () => {
     setParams({
-      f_amp: "",
+      f_rolloff: "",
       delay_1: "",
       delay_2: "",
       lambda_down: ["", "", ""],
@@ -763,7 +763,7 @@ export default function FDPBDPage() {
                   ))}
                 </div>
                 {[
-                  { field: "w_rms", label: `R RMS [${fieldUnits.w_rms}]` },
+                  { field: "w_rms", label: `W RMS [${fieldUnits.w_rms}]` },
                   {
                     field: "x_offset",
                     label: `X Offset [${fieldUnits.x_offset}]`,
@@ -830,7 +830,7 @@ export default function FDPBDPage() {
                   ))}
                 </div>
                 {[
-                  { field: "f_amp", label: `F Amp [${fieldUnits.f_amp}]` },
+                  { field: "f_rolloff", label: `f Rolloff [${fieldUnits.f_rolloff}]` },
                   {
                     field: "delay_1",
                     label: `Delay 1 [${fieldUnits.delay_1}]`,

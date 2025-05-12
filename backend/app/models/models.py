@@ -34,7 +34,7 @@ class Layer3Params(BaseModel):
 
 
 class AnisotropicFDPBDParams(BaseModel):
-    f_amp: float
+    f_rolloff: float
     delay_1: float
     delay_2: float
     lambda_down: List[Optional[float]]

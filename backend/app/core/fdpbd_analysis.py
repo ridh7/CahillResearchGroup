@@ -7,7 +7,7 @@ from app.core.fdpbd.thermal_model import compute_steady_state_heat, delta_bo_the
 def run_fdpbd_analysis(params, data_filename):
     """Run FD-PBD analysis with given parameters and data file."""
     # Extract parameters
-    f_amp = params["f_amp"]
+    f_rolloff = params["f_rolloff"]
     delay_1 = params["delay_1"]
     delay_2 = params["delay_2"]
     lambda_down = np.array(params["lambda_down"])
@@ -41,7 +41,7 @@ def run_fdpbd_analysis(params, data_filename):
     v_out, v_in, v_ratio, v_sum, freq = load_data(data_filename)
 
     # Calculate leaking correction
-    complex_leaking = calculate_leaking(freq, f_amp, delay_1, delay_2)
+    complex_leaking = calculate_leaking(freq, f_rolloff, delay_1, delay_2)
 
     # Correct data
     v_corr_in, v_corr_out, v_corr_ratio = correct_data(v_out, v_in, complex_leaking)

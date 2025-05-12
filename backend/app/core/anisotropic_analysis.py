@@ -403,7 +403,7 @@ def run_anisotropic_analysis(params: dict, data_filename: str) -> dict:
 
     # Transform frontend parameters
     transformed_params = {
-        "f_amp": float(params["f_amp"]),
+        "f_rolloff": float(params["f_rolloff"]),
         "delay_1": float(params["delay_1"]),
         "delay_2": float(params["delay_2"]),
         "incident_pump": float(params["incident_pump"]),
@@ -455,7 +455,7 @@ def run_anisotropic_analysis(params: dict, data_filename: str) -> dict:
     # Calculate leaking correction
     complex_leaking = calculate_leaking(
         freq,
-        transformed_params["f_amp"],
+        transformed_params["f_rolloff"],
         transformed_params["delay_1"],
         transformed_params["delay_2"],
     )
