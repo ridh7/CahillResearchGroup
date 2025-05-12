@@ -106,7 +106,7 @@ export default function FDPBDPage() {
     eta_up: "1.0",
     c_up: "1192.0",
     h_up: "0.001",
-    w_rms: "0.00001120",
+    w_rms: "11.20",
     x_offset: "0.0000126",
     incident_pump: "0.00106",
     incident_probe: "0.00085",
@@ -146,7 +146,7 @@ export default function FDPBDPage() {
     eta_up: "",
     c_up: "J/m³-K",
     h_up: "m",
-    w_rms: "m",
+    w_rms: "µm",
     x_offset: "m",
     incident_pump: "W",
     incident_probe: "W",
@@ -282,21 +282,21 @@ export default function FDPBDPage() {
     ) {
       const lensValues = {
         "5x": {
-          w_rms: "0.00001120",
+          w_rms: "11.20",
           x_offset: "0.0000126",
           lens_transmittance: "0.93",
           detector_factor: "74.0",
           phi: "0",
         },
         "10x": {
-          w_rms: "0.0000056",
+          w_rms: "5.60",
           x_offset: "0.0000063",
           lens_transmittance: "0.85",
           detector_factor: "37.0",
           phi: "0",
         },
         "20x": {
-          w_rms: "0.0000028",
+          w_rms: "2.80",
           x_offset: "0.00000315",
           lens_transmittance: "0.80",
           detector_factor: "18.5",
@@ -440,21 +440,21 @@ export default function FDPBDPage() {
     if (option !== "custom") {
       const values = {
         "5x": {
-          w_rms: "0.00001120",
+          w_rms: "11.20",
           x_offset: "0.0000126",
           lens_transmittance: "0.93",
           detector_factor: "74.0",
           phi: "0",
         },
         "10x": {
-          w_rms: "0.0000056",
+          w_rms: "5.60",
           x_offset: "0.0000063",
           lens_transmittance: "0.85",
           detector_factor: "37.0",
           phi: "0",
         },
         "20x": {
-          w_rms: "0.0000028",
+          w_rms: "2.80",
           x_offset: "0.00000315",
           lens_transmittance: "0.80",
           detector_factor: "18.5",
@@ -615,16 +615,24 @@ export default function FDPBDPage() {
 
     const formData = new FormData();
     formData.append("file", file);
-    const visibleParams = {
+
+    const modifiedParams = {
       ...params,
+      w_rms: (parseFloat(params.w_rms) * 1e-6).toString(),
+    };
+
+    const visibleParams = {
+      ...modifiedParams,
       eta_down:
-        isotropyOption === "isotropy" ? params.eta_down.join(",") : undefined,
+        isotropyOption === "isotropy"
+          ? modifiedParams.eta_down.join(",")
+          : undefined,
       ...(isotropyOption === "anisotropy"
         ? {
             eta_up: undefined,
             h_up: undefined,
-            lambda_down: [params.lambda_down[0], undefined, undefined],
-            h_down: [params.h_down[0], undefined, undefined],
+            lambda_down: [modifiedParams.lambda_down[0], undefined, undefined],
+            h_down: [modifiedParams.h_down[0], undefined, undefined],
             niu: undefined,
             alpha_t: undefined,
           }
@@ -830,7 +838,10 @@ export default function FDPBDPage() {
                   ))}
                 </div>
                 {[
-                  { field: "f_rolloff", label: `f Rolloff [${fieldUnits.f_rolloff}]` },
+                  {
+                    field: "f_rolloff",
+                    label: `f Rolloff [${fieldUnits.f_rolloff}]`,
+                  },
                   {
                     field: "delay_1",
                     label: `Delay 1 [${fieldUnits.delay_1}]`,
