@@ -407,7 +407,7 @@ def run_anisotropic_analysis(params: dict, data_filename: str) -> dict:
         "delay_1": float(params["delay_1"]),
         "delay_2": float(params["delay_2"]),
         "incident_pump": float(params["incident_pump"]),
-        "w_rms": float(params["r_rms"]),
+        "w_rms": float(params["w_rms"]),
         "r_0": float(params["x_offset"]),
         "phi": float(params["phi"]),
         "lens_transmittance": float(params["lens_transmittance"]),

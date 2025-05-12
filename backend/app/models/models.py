@@ -41,7 +41,7 @@ class AnisotropicFDPBDParams(BaseModel):
     c_down: List[Optional[float]]
     h_down: List[Optional[float]]
     incident_pump: float
-    r_rms: float
+    w_rms: float
     x_offset: float
     phi: float
     lens_transmittance: float

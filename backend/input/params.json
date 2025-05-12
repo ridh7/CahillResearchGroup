@@ -28,7 +28,7 @@
     "eta_up": 1.0,
     "c_up": 1192.0,
     "h_up": 0.001,
-    "r_rms": 0.00001120,
+    "w_rms": 0.00001120,
     "x_offset": 0.0000126,
     "incident_pump": 0.00106,
     "incident_probe": 0.00085,

@@ -54,7 +54,7 @@ type FDPBDParams = {
   eta_up: string;
   c_up: string;
   h_up: string;
-  r_rms: string;
+  w_rms: string;
   x_offset: string;
   incident_pump: string;
   incident_probe: string;
@@ -106,7 +106,7 @@ export default function FDPBDPage() {
     eta_up: "1.0",
     c_up: "1192.0",
     h_up: "0.001",
-    r_rms: "0.00001120",
+    w_rms: "0.00001120",
     x_offset: "0.0000126",
     incident_pump: "0.00106",
     incident_probe: "0.00085",
@@ -146,7 +146,7 @@ export default function FDPBDPage() {
     eta_up: "",
     c_up: "J/m³-K",
     h_up: "m",
-    r_rms: "m",
+    w_rms: "m",
     x_offset: "m",
     incident_pump: "W",
     incident_probe: "W",
@@ -220,7 +220,7 @@ export default function FDPBDPage() {
       params.lambda_up,
       ...(isotropyOption === "isotropy" ? [params.eta_up, params.h_up] : []),
       params.c_up,
-      params.r_rms,
+      params.w_rms,
       params.x_offset,
       params.incident_pump,
       params.incident_probe,
@@ -273,7 +273,7 @@ export default function FDPBDPage() {
 
     if (
       [
-        "r_rms",
+        "w_rms",
         "x_offset",
         "lens_transmittance",
         "detector_gain",
@@ -282,21 +282,21 @@ export default function FDPBDPage() {
     ) {
       const lensValues = {
         "5x": {
-          r_rms: "0.00001120",
+          w_rms: "0.00001120",
           x_offset: "0.0000126",
           lens_transmittance: "0.93",
           detector_gain: "74.0",
           phi: "0",
         },
         "10x": {
-          r_rms: "0.0000056",
+          w_rms: "0.0000056",
           x_offset: "0.0000063",
           lens_transmittance: "0.85",
           detector_gain: "37.0",
           phi: "0",
         },
         "20x": {
-          r_rms: "0.0000028",
+          w_rms: "0.0000028",
           x_offset: "0.00000315",
           lens_transmittance: "0.80",
           detector_gain: "18.5",
@@ -307,7 +307,7 @@ export default function FDPBDPage() {
       if (
         !Object.values(lensValues).some(
           (vals) =>
-            vals.r_rms === updatedParams.r_rms &&
+            vals.w_rms === updatedParams.w_rms &&
             vals.x_offset === updatedParams.x_offset &&
             vals.lens_transmittance === updatedParams.lens_transmittance &&
             vals.detector_gain === updatedParams.detector_gain &&
@@ -440,21 +440,21 @@ export default function FDPBDPage() {
     if (option !== "custom") {
       const values = {
         "5x": {
-          r_rms: "0.00001120",
+          w_rms: "0.00001120",
           x_offset: "0.0000126",
           lens_transmittance: "0.93",
           detector_gain: "74.0",
           phi: "0",
         },
         "10x": {
-          r_rms: "0.0000056",
+          w_rms: "0.0000056",
           x_offset: "0.0000063",
           lens_transmittance: "0.85",
           detector_gain: "37.0",
           phi: "0",
         },
         "20x": {
-          r_rms: "0.0000028",
+          w_rms: "0.0000028",
           x_offset: "0.00000315",
           lens_transmittance: "0.80",
           detector_gain: "18.5",
@@ -463,7 +463,7 @@ export default function FDPBDPage() {
       };
       setParams((prev) => ({
         ...prev,
-        r_rms: values[option].r_rms,
+        w_rms: values[option].w_rms,
         x_offset: values[option].x_offset,
         lens_transmittance: values[option].lens_transmittance,
         detector_gain: values[option].detector_gain,
@@ -559,7 +559,7 @@ export default function FDPBDPage() {
       eta_up: "",
       c_up: "",
       h_up: "",
-      r_rms: "",
+      w_rms: "",
       x_offset: "",
       incident_pump: "",
       incident_probe: "",
@@ -763,7 +763,7 @@ export default function FDPBDPage() {
                   ))}
                 </div>
                 {[
-                  { field: "r_rms", label: `R RMS [${fieldUnits.r_rms}]` },
+                  { field: "w_rms", label: `R RMS [${fieldUnits.w_rms}]` },
                   {
                     field: "x_offset",
                     label: `X Offset [${fieldUnits.x_offset}]`,

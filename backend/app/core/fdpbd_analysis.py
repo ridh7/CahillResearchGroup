@@ -20,10 +20,10 @@ def run_fdpbd_analysis(params, data_filename):
     eta_up = params["eta_up"]
     c_up = params["c_up"]
     h_up = params["h_up"]
-    r_rms = params["r_rms"]
+    w_rms = params["w_rms"]
     x_offset = params["x_offset"]
-    r_pump = r_rms
-    r_probe = r_rms
+    r_pump = w_rms
+    r_probe = w_rms
     incident_pump = params["incident_pump"]
     incident_probe = params["incident_probe"]
     n_al = params["n_al"]

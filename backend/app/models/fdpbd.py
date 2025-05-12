@@ -16,7 +16,7 @@ class FDPBDParams(BaseModel):
     eta_up: float
     c_up: float
     h_up: float
-    r_rms: float
+    w_rms: float
     x_offset: float
     incident_pump: float
     incident_probe: float
