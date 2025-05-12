@@ -45,7 +45,7 @@ class AnisotropicFDPBDParams(BaseModel):
     x_offset: float
     phi: float
     lens_transmittance: float
-    detector_gain: float
+    detector_factor: float
     n_al: float
     k_al: float
     lambda_up: float

@@ -353,10 +353,10 @@ def compute_probe_deflection(
 
 
 def compute_lockin_signals(
-    angles: np.ndarray, v_sum_avg: float, detector_gain: float
+    angles: np.ndarray, v_sum_avg: float, detector_factor: float
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Convert deflection angles into lock-in signals."""
-    raw = angles / np.sqrt(2) * 0.5 * detector_gain * v_sum_avg
+    raw = angles / np.sqrt(2) * 0.5 * detector_factor * v_sum_avg
     in_phase = np.abs(np.real(raw))
     out_phase = -np.imag(raw)
     ratio = np.full_like(in_phase, np.nan)
@@ -411,7 +411,7 @@ def run_anisotropic_analysis(params: dict, data_filename: str) -> dict:
         "r_0": float(params["x_offset"]),
         "phi": float(params["phi"]),
         "lens_transmittance": float(params["lens_transmittance"]),
-        "detector_gain": float(params["detector_gain"]),
+        "detector_factor": float(params["detector_factor"]),
         "n_al": float(params["n_al"]),
         "k_al": float(params["k_al"]),
         "c_probe": c_probe,
@@ -479,7 +479,7 @@ def run_anisotropic_analysis(params: dict, data_filename: str) -> dict:
         Z, p_vals, psi_vals, model_freqs, transformed_params
     )
     in_mod, out_mod, ratio_mod = compute_lockin_signals(
-        pbd_angles, v_sum_avg, transformed_params["detector_gain"]
+        pbd_angles, v_sum_avg, transformed_params["detector_factor"]
     )
 
     # Rough analysis

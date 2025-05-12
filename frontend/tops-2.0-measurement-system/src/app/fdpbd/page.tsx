@@ -61,7 +61,7 @@ type FDPBDParams = {
   n_al: string;
   k_al: string;
   lens_transmittance: string;
-  detector_gain: string;
+  detector_factor: string;
   phi: string;
   rho: string;
   alphaT: string;
@@ -113,7 +113,7 @@ export default function FDPBDPage() {
     n_al: "2.9",
     k_al: "8.2",
     lens_transmittance: "0.93",
-    detector_gain: "74.0",
+    detector_factor: "74.0",
     phi: "0",
     rho: "2.70e3",
     alphaT: "23.1e-6",
@@ -153,7 +153,7 @@ export default function FDPBDPage() {
     n_al: "",
     k_al: "",
     lens_transmittance: "",
-    detector_gain: "V/rad",
+    detector_factor: "V/rad",
     phi: "degrees",
     rho: "kg/m³",
     alphaT: "1/K",
@@ -227,7 +227,7 @@ export default function FDPBDPage() {
       params.n_al,
       params.k_al,
       params.lens_transmittance,
-      params.detector_gain,
+      params.detector_factor,
       ...(isotropyOption === "anisotropy"
         ? [
             params.phi,
@@ -276,7 +276,7 @@ export default function FDPBDPage() {
         "w_rms",
         "x_offset",
         "lens_transmittance",
-        "detector_gain",
+        "detector_factor",
         "phi",
       ].includes(field)
     ) {
@@ -285,21 +285,21 @@ export default function FDPBDPage() {
           w_rms: "0.00001120",
           x_offset: "0.0000126",
           lens_transmittance: "0.93",
-          detector_gain: "74.0",
+          detector_factor: "74.0",
           phi: "0",
         },
         "10x": {
           w_rms: "0.0000056",
           x_offset: "0.0000063",
           lens_transmittance: "0.85",
-          detector_gain: "37.0",
+          detector_factor: "37.0",
           phi: "0",
         },
         "20x": {
           w_rms: "0.0000028",
           x_offset: "0.00000315",
           lens_transmittance: "0.80",
-          detector_gain: "18.5",
+          detector_factor: "18.5",
           phi: "0",
         },
       };
@@ -310,7 +310,7 @@ export default function FDPBDPage() {
             vals.w_rms === updatedParams.w_rms &&
             vals.x_offset === updatedParams.x_offset &&
             vals.lens_transmittance === updatedParams.lens_transmittance &&
-            vals.detector_gain === updatedParams.detector_gain &&
+            vals.detector_factor === updatedParams.detector_factor &&
             vals.phi === updatedParams.phi
         )
       ) {
@@ -443,21 +443,21 @@ export default function FDPBDPage() {
           w_rms: "0.00001120",
           x_offset: "0.0000126",
           lens_transmittance: "0.93",
-          detector_gain: "74.0",
+          detector_factor: "74.0",
           phi: "0",
         },
         "10x": {
           w_rms: "0.0000056",
           x_offset: "0.0000063",
           lens_transmittance: "0.85",
-          detector_gain: "37.0",
+          detector_factor: "37.0",
           phi: "0",
         },
         "20x": {
           w_rms: "0.0000028",
           x_offset: "0.00000315",
           lens_transmittance: "0.80",
-          detector_gain: "18.5",
+          detector_factor: "18.5",
           phi: "0",
         },
       };
@@ -466,7 +466,7 @@ export default function FDPBDPage() {
         w_rms: values[option].w_rms,
         x_offset: values[option].x_offset,
         lens_transmittance: values[option].lens_transmittance,
-        detector_gain: values[option].detector_gain,
+        detector_factor: values[option].detector_factor,
         phi: values[option].phi,
       }));
     }
@@ -566,7 +566,7 @@ export default function FDPBDPage() {
       n_al: "",
       k_al: "",
       lens_transmittance: "",
-      detector_gain: "",
+      detector_factor: "",
       phi: "",
       rho: "",
       alphaT: "",
@@ -777,8 +777,8 @@ export default function FDPBDPage() {
                     }`,
                   },
                   {
-                    field: "detector_gain",
-                    label: `Detector Gain [${fieldUnits.detector_gain}]`,
+                    field: "detector_factor",
+                    label: `Detector Factor [${fieldUnits.detector_factor}]`,
                   },
                   ...(isotropyOption === "anisotropy"
                     ? [{ field: "phi", label: `Phi [${fieldUnits.phi}]` }]
