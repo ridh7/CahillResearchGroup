@@ -98,7 +98,7 @@ export default function FDPBDPage() {
     delay_2: "-1.3e-11",
     lambda_down: ["149.0", "0.1", "9.7"],
     eta_down: ["1.0", "1.0", "1.0"],
-    c_down: ["2440000", "100000", "2730000"],
+    c_down: ["2.44", "0.1", "2.73"],
     h_down: ["7e-8", "1e-9", "1e-6"],
     niu: "0.26",
     alpha_t: "0.00001885",
@@ -138,7 +138,7 @@ export default function FDPBDPage() {
     delay_2: "s",
     lambda_down: "W/m-K",
     eta_down: "",
-    c_down: "J/m³-K",
+    c_down: "J/cm³-K",
     h_down: "m",
     niu: "",
     alpha_t: "1/K",
@@ -325,7 +325,7 @@ export default function FDPBDPage() {
     ) {
       const alValues = {
         lambda_down_0: "149.0",
-        c_down_0: "2440000",
+        c_down_0: "2.44",
         h_down_0: "7e-8",
         n_al: "2.9",
         k_al: "8.2",
@@ -478,7 +478,7 @@ export default function FDPBDPage() {
       setParams((prev) => ({
         ...prev,
         lambda_down: ["149.0", prev.lambda_down[1], prev.lambda_down[2]],
-        c_down: ["2440000", prev.c_down[1], prev.c_down[2]],
+        c_down: ["2.44", prev.c_down[1], prev.c_down[2]],
         h_down: ["7e-8", prev.h_down[1], prev.h_down[2]],
         n_al: "2.9",
         k_al: "8.2",
@@ -622,6 +622,9 @@ export default function FDPBDPage() {
       x_offset: (parseFloat(params.x_offset) * 1e-6).toString(),
       incident_probe: (parseFloat(params.incident_probe) * 1e-3).toString(),
       incident_pump: (parseFloat(params.incident_pump) * 1e-3).toString(),
+      c_down: params.c_down.map((c_down_i) =>
+        (parseFloat(c_down_i) * 1e6).toString()
+      ),
     };
 
     const visibleParams = {
