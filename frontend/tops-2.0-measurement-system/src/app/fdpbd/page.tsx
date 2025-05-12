@@ -108,8 +108,8 @@ export default function FDPBDPage() {
     h_up: "0.001",
     w_rms: "11.20",
     x_offset: "12.60",
-    incident_pump: "0.00106",
-    incident_probe: "0.00085",
+    incident_pump: "1.06",
+    incident_probe: "0.85",
     n_al: "2.9",
     k_al: "8.2",
     lens_transmittance: "0.93",
@@ -148,8 +148,8 @@ export default function FDPBDPage() {
     h_up: "m",
     w_rms: "µm",
     x_offset: "µm",
-    incident_pump: "W",
-    incident_probe: "W",
+    incident_pump: "mW",
+    incident_probe: "mW",
     n_al: "",
     k_al: "",
     lens_transmittance: "",
@@ -408,15 +408,15 @@ export default function FDPBDPage() {
           f_rolloff: "95000",
           delay_1: "0.0000089",
           delay_2: "-1.3e-11",
-          incident_pump: "0.00106",
-          incident_probe: "0.00085",
+          incident_pump: "1.06",
+          incident_probe: "0.85",
         },
         "TOPS 2": {
           f_rolloff: "95000",
           delay_1: "0.0000089",
           delay_2: "-1.3e-11",
-          incident_pump: "0.00106",
-          incident_probe: "0.00085",
+          incident_pump: "1.06",
+          incident_probe: "0.85",
         },
       };
       const updatedParams = { ...params, [field]: value };
@@ -522,15 +522,15 @@ export default function FDPBDPage() {
           f_rolloff: "95000",
           delay_1: "0.0000089",
           delay_2: "-1.3e-11",
-          incident_pump: "0.00106",
-          incident_probe: "0.00085",
+          incident_pump: "1.06",
+          incident_probe: "0.85",
         },
         "TOPS 2": {
           f_rolloff: "95000",
           delay_1: "0.0000089",
           delay_2: "-1.3e-11",
-          incident_pump: "0.00106",
-          incident_probe: "0.00085",
+          incident_pump: "1.06",
+          incident_probe: "0.85",
         },
       };
       setParams((prev) => ({
@@ -620,6 +620,8 @@ export default function FDPBDPage() {
       ...params,
       w_rms: (parseFloat(params.w_rms) * 1e-6).toString(),
       x_offset: (parseFloat(params.x_offset) * 1e-6).toString(),
+      incident_probe: (parseFloat(params.incident_probe) * 1e-3).toString(),
+      incident_pump: (parseFloat(params.incident_pump) * 1e-3).toString(),
     };
 
     const visibleParams = {
