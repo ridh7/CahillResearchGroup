@@ -1014,13 +1014,13 @@ export default function FDPBDPage() {
                     : []),
                   {
                     field: "n_al",
-                    label: `Refractive Index (N) ${
+                    label: `Refractive Index (n) ${
                       fieldUnits.n_al ? `[${fieldUnits.n_al}]` : ""
                     }`,
                   },
                   {
                     field: "k_al",
-                    label: `Imaginary Index (K) ${
+                    label: `Imaginary Index (k) ${
                       fieldUnits.k_al ? `[${fieldUnits.k_al}]` : ""
                     }`,
                   },
