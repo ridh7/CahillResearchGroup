@@ -10,6 +10,32 @@ import scipy.linalg as la
 import matplotlib.pyplot as plt
 import warnings
 from data_processing import load_data, calculate_leaking, correct_data
+from scipy.optimize import minimize
+import copy
+
+# -----------------------------------------------------------------------------
+# —— Fitting Configuration (NEW) ——————————————————————————————————————
+# -----------------------------------------------------------------------------
+FITTING_CONFIG = {
+    "parameter_to_fit": "sigma_x",  # Name of the key in LAYER2 to fit
+    "initial_guess": 0.3,  # Initial guess for the optimizer
+    "bounds": (0.01, 2.0),  # (min, max) bounds for the parameter
+    "fixed_values": {  # Values for OTHER L2 target params during this fit
+        "sigma_y": 0.5,  # Example: keep sigma_y at its original value
+        "alphaT_perp": 70e-6,  # Example: keep alphaT_perp original
+        "alphaT_para": 60e-6,  # Example: keep alphaT_para original
+    },
+}
+
+# Global storage for data needed by objective function (NEW)
+EXP_DATA_STORAGE = {}
+P_VALS_GLOBAL = np.array([])
+PSI_VALS_GLOBAL = np.array([])
+
+# For plotting, distinguish from MODEL_FREQS used in original single run (NEW)
+# MODEL_FREQS_PLOT = np.logspace(
+#     np.log10(100e3), np.log10(100), 20
+# )  # More points for smoother plot
 
 # -----------------------------------------------------------------------------
 # —— Hard-coded Input Parameters ————————————————————————————————————————
@@ -569,12 +595,14 @@ def plot_results(
     out_exp: np.ndarray,
     ratio_model: np.ndarray,
     ratio_exp: np.ndarray,
+    title_suffix: str = "",
 ) -> None:
     """
     Two‐panel comparison plots: semilog of in/out‐phase
     and log-log of ratio, model vs. experiment.
     """
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5))
+    fig.suptitle(f"FD-PBD Model vs. Experiment{title_suffix}")
 
     # left panel: in/out
     ax1.semilogx(model_freqs, in_model, "ko-", lw=1.5, label="Model In-phase")
@@ -599,42 +627,204 @@ def plot_results(
 
 
 # -----------------------------------------------------------------------------
+# —— Objective Function for Fitting —————————————————————————————————————
+# -----------------------------------------------------------------------------
+def objective_function(param_value_to_fit, param_name_to_fit_str, fixed_params_dict):
+    global LAYER2  # Allow modification of global LAYER2 during this function call
+
+    # Store original value of the parameter being fitted to restore it later
+    original_param_val = LAYER2[param_name_to_fit_str]
+
+    # Update LAYER2: set the parameter being fitted to the optimizer's current trial value
+    current_trial_param_value = param_value_to_fit[
+        0
+    ]  # param_value_to_fit is a list/array
+    LAYER2[param_name_to_fit_str] = current_trial_param_value
+    # Update LAYER2: set the parameters that are fixed for this fitting run
+    for key, value in fixed_params_dict.items():
+        LAYER2[key] = value
+
+    # **** NEW: Print the parameter value being tried ****
+    print(f"  Trying {param_name_to_fit_str}: {current_trial_param_value:.6e}")
+
+    # Run the model simulation using experimental frequencies (from global storage)
+    # P_VALS_GLOBAL and PSI_VALS_GLOBAL are also used by these functions
+    Z = compute_surface_displacement(
+        EXP_DATA_STORAGE["freqs"], P_VALS_GLOBAL, PSI_VALS_GLOBAL
+    )
+    pbd_angles = compute_probe_deflection(
+        Z, P_VALS_GLOBAL, PSI_VALS_GLOBAL, EXP_DATA_STORAGE["freqs"]
+    )
+    in_mod, out_mod, _ = compute_lockin_signals(
+        pbd_angles, EXP_DATA_STORAGE["v_sum_avg"]
+    )
+
+    cost = 1e12  # Default high cost if NaNs occur
+    if not (np.isnan(in_mod).any() or np.isnan(out_mod).any()):
+        # Calculate Sum of Squared Differences (SSD)
+        ssd_in_phase = np.sum((in_mod - EXP_DATA_STORAGE["in_phase"]) ** 2)
+        ssd_out_phase = np.sum((out_mod - EXP_DATA_STORAGE["out_of_phase"]) ** 2)
+        cost = ssd_in_phase + ssd_out_phase
+
+    # **** NEW: Print the calculated cost for this parameter value ****
+    print(
+        f"    Cost for {param_name_to_fit_str} = {current_trial_param_value:.6e} -> {cost:.6e}"
+    )
+
+    # Restore the original value of the fitted parameter in global LAYER2
+    LAYER2[param_name_to_fit_str] = original_param_val
+    # Fixed parameters (from fixed_params_dict) also need to be conceptually restored
+    # to the state LAYER2 had before this specific objective_function call if other
+    # parts of the code were to rely on it. However, the main fitting loop in main()
+    # re-establishes the correct LAYER2 state (based on FITTING_CONFIG) before calling minimize,
+    # and then sets the final fitted value after minimize completes.
+    # The key is that *within* one call to objective_function, LAYER2 reflects the trial.
+
+    return cost
+
+
+# -----------------------------------------------------------------------------
 # —— Main Script ————————————————————————————————————————————————
 # -----------------------------------------------------------------------------
 
 
 def main():
-    # 1) Load & correct experimental data using your shared module
+    global LAYER2, EXP_DATA_STORAGE, P_VALS_GLOBAL, PSI_VALS_GLOBAL  # Declare globals
+
+    # 1) Load & correct experimental data
     v_out, v_in, _, v_sum_data, Fexp = load_data(DATA_FILENAME)
     complex_leaking = calculate_leaking(Fexp, F_AMP, DELAY_1, DELAY_2)
     Vin_exp, Vout_exp, ratio_exp = correct_data(v_out, v_in, complex_leaking)
     v_sum_avg = np.mean(v_sum_data)
 
-    # 2) Build p and psi grids
+    # Populate global storage for objective function
+    EXP_DATA_STORAGE = {
+        "freqs": Fexp,
+        "in_phase": Vin_exp,
+        "out_of_phase": Vout_exp,  # Ensure this key matches access in objective_function
+        "ratio": ratio_exp,
+        "v_sum_avg": v_sum_avg,
+    }
+
+    # 2) Build p and psi grids and make them global
     up_p = 8 / W_RMS
     d_p = up_p / N_P
-    p_vals = np.linspace(d_p, up_p, N_P)
-
+    P_VALS_GLOBAL = np.linspace(d_p, up_p, N_P)  # N_P must be odd
     up_psi = np.pi / 2
-    psi_vals = np.linspace(0, up_psi, N_PSI)
+    PSI_VALS_GLOBAL = np.linspace(0, up_psi, N_PSI)  # N_PSI must be odd
 
-    # 3) Compute the model surface displacement Z(p,ψ,f)
-    Z = compute_surface_displacement(MODEL_FREQS, p_vals, psi_vals)
+    # --- Initial Model Run (Before Fitting) ---
+    print("--- Running Initial Model (Before Fitting) ---")
+    # Save a pristine copy of LAYER2 to ensure this run uses original hardcoded values
+    original_hardcoded_layer2 = copy.deepcopy(LAYER2)
 
-    # 4) Integrate to get probe-beam deflection angle vs. freq
-    pbd_angles = compute_probe_deflection(Z, p_vals, psi_vals, MODEL_FREQS)
+    # Simulation with original hardcoded LAYER2 and plot-specific frequencies
+    Z_initial = compute_surface_displacement(
+        MODEL_FREQS, P_VALS_GLOBAL, PSI_VALS_GLOBAL
+    )
+    pbd_angles_initial = compute_probe_deflection(
+        Z_initial, P_VALS_GLOBAL, PSI_VALS_GLOBAL, MODEL_FREQS
+    )
+    in_mod_initial, out_mod_initial, ratio_mod_initial = compute_lockin_signals(
+        pbd_angles_initial, v_sum_avg
+    )
 
-    # 5) Convert to lock-in signals
-    in_mod, out_mod, ratio_mod = compute_lockin_signals(pbd_angles, v_sum_avg)
+    # Rough analysis for initial parameters
+    f_peak_initial, ratio_at_peak_initial = fit_rough_analysis(
+        MODEL_FREQS, out_mod_initial, ratio_mod_initial
+    )
+    print(
+        f"Initial: Peak out-of-phase at {f_peak_initial if not np.isnan(f_peak_initial) else 'N/A'} Hz"
+    )
+    print(
+        f"Initial: Ratio at peak: {ratio_at_peak_initial if not np.isnan(ratio_at_peak_initial) else 'N/A'}"
+    )
 
-    # 6) Rough analysis
-    f_peak, ratio_at_peak = fit_rough_analysis(MODEL_FREQS, out_mod, ratio_mod)
-    print(f"Peak out-of-phase at {f_peak:.2f} Hz")
-    print(f"Ratio at peak: {ratio_at_peak:.4f}")
-
-    # 7) Plot
     plot_results(
-        MODEL_FREQS, in_mod, out_mod, Fexp, Vin_exp, Vout_exp, ratio_mod, ratio_exp
+        MODEL_FREQS,
+        in_mod_initial,
+        out_mod_initial,
+        Fexp,
+        Vin_exp,
+        Vout_exp,
+        ratio_mod_initial,
+        ratio_exp,
+        title_suffix=" (Initial Parameters)",
+    )
+    # Restore global LAYER2 to its original hardcoded state before fitting changes it
+    LAYER2 = original_hardcoded_layer2
+    # --- End of Initial Model Run ---
+
+    # 3) Perform Fitting ---
+    print(f"\n--- Starting Fit for: {FITTING_CONFIG['parameter_to_fit']} ---")
+    param_to_fit_name = FITTING_CONFIG["parameter_to_fit"]
+
+    # Prepare LAYER2 for fitting:
+    # Set the parameter-to-be-fitted to its initial guess from FITTING_CONFIG
+    LAYER2[param_to_fit_name] = FITTING_CONFIG["initial_guess"]
+    # Set the fixed values for other parameters from FITTING_CONFIG
+    for key, value in FITTING_CONFIG["fixed_values"].items():
+        LAYER2[key] = value
+
+    initial_guess_for_optimizer = [
+        FITTING_CONFIG["initial_guess"]
+    ]  # Must be a sequence
+    bounds_for_optimizer = [FITTING_CONFIG["bounds"]]  # Sequence of (min, max) pairs
+
+    optimization_result = minimize(
+        objective_function,
+        initial_guess_for_optimizer,
+        args=(
+            param_to_fit_name,
+            FITTING_CONFIG["fixed_values"],
+        ),  # Pass name and fixed dict
+        method="L-BFGS-B",  # A good bounded method
+        bounds=bounds_for_optimizer,
+        options={"disp": True, "ftol": 1e-12, "gtol": 1e-9},  # Optimizer options
+    )
+
+    fitted_param_value = optimization_result.x[0]
+    print(f"\n--- Fitting Complete ---")
+    print(f"Fitted {param_to_fit_name}: {fitted_param_value:.4e}")
+    print(f"Optimization message: {optimization_result.message}")
+    print(f"Final cost: {optimization_result.fun:.4e}")
+
+    # Update global LAYER2 with the successfully fitted parameter
+    LAYER2[param_to_fit_name] = fitted_param_value
+    # The fixed_values from FITTING_CONFIG are already set in LAYER2
+
+    # --- Final Model Run (After Fitting) ---
+    print("\n--- Running Model with Fitted Parameter ---")
+    # Simulation with fitted LAYER2 and plot-specific frequencies
+    Z_fitted = compute_surface_displacement(MODEL_FREQS, P_VALS_GLOBAL, PSI_VALS_GLOBAL)
+    pbd_angles_fitted = compute_probe_deflection(
+        Z_fitted, P_VALS_GLOBAL, PSI_VALS_GLOBAL, MODEL_FREQS
+    )
+    in_mod_fitted, out_mod_fitted, ratio_mod_fitted = compute_lockin_signals(
+        pbd_angles_fitted, v_sum_avg
+    )
+
+    # Rough analysis for fitted parameters
+    f_peak_fitted, ratio_at_peak_fitted = fit_rough_analysis(
+        MODEL_FREQS, out_mod_fitted, ratio_mod_fitted
+    )
+    print(
+        f"After fit: Peak out-of-phase at {f_peak_fitted if not np.isnan(f_peak_fitted) else 'N/A'} Hz"
+    )
+    print(
+        f"After fit: Ratio at peak: {ratio_at_peak_fitted if not np.isnan(ratio_at_peak_fitted) else 'N/A'}"
+    )
+
+    plot_results(
+        MODEL_FREQS,
+        in_mod_fitted,
+        out_mod_fitted,
+        Fexp,
+        Vin_exp,
+        Vout_exp,
+        ratio_mod_fitted,
+        ratio_exp,
+        title_suffix=f" (Fitted {param_to_fit_name} = {fitted_param_value:.2e})",
     )
 
 
