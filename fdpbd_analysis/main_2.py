@@ -10,7 +10,7 @@ import scipy.linalg as la
 import matplotlib.pyplot as plt
 import warnings
 from data_processing import load_data, calculate_leaking, correct_data
-from scipy.optimize import minimize
+from scipy.optimize import differential_evolution
 import copy
 
 # -----------------------------------------------------------------------------
@@ -755,39 +755,52 @@ def main():
     LAYER2 = original_hardcoded_layer2
     # --- End of Initial Model Run ---
 
-    # 3) Perform Fitting ---
-    print(f"\n--- Starting Fit for: {FITTING_CONFIG['parameter_to_fit']} ---")
+    # 3) Perform Fitting using Differential Evolution ---
+    print(
+        f"\n--- Starting Global Fit (Differential Evolution) for: {FITTING_CONFIG['parameter_to_fit']} ---"
+    )
     param_to_fit_name = FITTING_CONFIG["parameter_to_fit"]
 
-    # Prepare LAYER2 for fitting:
-    # Set the parameter-to-be-fitted to its initial guess from FITTING_CONFIG
-    LAYER2[param_to_fit_name] = FITTING_CONFIG["initial_guess"]
-    # Set the fixed values for other parameters from FITTING_CONFIG
+    # Bounds are crucial for differential_evolution. It explores this entire range.
+    # It expects a sequence of (min, max) pairs, one for each parameter being optimized.
+    # Since we optimize one parameter, it's a list containing one tuple.
+    de_bounds = [FITTING_CONFIG["bounds"]]
+
+    # Ensure fixed values from FITTING_CONFIG are set in global LAYER2.
+    # The objective_function also re-applies these, but setting them here ensures
+    # the broader context of LAYER2 (for parts not in fixed_values) is correct
+    # when objective_function first reads original_param_val.
     for key, value in FITTING_CONFIG["fixed_values"].items():
         LAYER2[key] = value
+    # The initial value of LAYER2[param_to_fit_name] before DE call doesn't strictly
+    # matter to DE itself as it samples from bounds, but objective_function's
+    # save/restore mechanism for 'original_param_val' will use it.
+    # Setting it to initial_guess from FITTING_CONFIG is fine.
+    LAYER2[param_to_fit_name] = FITTING_CONFIG["initial_guess"]
 
-    initial_guess_for_optimizer = [
-        FITTING_CONFIG["initial_guess"]
-    ]  # Must be a sequence
-    bounds_for_optimizer = [FITTING_CONFIG["bounds"]]  # Sequence of (min, max) pairs
-
-    optimization_result = minimize(
+    optimization_result = differential_evolution(
         objective_function,
-        initial_guess_for_optimizer,
+        bounds=de_bounds,
         args=(
             param_to_fit_name,
             FITTING_CONFIG["fixed_values"],
-        ),  # Pass name and fixed dict
-        method="L-BFGS-B",  # A good bounded method
-        bounds=bounds_for_optimizer,
-        options={"disp": True, "ftol": 1e-12, "gtol": 1e-9},  # Optimizer options
+        ),  # Args for objective_function
+        disp=True,  # Print convergence messages
+        strategy="best1bin",  # A common and effective strategy
+        maxiter=100,  # Maximum number of generations (can increase if needed)
+        popsize=15,  # Population size (popsize * N_parameters = total individuals)
+        tol=0.01,  # Relative tolerance for convergence
+        mutation=(0.5, 1),  # Mutation factor (a tuple for dither)
+        recombination=0.7,  # Recombination probability
+        # You can add 'seed=some_integer' for reproducible results
     )
 
-    fitted_param_value = optimization_result.x[0]
-    print(f"\n--- Fitting Complete ---")
+    fitted_param_value = optimization_result.x[0]  # Result is in .x (an array)
+    print(f"\n--- Global Fitting Complete ---")
     print(f"Fitted {param_to_fit_name}: {fitted_param_value:.4e}")
-    print(f"Optimization message: {optimization_result.message}")
-    print(f"Final cost: {optimization_result.fun:.4e}")
+    if hasattr(optimization_result, "message"):  # Check if message attribute exists
+        print(f"Optimization message: {optimization_result.message}")
+    print(f"Final cost: {optimization_result.fun:.4e}")  # Lowest function value found
 
     # Update global LAYER2 with the successfully fitted parameter
     LAYER2[param_to_fit_name] = fitted_param_value
