@@ -4,6 +4,7 @@ Thermoelastic surface-displacement & probe-beam deflection model,
 translated from MATLAB to Python.
 """
 
+import time
 import numpy as np
 import scipy.io as sio
 import scipy.linalg as la
@@ -644,9 +645,6 @@ def objective_function(param_value_to_fit, param_name_to_fit_str, fixed_params_d
     for key, value in fixed_params_dict.items():
         LAYER2[key] = value
 
-    # **** NEW: Print the parameter value being tried ****
-    print(f"  Trying {param_name_to_fit_str}: {current_trial_param_value:.6e}")
-
     # Run the model simulation using experimental frequencies (from global storage)
     # P_VALS_GLOBAL and PSI_VALS_GLOBAL are also used by these functions
     Z = compute_surface_displacement(
@@ -684,18 +682,66 @@ def objective_function(param_value_to_fit, param_name_to_fit_str, fixed_params_d
 
 
 # -----------------------------------------------------------------------------
+# —— Differential Evolution Callback Function (NEW) ——————————————————————
+# -----------------------------------------------------------------------------
+def de_callback(xk, convergence):
+    """
+    Callback function for differential_evolution.
+    xk: The best solution found so far in the current population.
+    convergence: The current convergence metric (std(pop_energies) / mean(pop_energies)).
+    """
+    global iteration_count_global, last_time_global, FITTING_CONFIG  # Allow access to globals
+
+    iteration_count_global += 1
+    current_time = time.time()
+
+    if (
+        iteration_count_global == 1
+    ):  # For the first iteration, duration is from the start
+        iteration_duration = (
+            current_time - last_time_global
+        )  # last_time_global was set before DE call
+    else:  # For subsequent iterations, duration is from the previous callback call
+        iteration_duration = current_time - last_time_global
+
+    # xk is the best parameter vector in the current population.
+    # For your single-parameter fit, the value is xk[0].
+    param_name = FITTING_CONFIG["parameter_to_fit"]
+    current_best_param_val_str = (
+        f"{xk[0]:.6e}" if hasattr(xk, "__iter__") and len(xk) > 0 else str(xk)
+    )
+
+    print(
+        f"  DE Gen: {iteration_count_global:3d}, "
+        f"Time: {iteration_duration:6.2f}s, "
+        f"Best {param_name}: {current_best_param_val_str}, "
+        f"Convergence: {convergence:.4e}"
+    )
+
+    last_time_global = (
+        current_time  # Update for the next iteration's duration calculation
+    )
+    # You could return True from the callback to stop the optimization prematurely,
+    # but we don't need that here.
+
+
+# -----------------------------------------------------------------------------
 # —— Main Script ————————————————————————————————————————————————
 # -----------------------------------------------------------------------------
 
 
 def main():
-    global LAYER2, EXP_DATA_STORAGE, P_VALS_GLOBAL, PSI_VALS_GLOBAL  # Declare globals
+    global LAYER2, EXP_DATA_STORAGE, P_VALS_GLOBAL, PSI_VALS_GLOBAL, iteration_count_global, last_time_global  # Declare globals
 
     # 1) Load & correct experimental data
     v_out, v_in, _, v_sum_data, Fexp = load_data(DATA_FILENAME)
     complex_leaking = calculate_leaking(Fexp, F_AMP, DELAY_1, DELAY_2)
     Vin_exp, Vout_exp, ratio_exp = correct_data(v_out, v_in, complex_leaking)
     v_sum_avg = np.mean(v_sum_data)
+
+    # Global variables for DE callback (NEW)
+    iteration_count_global = 0
+    last_time_global = 0.0
 
     # Populate global storage for objective function
     EXP_DATA_STORAGE = {
@@ -778,22 +824,26 @@ def main():
     # Setting it to initial_guess from FITTING_CONFIG is fine.
     LAYER2[param_to_fit_name] = FITTING_CONFIG["initial_guess"]
 
+    iteration_count_global = 0
+    overall_start_time = time.time()
+    last_time_global = overall_start_time
+
     optimization_result = differential_evolution(
         objective_function,
         bounds=de_bounds,
-        args=(
-            param_to_fit_name,
-            FITTING_CONFIG["fixed_values"],
-        ),  # Args for objective_function
-        disp=True,  # Print convergence messages
-        strategy="best1bin",  # A common and effective strategy
-        maxiter=100,  # Maximum number of generations (can increase if needed)
-        popsize=15,  # Population size (popsize * N_parameters = total individuals)
-        tol=0.01,  # Relative tolerance for convergence
-        mutation=(0.5, 1),  # Mutation factor (a tuple for dither)
-        recombination=0.7,  # Recombination probability
-        # You can add 'seed=some_integer' for reproducible results
+        args=(param_to_fit_name, FITTING_CONFIG["fixed_values"]),
+        disp=True,  # You can keep this or set to False if the callback provides enough info
+        strategy="best1bin",
+        maxiter=2,
+        popsize=2,
+        tol=0.01,
+        mutation=(0.5, 1),
+        recombination=0.7,
+        callback=de_callback,
     )
+
+    overall_end_time = time.time()
+    total_fitting_duration = overall_end_time - overall_start_time
 
     fitted_param_value = optimization_result.x[0]  # Result is in .x (an array)
     print(f"\n--- Global Fitting Complete ---")
@@ -801,6 +851,7 @@ def main():
     if hasattr(optimization_result, "message"):  # Check if message attribute exists
         print(f"Optimization message: {optimization_result.message}")
     print(f"Final cost: {optimization_result.fun:.4e}")  # Lowest function value found
+    print(f"Total fitting time: {total_fitting_duration:.2f} seconds")
 
     # Update global LAYER2 with the successfully fitted parameter
     LAYER2[param_to_fit_name] = fitted_param_value
