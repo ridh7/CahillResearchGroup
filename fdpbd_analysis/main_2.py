@@ -630,53 +630,100 @@ def plot_results(
 # -----------------------------------------------------------------------------
 # —— Objective Function for Fitting —————————————————————————————————————
 # -----------------------------------------------------------------------------
-def objective_function(param_value_to_fit, param_name_to_fit_str, fixed_params_dict):
-    global LAYER2  # Allow modification of global LAYER2 during this function call
+def objective_function(
+    param_value_to_fit,
+    param_name_to_fit_str,
+    fixed_params_dict,
+    local_exp_data_storage,
+    local_p_vals,
+    local_psi_vals,
+    local_layer1,
+    local_layer2_base_for_obj,
+    local_layer3,
+    local_a0,
+    local_w_rms,
+    local_r_0,
+    local_phi,
+    local_c_probe,
+    local_detector_gain,
+    local_g_int,
+):
+    # ---- ADD global declarations for ALL globals this function will assign to ----
+    global LAYER1, LAYER2, LAYER3, A0, W_RMS, R_0, PHI, C_PROBE, DETECTOR_GAIN, G_int
 
-    # Store original value of the parameter being fitted to restore it later
-    original_param_val = LAYER2[param_name_to_fit_str]
+    # --- 1. Save the current state of the actual global variables (in this worker's scope) ---
+    # Using deepcopy for dictionaries to ensure true copies are saved and restored.
+    saved_globals = {
+        "LAYER1": copy.deepcopy(LAYER1),
+        "LAYER2": copy.deepcopy(LAYER2),  # This will save the state of global LAYER2
+        "LAYER3": copy.deepcopy(LAYER3),
+        "A0": A0,
+        "W_RMS": W_RMS,
+        "R_0": R_0,
+        "PHI": PHI,
+        "C_PROBE": C_PROBE,
+        "DETECTOR_GAIN": DETECTOR_GAIN,
+        "G_int": G_int,
+    }
 
-    # Update LAYER2: set the parameter being fitted to the optimizer's current trial value
-    current_trial_param_value = param_value_to_fit[
-        0
-    ]  # param_value_to_fit is a list/array
-    LAYER2[param_name_to_fit_str] = current_trial_param_value
-    # Update LAYER2: set the parameters that are fixed for this fitting run
+    # --- 2. Set the global variables to the specific values for THIS evaluation ---
+    # These values come from the arguments passed to this function.
+    # The 'global' keyword ensures these assignments update the worker's global scope.
+
+    LAYER1 = copy.deepcopy(local_layer1)  # Assign to global LAYER1
+
+    # Prepare LAYER2 for this specific evaluation based on args
+    # local_layer2_base_for_obj is already a deepcopy made in main
+    _current_iter_layer2 = copy.deepcopy(local_layer2_base_for_obj)
+    current_trial_param_value = param_value_to_fit[0]
+    _current_iter_layer2[param_name_to_fit_str] = current_trial_param_value
     for key, value in fixed_params_dict.items():
-        LAYER2[key] = value
+        _current_iter_layer2[key] = value
+    LAYER2 = _current_iter_layer2  # Assign the fully prepared dict to global LAYER2
 
-    # Run the model simulation using experimental frequencies (from global storage)
-    # P_VALS_GLOBAL and PSI_VALS_GLOBAL are also used by these functions
+    LAYER3 = copy.deepcopy(local_layer3)  # Assign to global LAYER3
+
+    # Assign scalar globals
+    A0 = local_a0
+    W_RMS = local_w_rms
+    R_0 = local_r_0
+    PHI = local_phi
+    C_PROBE = local_c_probe
+    DETECTOR_GAIN = local_detector_gain
+    G_int = local_g_int
+
+    # --- 3. Run simulation (these functions will use the globals just set in this worker) ---
     Z = compute_surface_displacement(
-        EXP_DATA_STORAGE["freqs"], P_VALS_GLOBAL, PSI_VALS_GLOBAL
+        local_exp_data_storage["freqs"], local_p_vals, local_psi_vals
     )
     pbd_angles = compute_probe_deflection(
-        Z, P_VALS_GLOBAL, PSI_VALS_GLOBAL, EXP_DATA_STORAGE["freqs"]
+        Z, local_p_vals, local_psi_vals, local_exp_data_storage["freqs"]
     )
     in_mod, out_mod, _ = compute_lockin_signals(
-        pbd_angles, EXP_DATA_STORAGE["v_sum_avg"]
+        pbd_angles, local_exp_data_storage["v_sum_avg"]
     )
 
-    cost = 1e12  # Default high cost if NaNs occur
+    cost = 1e12  # Default high cost
     if not (np.isnan(in_mod).any() or np.isnan(out_mod).any()):
-        # Calculate Sum of Squared Differences (SSD)
-        ssd_in_phase = np.sum((in_mod - EXP_DATA_STORAGE["in_phase"]) ** 2)
-        ssd_out_phase = np.sum((out_mod - EXP_DATA_STORAGE["out_of_phase"]) ** 2)
+        ssd_in_phase = np.sum((in_mod - local_exp_data_storage["in_phase"]) ** 2)
+        ssd_out_phase = np.sum((out_mod - local_exp_data_storage["out_of_phase"]) ** 2)
         cost = ssd_in_phase + ssd_out_phase
 
-    # **** NEW: Print the calculated cost for this parameter value ****
     print(
         f"    Cost for {param_name_to_fit_str} = {current_trial_param_value:.6e} -> {cost:.6e}"
     )
 
-    # Restore the original value of the fitted parameter in global LAYER2
-    LAYER2[param_name_to_fit_str] = original_param_val
-    # Fixed parameters (from fixed_params_dict) also need to be conceptually restored
-    # to the state LAYER2 had before this specific objective_function call if other
-    # parts of the code were to rely on it. However, the main fitting loop in main()
-    # re-establishes the correct LAYER2 state (based on FITTING_CONFIG) before calling minimize,
-    # and then sets the final fitted value after minimize completes.
-    # The key is that *within* one call to objective_function, LAYER2 reflects the trial.
+    # --- 4. Restore the global variables in this worker to their saved state ---
+    LAYER1 = saved_globals["LAYER1"]
+    LAYER2 = saved_globals["LAYER2"]
+    LAYER3 = saved_globals["LAYER3"]
+    A0 = saved_globals["A0"]
+    W_RMS = saved_globals["W_RMS"]
+    R_0 = saved_globals["R_0"]
+    PHI = saved_globals["PHI"]
+    C_PROBE = saved_globals["C_PROBE"]
+    DETECTOR_GAIN = saved_globals["DETECTOR_GAIN"]
+    G_int = saved_globals["G_int"]
 
     return cost
 
@@ -812,27 +859,45 @@ def main():
     # Since we optimize one parameter, it's a list containing one tuple.
     de_bounds = [FITTING_CONFIG["bounds"]]
 
-    # Ensure fixed values from FITTING_CONFIG are set in global LAYER2.
-    # The objective_function also re-applies these, but setting them here ensures
-    # the broader context of LAYER2 (for parts not in fixed_values) is correct
-    # when objective_function first reads original_param_val.
-    for key, value in FITTING_CONFIG["fixed_values"].items():
-        LAYER2[key] = value
-    # The initial value of LAYER2[param_to_fit_name] before DE call doesn't strictly
-    # matter to DE itself as it samples from bounds, but objective_function's
-    # save/restore mechanism for 'original_param_val' will use it.
-    # Setting it to initial_guess from FITTING_CONFIG is fine.
-    LAYER2[param_to_fit_name] = FITTING_CONFIG["initial_guess"]
-
     iteration_count_global = 0
     overall_start_time = time.time()
     last_time_global = overall_start_time
 
+    # Before calling differential_evolution in main():
+    # LAYER2 is configured here based on FITTING_CONFIG for its initial state
+    # that objective_function's original_param_val will see for the param_to_fit
+    # This also sets the fixed_values for the parameters not being fitted
+    base_layer2_for_objective = copy.deepcopy(LAYER2)  # Get current state of LAYER2
+    base_layer2_for_objective[param_to_fit_name] = FITTING_CONFIG["initial_guess"]
+    for key, value in FITTING_CONFIG["fixed_values"].items():
+        base_layer2_for_objective[key] = value
+    # We pass this 'base_layer2_for_objective' so each objective function call
+    # starts its internal LAYER2 modification from a clean, consistent base.
+
+    de_args = (
+        param_to_fit_name,
+        FITTING_CONFIG["fixed_values"],
+        EXP_DATA_STORAGE,  # Pass the dictionary
+        P_VALS_GLOBAL,  # Pass the array
+        PSI_VALS_GLOBAL,  # Pass the array
+        # ---- Pass other globals needed by compute_surface_displacement ----
+        LAYER1,  # Pass a copy or ensure it's treated as read-only by workers
+        base_layer2_for_objective,  # Pass the specially prepared LAYER2 base
+        LAYER3,
+        A0,
+        W_RMS,
+        R_0,
+        PHI,
+        C_PROBE,
+        DETECTOR_GAIN,
+        G_int,
+    )
+
     optimization_result = differential_evolution(
         objective_function,
         bounds=de_bounds,
-        args=(param_to_fit_name, FITTING_CONFIG["fixed_values"]),
-        disp=True,  # You can keep this or set to False if the callback provides enough info
+        args=de_args,  # <<-- MODIFIED ARGS
+        disp=True,
         strategy="best1bin",
         maxiter=2,
         popsize=2,
@@ -840,6 +905,8 @@ def main():
         mutation=(0.5, 1),
         recombination=0.7,
         callback=de_callback,
+        workers=-1,
+        updating="deferred",
     )
 
     overall_end_time = time.time()
