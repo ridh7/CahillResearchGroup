@@ -347,30 +347,6 @@ async def analyze_anisotropic(params: dict, file: UploadFile) -> AnisotropicFDPB
         os.unlink(tmp_path)
 
 
-@router.post("/fdpbd/analyze", response_model=FDPBDResult)
-async def fdpbd_analyze(params: str = Form(...), file: UploadFile = File(...)):
-    """Analyze FD-PBD data with given parameters and uploaded file."""
-    try:
-        params_dict = json.loads(params)
-        if isinstance(params_dict.get("eta_down"), str):
-            params_dict["eta_down"] = [
-                float(x) for x in params_dict["eta_down"].split(",") if x.strip()
-            ]
-        validated_params = FDPBDParams(**params_dict)
-        result = await analyze_fdpbd(validated_params.dict(), file)
-        return result
-    except json.JSONDecodeError:
-        raise HTTPException(status_code=400, detail="Invalid JSON format in params")
-    except ValueError as e:
-        raise HTTPException(
-            status_code=400, detail=f"Invalid eta_down format: {str(e)}"
-        )
-    except HTTPException as e:
-        raise e
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-
 @router.post("/fdpbd/analyze_anisotropy", response_model=AnisotropicFDPBDResult)
 async def fdpbd_analyze_anisotropic(
     params: str = Form(...), file: UploadFile = File(...)
