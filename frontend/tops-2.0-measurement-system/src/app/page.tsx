@@ -1,14 +1,14 @@
-"use client";
+'use client';
 
-import { useState, useRef, useEffect } from "react";
-import { AnimatePresence } from "framer-motion";
-import MetadataPanel from "../components/MetadataPanel";
-import DeviceControls from "../components/DeviceControls";
-import GraphsPanel from "../components/GraphsPanel";
-import OutputPanel from "../components/OutputPanel";
-import SettingsPanel from "../components/SettingsPanel";
-import HeatmapPanel from "../components/HeatmapPanel";
-import Link from "next/link";
+import { useState, useRef, useEffect } from 'react';
+import { AnimatePresence } from 'framer-motion';
+import MetadataPanel from '../components/MetadataPanel';
+import DeviceControls from '../components/DeviceControls';
+import GraphsPanel from '../components/GraphsPanel';
+import OutputPanel from '../components/OutputPanel';
+import SettingsPanel from '../components/SettingsPanel';
+import HeatmapPanel from '../components/HeatmapPanel';
+import Link from 'next/link';
 
 export type FormData = {
   sampleId: string;
@@ -54,35 +54,32 @@ export type Settings = {
   channel2: ChannelSettings;
 };
 
-function useClickOutside(
-  ref: React.RefObject<HTMLElement | null>,
-  handler: () => void
-) {
+function useClickOutside(ref: React.RefObject<HTMLElement | null>, handler: () => void) {
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (ref.current && !ref.current.contains(event.target as Node)) {
         handler();
       }
     };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [ref, handler]);
 }
 
 export default function CalculatePage() {
   const [formData, setFormData] = useState<FormData>({
-    sampleId: "",
-    comments: "",
-    x1: "",
-    x2: "",
-    y1: "",
-    y2: "",
-    xSteps: "",
-    ySteps: "",
-    xStepSize: "",
-    yStepSize: "",
-    movementMode: "steps",
-    delay: "",
+    sampleId: '',
+    comments: '',
+    x1: '',
+    x2: '',
+    y1: '',
+    y2: '',
+    xSteps: '',
+    ySteps: '',
+    xStepSize: '',
+    yStepSize: '',
+    movementMode: 'steps',
+    delay: '',
   });
 
   const [lockinData, setLockinData] = useState<LockinData>({
@@ -99,7 +96,7 @@ export default function CalculatePage() {
   });
   const [multimeterSettings, setMultimeterSettings] = useState({
     aperture: 0, // Default NPLC
-    terminal: "", // Default terminal
+    terminal: '', // Default terminal
   });
   const [stageData, setStageData] = useState<StageData>({
     x: 0,
@@ -111,17 +108,15 @@ export default function CalculatePage() {
   const [resetLockinTrigger, setResetLockinTrigger] = useState(false);
   const [resetMultimeterTrigger, setResetMultimeterTrigger] = useState(false);
   const [lockinStartTime, setLockinStartTime] = useState<number | null>(null);
-  const [multimeterStartTime, setMultimeterStartTime] = useState<number | null>(
-    null
-  );
+  const [multimeterStartTime, setMultimeterStartTime] = useState<number | null>(null);
   const [lockinWs, setLockinWs] = useState<WebSocket | null>(null);
   const [multimeterWs, setMultimeterWs] = useState<WebSocket | null>(null);
   const [stageWs, setStageWs] = useState<WebSocket | null>(null);
-  const [status, setStatus] = useState<string>("");
+  const [status, setStatus] = useState<string>('');
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [settings, setSettings] = useState<Settings>({
-    channel1: { homingVelocity: "", maxVelocity: "", acceleration: "" },
-    channel2: { homingVelocity: "", maxVelocity: "", acceleration: "" },
+    channel1: { homingVelocity: '', maxVelocity: '', acceleration: '' },
+    channel2: { homingVelocity: '', maxVelocity: '', acceleration: '' },
   });
   const [isProcessing, setIsProcessing] = useState(false);
 
@@ -134,14 +129,14 @@ export default function CalculatePage() {
 
   const defaultSettings: Settings = {
     channel1: {
-      homingVelocity: "10",
-      maxVelocity: "100",
-      acceleration: "1000",
+      homingVelocity: '10',
+      maxVelocity: '100',
+      acceleration: '1000',
     },
     channel2: {
-      homingVelocity: "10",
-      maxVelocity: "100",
-      acceleration: "1000",
+      homingVelocity: '10',
+      maxVelocity: '100',
+      acceleration: '1000',
     },
   };
 
@@ -149,34 +144,34 @@ export default function CalculatePage() {
     if (lockinWs) {
       switch (lockinWs.readyState) {
         case WebSocket.OPEN:
-          console.log("Lockin WebSocket already open, reusing it");
+          console.log('Lockin WebSocket already open, reusing it');
           setLockinConnected(true);
           setLockinStartTime(Date.now());
           return;
         case WebSocket.CLOSING:
         case WebSocket.CLOSED:
-          console.log("Cleaning up stale Lockin WebSocket");
+          console.log('Cleaning up stale Lockin WebSocket');
           lockinWs.close();
           setLockinWs(null);
           break;
         case WebSocket.CONNECTING:
-          console.log("Lockin WebSocket already connecting, waiting...");
+          console.log('Lockin WebSocket already connecting, waiting...');
           lockinWs.onopen = () => {
             setLockinConnected(true);
             setLockinStartTime(Date.now());
           };
           lockinWs.onerror = () => {
-            console.error("Lockin connection failed");
+            console.error('Lockin connection failed');
           };
           return;
       }
     }
 
-    console.log("Creating new Lockin WebSocket");
-    const ws = new WebSocket("ws://localhost:8000/ws/lockin");
+    console.log('Creating new Lockin WebSocket');
+    const ws = new WebSocket('ws://localhost:8000/ws/lockin');
 
     ws.onopen = () => {
-      console.log("Lockin WebSocket connected");
+      console.log('Lockin WebSocket connected');
       setLockinConnected(true);
       setLockinStartTime(Date.now());
     };
@@ -186,13 +181,13 @@ export default function CalculatePage() {
     };
 
     ws.onerror = () => {
-      console.error("Lockin WebSocket error");
+      console.error('Lockin WebSocket error');
       setLockinConnected(false);
       setLockinWs(null);
     };
 
     ws.onclose = () => {
-      console.log("Lockin WebSocket closed");
+      console.log('Lockin WebSocket closed');
       setLockinConnected(false);
       setLockinWs(null);
     };
@@ -201,36 +196,36 @@ export default function CalculatePage() {
   };
   const fetchLockinSettings = async () => {
     try {
-      const response = await fetch("http://localhost:8000/lockin/settings");
+      const response = await fetch('http://localhost:8000/lockin/settings');
       const data = await response.json();
-      if (data.status === "success") {
+      if (data.status === 'success') {
         setLockinSettings({
           sensitivity: data.sensitivity,
           timeConstant: data.time_constant,
         });
       } else {
-        console.error("Failed to fetch lock-in settings:", data.message);
-        setStatus("Error fetching lock-in settings");
+        console.error('Failed to fetch lock-in settings:', data.message);
+        setStatus('Error fetching lock-in settings');
       }
     } catch (error) {
-      console.error("Error fetching lock-in settings:", error);
-      setStatus("Error fetching lock-in settings");
+      console.error('Error fetching lock-in settings:', error);
+      setStatus('Error fetching lock-in settings');
     }
   };
 
   const disconnectLockin = () => {
-    console.log("Disconnecting lockin, current state: ", lockinWs?.readyState);
+    console.log('Disconnecting lockin, current state: ', lockinWs?.readyState);
     if (!lockinWs || lockinWs.readyState === WebSocket.CLOSED) {
-      console.log("Lockin already closed");
+      console.log('Lockin already closed');
       setLockinWs(null);
       setLockinConnected(false);
       setLockinStartTime(null);
       return;
     }
     if (lockinWs.readyState === WebSocket.CLOSING) {
-      console.log("Lockin already closing");
+      console.log('Lockin already closing');
       lockinWs.onclose = () => {
-        console.log("Lockin closed");
+        console.log('Lockin closed');
         setLockinWs(null);
         setLockinConnected(false);
         setLockinStartTime(null);
@@ -238,7 +233,7 @@ export default function CalculatePage() {
       return;
     }
     lockinWs.onclose = () => {
-      console.log("Lockin closed");
+      console.log('Lockin closed');
       setLockinWs(null);
       setLockinConnected(false);
       setLockinStartTime(null);
@@ -264,34 +259,34 @@ export default function CalculatePage() {
     if (multimeterWs) {
       switch (multimeterWs.readyState) {
         case WebSocket.OPEN:
-          console.log("Multimeter WebSocket already open, reusing it");
+          console.log('Multimeter WebSocket already open, reusing it');
           setMultimeterConnected(true);
           setMultimeterStartTime(Date.now());
           return;
         case WebSocket.CLOSING:
         case WebSocket.CLOSED:
-          console.log("Cleaning up stale Multimeter WebSocket");
+          console.log('Cleaning up stale Multimeter WebSocket');
           multimeterWs.close();
           setMultimeterWs(null);
           break;
         case WebSocket.CONNECTING:
-          console.log("Multimeter WebSocket already connecting, waiting...");
+          console.log('Multimeter WebSocket already connecting, waiting...');
           multimeterWs.onopen = () => {
             setMultimeterConnected(true);
             setMultimeterStartTime(Date.now());
           };
           multimeterWs.onerror = () => {
-            console.error("Multimeter connection failed");
+            console.error('Multimeter connection failed');
           };
           return;
       }
     }
 
-    console.log("Creating new Multimeter WebSocket");
-    const ws = new WebSocket("ws://localhost:8000/ws/multimeter");
+    console.log('Creating new Multimeter WebSocket');
+    const ws = new WebSocket('ws://localhost:8000/ws/multimeter');
 
     ws.onopen = () => {
-      console.log("Multimeter WebSocket connected");
+      console.log('Multimeter WebSocket connected');
       setMultimeterConnected(true);
       setMultimeterStartTime(Date.now());
     };
@@ -301,13 +296,13 @@ export default function CalculatePage() {
     };
 
     ws.onerror = () => {
-      console.error("Multimeter WebSocket error");
+      console.error('Multimeter WebSocket error');
       setMultimeterConnected(false);
       setMultimeterWs(null);
     };
 
     ws.onclose = () => {
-      console.log("Multimeter WebSocket closed");
+      console.log('Multimeter WebSocket closed');
       setMultimeterConnected(false);
       setMultimeterWs(null);
     };
@@ -316,21 +311,18 @@ export default function CalculatePage() {
   };
 
   const disconnectMultimeter = () => {
-    console.log(
-      "Disconnecting multimeter, current state: ",
-      multimeterWs?.readyState
-    );
+    console.log('Disconnecting multimeter, current state: ', multimeterWs?.readyState);
     if (!multimeterWs || multimeterWs.readyState === WebSocket.CLOSED) {
-      console.log("Multimeter already closed");
+      console.log('Multimeter already closed');
       setMultimeterWs(null);
       setMultimeterConnected(false);
       setMultimeterStartTime(null);
       return;
     }
     if (multimeterWs.readyState === WebSocket.CLOSING) {
-      console.log("Multimeter already closing");
+      console.log('Multimeter already closing');
       multimeterWs.onclose = () => {
-        console.log("Multimeter closed");
+        console.log('Multimeter closed');
         setMultimeterWs(null);
         setMultimeterConnected(false);
         setMultimeterStartTime(null);
@@ -338,7 +330,7 @@ export default function CalculatePage() {
       return;
     }
     multimeterWs.onclose = () => {
-      console.log("Multimeter closed");
+      console.log('Multimeter closed');
       setMultimeterWs(null);
       setMultimeterConnected(false);
       setMultimeterStartTime(null);
@@ -362,32 +354,32 @@ export default function CalculatePage() {
     if (stageWs) {
       switch (stageWs.readyState) {
         case WebSocket.OPEN:
-          console.log("Stage WebSocket already open, reusing it");
+          console.log('Stage WebSocket already open, reusing it');
           setStageConnected(true);
           return;
         case WebSocket.CLOSING:
         case WebSocket.CLOSED:
-          console.log("Cleaning up stale Stage WebSocket");
+          console.log('Cleaning up stale Stage WebSocket');
           stageWs.close();
           setStageWs(null);
           break;
         case WebSocket.CONNECTING:
-          console.log("Stage WebSocket already connecting, waiting...");
+          console.log('Stage WebSocket already connecting, waiting...');
           stageWs.onopen = () => {
             setStageConnected(true);
           };
           stageWs.onerror = () => {
-            console.error("Stage connection failed");
+            console.error('Stage connection failed');
           };
           return;
       }
     }
 
-    console.log("Creating new Stage WebSocket");
-    const ws = new WebSocket("ws://localhost:8000/ws/stage");
+    console.log('Creating new Stage WebSocket');
+    const ws = new WebSocket('ws://localhost:8000/ws/stage');
 
     ws.onopen = () => {
-      console.log("Stage WebSocket connected");
+      console.log('Stage WebSocket connected');
       setStageConnected(true);
     };
 
@@ -396,13 +388,13 @@ export default function CalculatePage() {
     };
 
     ws.onerror = () => {
-      console.error("Stage WebSocket error");
+      console.error('Stage WebSocket error');
       setStageConnected(false);
       setStageWs(null);
     };
 
     ws.onclose = () => {
-      console.log("Stage WebSocket closed");
+      console.log('Stage WebSocket closed');
       setStageConnected(false);
       setStageWs(null);
     };
@@ -411,23 +403,23 @@ export default function CalculatePage() {
   };
 
   const disconnectStage = () => {
-    console.log("Disconnecting stage, current state: ", stageWs?.readyState);
+    console.log('Disconnecting stage, current state: ', stageWs?.readyState);
     if (!stageWs || stageWs.readyState === WebSocket.CLOSED) {
       setStageWs(null);
       setStageConnected(false);
       return;
     }
     if (stageWs.readyState === WebSocket.CLOSING) {
-      console.log("Stage already closing");
+      console.log('Stage already closing');
       stageWs.onclose = () => {
-        console.log("Stage closed");
+        console.log('Stage closed');
         setStageWs(null);
         setStageConnected(false);
       };
       return;
     }
     stageWs.onclose = () => {
-      console.log("Stage closed");
+      console.log('Stage closed');
       setStageWs(null);
       setStageConnected(false);
     };
@@ -443,17 +435,17 @@ export default function CalculatePage() {
 
   const handleSubmit = async () => {
     try {
-      setStatus("Connecting devices...");
+      setStatus('Connecting devices...');
       if (!lockinConnected) await connectLockin();
       if (!multimeterConnected) await connectMultimeter();
       if (!stageConnected) await connectStage();
 
       setIsProcessing(true);
-      setStatus("Processing...");
+      setStatus('Processing...');
 
-      const response = await fetch("http://localhost:8000/start", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+      const response = await fetch('http://localhost:8000/start', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           x1: parseFloat(formData.x1),
           x2: parseFloat(formData.x2),
@@ -471,31 +463,31 @@ export default function CalculatePage() {
       setStatus(data.message);
       setIsProcessing(false);
     } catch (error) {
-      console.error("Error:", error);
+      console.error('Error:', error);
       setIsProcessing(false);
-      setStatus("Error occurred");
+      setStatus('Error occurred');
     }
   };
 
   const handleHome = async (channel_direction: string) => {
     try {
-      setStatus("Processing...");
-      const response = await fetch("http://localhost:8000/home", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+      setStatus('Processing...');
+      const response = await fetch('http://localhost:8000/home', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ channel_direction }),
       });
       const data = await response.json();
       setStatus(data.message);
     } catch (error) {
-      console.error("Error:", error);
-      setStatus("Error occurred");
+      console.error('Error:', error);
+      setStatus('Error occurred');
     }
   };
 
   const handleGetParams = async () => {
     try {
-      const response = await fetch("http://localhost:8000/get_movement_params");
+      const response = await fetch('http://localhost:8000/get_movement_params');
       const data = await response.json();
       setSettings({
         channel1: {
@@ -510,37 +502,34 @@ export default function CalculatePage() {
         },
       });
     } catch (error) {
-      console.error("Error:", error);
-      setStatus("Error occurred");
+      console.error('Error:', error);
+      setStatus('Error occurred');
     }
   };
 
   const handleSetParams = async (newSettings: Settings) => {
     try {
-      const response = await fetch(
-        "http://localhost:8000/set_movement_params",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            channel1: {
-              homing_velocity: parseFloat(newSettings.channel1.homingVelocity),
-              max_velocity: parseFloat(newSettings.channel1.maxVelocity),
-              acceleration: parseFloat(newSettings.channel1.acceleration),
-            },
-            channel2: {
-              homing_velocity: parseFloat(newSettings.channel2.homingVelocity),
-              max_velocity: parseFloat(newSettings.channel2.maxVelocity),
-              acceleration: parseFloat(newSettings.channel2.acceleration),
-            },
-          }),
-        }
-      );
+      const response = await fetch('http://localhost:8000/set_movement_params', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          channel1: {
+            homing_velocity: parseFloat(newSettings.channel1.homingVelocity),
+            max_velocity: parseFloat(newSettings.channel1.maxVelocity),
+            acceleration: parseFloat(newSettings.channel1.acceleration),
+          },
+          channel2: {
+            homing_velocity: parseFloat(newSettings.channel2.homingVelocity),
+            max_velocity: parseFloat(newSettings.channel2.maxVelocity),
+            acceleration: parseFloat(newSettings.channel2.acceleration),
+          },
+        }),
+      });
       const data = await response.json();
-      if (data.status === "success") console.log("success");
+      if (data.status === 'success') console.log('success');
     } catch (error) {
-      console.error("Error:", error);
-      setStatus("Error occurred");
+      console.error('Error:', error);
+      setStatus('Error occurred');
     }
   };
 
@@ -551,128 +540,117 @@ export default function CalculatePage() {
 
   const changeLockinSensitivity = async (increment: boolean) => {
     try {
-      const response = await fetch("http://localhost:8000/lockin/sensitivity", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+      const response = await fetch('http://localhost:8000/lockin/sensitivity', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ increment }),
       });
       const data = await response.json();
       console.log(data);
-      if (data.status === "success") {
+      if (data.status === 'success') {
         setLockinSettings((prev) => ({
           ...prev,
           sensitivity: data.sensitivity,
         }));
       }
     } catch (error) {
-      console.error("Error changing sensitivity:", error);
-      setStatus("Error changing sensitivity");
+      console.error('Error changing sensitivity:', error);
+      setStatus('Error changing sensitivity');
     }
   };
 
   const changeLockinTimeConstant = async (increment: boolean) => {
     try {
-      const response = await fetch(
-        "http://localhost:8000/lockin/time_constant",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ increment }),
-        }
-      );
+      const response = await fetch('http://localhost:8000/lockin/time_constant', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ increment }),
+      });
       const data = await response.json();
       console.log(data);
-      if (data.status === "success") {
+      if (data.status === 'success') {
         setLockinSettings((prev) => ({
           ...prev,
           timeConstant: data.time_constant,
         }));
       }
     } catch (error) {
-      console.error("Error changing time constant:", error);
-      setStatus("Error changing time constant");
+      console.error('Error changing time constant:', error);
+      setStatus('Error changing time constant');
     }
   };
 
   const fetchMultimeterSettings = async () => {
     try {
-      const response = await fetch("http://localhost:8000/multimeter/settings");
+      const response = await fetch('http://localhost:8000/multimeter/settings');
       const data = await response.json();
       console.log(data);
-      if (data.status === "success") {
+      if (data.status === 'success') {
         setMultimeterSettings({
           aperture: data.aperture,
           terminal: data.terminal,
         });
       } else {
-        console.error("Failed to fetch multimeter settings:", data.message);
-        setStatus("Error fetching multimeter settings");
+        console.error('Failed to fetch multimeter settings:', data.message);
+        setStatus('Error fetching multimeter settings');
       }
     } catch (error) {
-      console.error("Error fetching multimeter settings:", error);
-      setStatus("Error fetching multimeter settings");
+      console.error('Error fetching multimeter settings:', error);
+      setStatus('Error fetching multimeter settings');
     }
   };
 
   const changeMultimeterAperture = async (nplc: number) => {
     try {
-      const response = await fetch(
-        "http://localhost:8000/multimeter/aperture",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ nplc }),
-        }
-      );
+      const response = await fetch('http://localhost:8000/multimeter/aperture', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nplc }),
+      });
       const data = await response.json();
-      if (data.status === "success") {
+      if (data.status === 'success') {
         setMultimeterSettings((prev) => ({
           ...prev,
           aperture: data.aperture,
         }));
       } else {
-        console.error("Failed to set aperture:", data.message);
-        setStatus("Error setting aperture");
+        console.error('Failed to set aperture:', data.message);
+        setStatus('Error setting aperture');
       }
     } catch (error) {
-      console.error("Error setting aperture:", error);
-      setStatus("Error setting aperture");
+      console.error('Error setting aperture:', error);
+      setStatus('Error setting aperture');
     }
   };
 
   const changeMultimeterTerminal = async (terminal: string) => {
     try {
-      const response = await fetch(
-        "http://localhost:8000/multimeter/terminal",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ terminal }),
-        }
-      );
+      const response = await fetch('http://localhost:8000/multimeter/terminal', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ terminal }),
+      });
       const data = await response.json();
-      if (data.status === "success") {
+      if (data.status === 'success') {
         setMultimeterSettings((prev) => ({
           ...prev,
           terminal: data.terminal,
         }));
       } else {
-        console.error("Failed to set terminal:", data.message);
-        setStatus("Error setting terminal");
+        console.error('Failed to set terminal:', data.message);
+        setStatus('Error setting terminal');
       }
     } catch (error) {
-      console.error("Error setting terminal:", error);
-      setStatus("Error setting terminal");
+      console.error('Error setting terminal:', error);
+      setStatus('Error setting terminal');
     }
   };
 
   return (
-    <div className="min-h-screen bg-gray-900 flex flex-col">
+    <div className="flex min-h-screen flex-col bg-gray-900">
       {/* Top Bar */}
-      <header className="bg-gray-800 p-4 flex justify-between items-center">
-        <h1 className="text-white text-xl font-semibold">
-          Experiment Dashboard
-        </h1>
+      <header className="flex items-center justify-between bg-gray-800 p-4">
+        <h1 className="text-xl font-semibold text-white">Experiment Dashboard</h1>
         <div className="flex space-x-4">
           <Link href="/fdpbd" className="text-white hover:text-teal-400">
             Analysis
@@ -685,12 +663,7 @@ export default function CalculatePage() {
             }}
             className="text-white hover:text-teal-400"
           >
-            <svg
-              className="w-6 h-6"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
+            <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -709,9 +682,9 @@ export default function CalculatePage() {
       </header>
 
       {/* Main Layout */}
-      <div className="flex flex-1 p-4 space-x-4">
+      <div className="flex flex-1 space-x-4 p-4">
         {/* Left Panel */}
-        <div className="w-1/3 flex flex-col space-y-4">
+        <div className="flex w-1/3 flex-col space-y-4">
           <MetadataPanel formData={formData} setFormData={setFormData} />
           <DeviceControls
             formData={formData}
@@ -733,7 +706,7 @@ export default function CalculatePage() {
         </div>
 
         {/* Center Panel - Updated */}
-        <div className="w-1/2 flex flex-col space-y-4">
+        <div className="flex w-1/2 flex-col space-y-4">
           <HeatmapPanel setStatus={setStatus} />
         </div>
 
@@ -770,9 +743,7 @@ export default function CalculatePage() {
             setIsSettingsOpen={setIsSettingsOpen}
             top={
               settingsButtonRef.current
-                ? settingsButtonRef.current.offsetTop +
-                  settingsButtonRef.current.offsetHeight +
-                  8
+                ? settingsButtonRef.current.offsetTop + settingsButtonRef.current.offsetHeight + 8
                 : 0
             }
           />
@@ -780,11 +751,10 @@ export default function CalculatePage() {
       </AnimatePresence>
 
       {/* Status Bar */}
-      <footer className="bg-gray-800 p-2 text-white text-sm flex justify-between">
+      <footer className="flex justify-between bg-gray-800 p-2 text-sm text-white">
         <div>
-          Stage: Connected | Lock-in:{" "}
-          {lockinConnected ? "Connected" : "Disconnected"} | Multimeter:{" "}
-          {multimeterConnected ? "Connected" : "Disconnected"}
+          Stage: Connected | Lock-in: {lockinConnected ? 'Connected' : 'Disconnected'} | Multimeter:{' '}
+          {multimeterConnected ? 'Connected' : 'Disconnected'}
         </div>
         <div>{new Date().toLocaleString()}</div>
       </footer>

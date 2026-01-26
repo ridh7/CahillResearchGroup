@@ -1,5 +1,5 @@
-import { useState, useMemo } from "react";
-import { FormData } from "../app/page";
+import { useState, useMemo } from 'react';
+import { FormData } from '../app/page';
 
 type DeviceControlsProps = {
   formData: FormData;
@@ -20,18 +20,18 @@ type DeviceControlsProps = {
 };
 
 const initialFormData = {
-  sampleId: "",
-  comments: "",
-  x1: "",
-  x2: "",
-  y1: "",
-  y2: "",
-  xSteps: "",
-  ySteps: "",
-  xStepSize: "",
-  yStepSize: "",
-  movementMode: "steps",
-  delay: "",
+  sampleId: '',
+  comments: '',
+  x1: '',
+  x2: '',
+  y1: '',
+  y2: '',
+  xSteps: '',
+  ySteps: '',
+  xStepSize: '',
+  yStepSize: '',
+  movementMode: 'steps',
+  delay: '',
 };
 
 export default function DeviceControls({
@@ -51,88 +51,57 @@ export default function DeviceControls({
   fetchMultimeterSettings,
   multimeterConnected,
 }: DeviceControlsProps) {
-  const [activeTab, setActiveTab] = useState<"stage" | "lockin" | "multimeter">(
-    "stage"
-  );
+  const [activeTab, setActiveTab] = useState<'stage' | 'lockin' | 'multimeter'>('stage');
 
   const handleReset = () => {
     setFormData(initialFormData);
   };
 
   const isFormValid = useMemo(() => {
-    const x1Valid =
-      formData.x1 !== "" &&
-      Number(formData.x1) >= 0 &&
-      Number(formData.x1) <= 110;
-    const x2Valid =
-      formData.x2 !== "" &&
-      Number(formData.x2) >= 0 &&
-      Number(formData.x2) <= 110;
-    const y1Valid =
-      formData.y1 !== "" &&
-      Number(formData.y1) >= 0 &&
-      Number(formData.y1) <= 75;
-    const y2Valid =
-      formData.y2 !== "" &&
-      Number(formData.y2) >= 0 &&
-      Number(formData.y2) <= 75;
+    const x1Valid = formData.x1 !== '' && Number(formData.x1) >= 0 && Number(formData.x1) <= 110;
+    const x2Valid = formData.x2 !== '' && Number(formData.x2) >= 0 && Number(formData.x2) <= 110;
+    const y1Valid = formData.y1 !== '' && Number(formData.y1) >= 0 && Number(formData.y1) <= 75;
+    const y2Valid = formData.y2 !== '' && Number(formData.y2) >= 0 && Number(formData.y2) <= 75;
     // Add delay validation (allowing empty string or non-negative number)
     const delayValid =
-      formData.delay === "" ||
-      (Number(formData.delay) >= 0 && !isNaN(Number(formData.delay)));
+      formData.delay === '' || (Number(formData.delay) >= 0 && !isNaN(Number(formData.delay)));
 
-    if (formData.movementMode === "steps") {
+    if (formData.movementMode === 'steps') {
       const xStepsValid =
-        formData.xSteps !== "" &&
+        formData.xSteps !== '' &&
         Number(formData.xSteps) > 0 &&
         Number.isInteger(Number(formData.xSteps));
       const yStepsValid =
-        formData.ySteps !== "" &&
+        formData.ySteps !== '' &&
         Number(formData.ySteps) > 0 &&
         Number.isInteger(Number(formData.ySteps));
-      return (
-        x1Valid &&
-        x2Valid &&
-        y1Valid &&
-        y2Valid &&
-        xStepsValid &&
-        yStepsValid &&
-        delayValid
-      );
+      return x1Valid && x2Valid && y1Valid && y2Valid && xStepsValid && yStepsValid && delayValid;
     } else {
-      const xStepSizeValid =
-        formData.xStepSize !== "" && Number(formData.xStepSize) > 0;
-      const yStepSizeValid =
-        formData.yStepSize !== "" && Number(formData.yStepSize) > 0;
+      const xStepSizeValid = formData.xStepSize !== '' && Number(formData.xStepSize) > 0;
+      const yStepSizeValid = formData.yStepSize !== '' && Number(formData.yStepSize) > 0;
       return (
-        x1Valid &&
-        x2Valid &&
-        y1Valid &&
-        y2Valid &&
-        xStepSizeValid &&
-        yStepSizeValid &&
-        delayValid
+        x1Valid && x2Valid && y1Valid && y2Valid && xStepSizeValid && yStepSizeValid && delayValid
       );
     }
   }, [formData]);
 
   return (
-    <div className="bg-gray-800 p-4 rounded-lg shadow-lg flex-1">
-      <div className="flex mb-4">
+    <div className="flex-1 rounded-lg bg-gray-800 p-4 shadow-lg">
+      <div className="mb-4 flex">
         <button
           className={`flex-1 py-2 ${
-            activeTab === "stage" ? "bg-teal-600" : "bg-gray-700"
-          } text-white rounded-l`}
-          onClick={() => setActiveTab("stage")}
+            activeTab === 'stage' ? 'bg-teal-600' : 'bg-gray-700'
+          } rounded-l text-white`}
+          onClick={() => setActiveTab('stage')}
         >
           Stage
         </button>
         <button
           className={`flex-1 py-2 ${
-            activeTab === "lockin" ? "bg-teal-600" : "bg-gray-700"
+            activeTab === 'lockin' ? 'bg-teal-600' : 'bg-gray-700'
           } text-white`}
           onClick={() => {
-            setActiveTab("lockin");
+            setActiveTab('lockin');
             fetchLockinSettings();
           }}
         >
@@ -140,10 +109,10 @@ export default function DeviceControls({
         </button>
         <button
           className={`flex-1 py-2 ${
-            activeTab === "multimeter" ? "bg-teal-600" : "bg-gray-700"
-          } text-white rounded-r`}
+            activeTab === 'multimeter' ? 'bg-teal-600' : 'bg-gray-700'
+          } rounded-r text-white`}
           onClick={() => {
-            setActiveTab("multimeter");
+            setActiveTab('multimeter');
             fetchMultimeterSettings();
           }}
         >
@@ -151,21 +120,21 @@ export default function DeviceControls({
         </button>
       </div>
 
-      {activeTab === "stage" && (
+      {activeTab === 'stage' && (
         <div className="space-y-4">
-          <div className="flex justify-center space-x-6 mb-4">
+          <div className="mb-4 flex justify-center space-x-6">
             <label className="flex items-center text-white">
               <input
                 type="radio"
                 name="movementMode"
                 value="steps"
-                checked={formData.movementMode === "steps"}
+                checked={formData.movementMode === 'steps'}
                 onChange={() => {
                   setFormData({
                     ...formData,
-                    xStepSize: "",
-                    yStepSize: "",
-                    movementMode: "steps",
+                    xStepSize: '',
+                    yStepSize: '',
+                    movementMode: 'steps',
                   });
                 }}
                 className="mr-2 text-teal-600 focus:ring-teal-500"
@@ -177,13 +146,13 @@ export default function DeviceControls({
                 type="radio"
                 name="movementMode"
                 value="stepSize"
-                checked={formData.movementMode === "stepSize"}
+                checked={formData.movementMode === 'stepSize'}
                 onChange={() => {
                   setFormData({
                     ...formData,
-                    xSteps: "",
-                    ySteps: "",
-                    movementMode: "stepSize",
+                    xSteps: '',
+                    ySteps: '',
+                    movementMode: 'stepSize',
                   });
                 }}
                 className="mr-2 text-teal-600 focus:ring-teal-500"
@@ -193,34 +162,30 @@ export default function DeviceControls({
           </div>
 
           <div className="grid grid-cols-2 gap-2">
-            {["x1", "y1", "x2", "y2"].map((key) => (
+            {['x1', 'y1', 'x2', 'y2'].map((key) => (
               <input
                 key={key}
                 type="number"
-                placeholder={`${key} (${
-                  key === "x1" || key === "x2" ? "0-110" : "0-75"
-                }) (mm)`}
-                className={`p-2 rounded bg-gray-700 text-white border ${
-                  formData[key as keyof FormData] === "" ||
-                  ((key === "x1" || key === "x2") &&
+                placeholder={`${key} (${key === 'x1' || key === 'x2' ? '0-110' : '0-75'}) (mm)`}
+                className={`rounded border bg-gray-700 p-2 text-white ${
+                  formData[key as keyof FormData] === '' ||
+                  ((key === 'x1' || key === 'x2') &&
                     (Number(formData[key as keyof FormData]) < 0 ||
                       Number(formData[key as keyof FormData]) > 110)) ||
-                  ((key === "y1" || key === "y2") &&
+                  ((key === 'y1' || key === 'y2') &&
                     (Number(formData[key as keyof FormData]) < 0 ||
                       Number(formData[key as keyof FormData]) > 75))
-                    ? "border-red-500"
-                    : "border-gray-600 focus:border-teal-500"
+                    ? 'border-red-500'
+                    : 'border-gray-600 focus:border-teal-500'
                 } focus:outline-none`}
                 value={formData[key as keyof FormData]}
                 onChange={(e) => {
                   const value = e.target.value;
                   if (
-                    ((key === "x1" || key === "x2") &&
-                      (value === "" ||
-                        (Number(value) >= 0 && Number(value) <= 110))) ||
-                    ((key === "y1" || key === "y2") &&
-                      (value === "" ||
-                        (Number(value) >= 0 && Number(value) <= 75)))
+                    ((key === 'x1' || key === 'x2') &&
+                      (value === '' || (Number(value) >= 0 && Number(value) <= 110))) ||
+                    ((key === 'y1' || key === 'y2') &&
+                      (value === '' || (Number(value) >= 0 && Number(value) <= 75)))
                   ) {
                     setFormData({
                       ...formData,
@@ -230,25 +195,22 @@ export default function DeviceControls({
                 }}
               />
             ))}
-            {formData.movementMode === "steps" ? (
+            {formData.movementMode === 'steps' ? (
               <>
                 <input
                   type="number"
                   placeholder="xSteps (int >0)"
-                  className={`p-2 rounded bg-gray-700 text-white border ${
-                    formData.xSteps === "" ||
+                  className={`rounded border bg-gray-700 p-2 text-white ${
+                    formData.xSteps === '' ||
                     Number(formData.xSteps) <= 0 ||
                     !Number.isInteger(Number(formData.xSteps))
-                      ? "border-red-500"
-                      : "border-gray-600 focus:border-teal-500"
+                      ? 'border-red-500'
+                      : 'border-gray-600 focus:border-teal-500'
                   } focus:outline-none`}
                   value={formData.xSteps}
                   onChange={(e) => {
                     const value = e.target.value;
-                    if (
-                      value === "" ||
-                      (Number.isInteger(Number(value)) && Number(value) > 0)
-                    ) {
+                    if (value === '' || (Number.isInteger(Number(value)) && Number(value) > 0)) {
                       setFormData({ ...formData, xSteps: value });
                     }
                   }}
@@ -256,20 +218,17 @@ export default function DeviceControls({
                 <input
                   type="number"
                   placeholder="ySteps (int >0)"
-                  className={`p-2 rounded bg-gray-700 text-white border ${
-                    formData.ySteps === "" ||
+                  className={`rounded border bg-gray-700 p-2 text-white ${
+                    formData.ySteps === '' ||
                     Number(formData.ySteps) <= 0 ||
                     !Number.isInteger(Number(formData.ySteps))
-                      ? "border-red-500"
-                      : "border-gray-600 focus:border-teal-500"
+                      ? 'border-red-500'
+                      : 'border-gray-600 focus:border-teal-500'
                   } focus:outline-none`}
                   value={formData.ySteps}
                   onChange={(e) => {
                     const value = e.target.value;
-                    if (
-                      value === "" ||
-                      (Number.isInteger(Number(value)) && Number(value) > 0)
-                    ) {
+                    if (value === '' || (Number.isInteger(Number(value)) && Number(value) > 0)) {
                       setFormData({ ...formData, ySteps: value });
                     }
                   }}
@@ -280,46 +239,39 @@ export default function DeviceControls({
                 <input
                   type="number"
                   placeholder="xStepSize (>0) (mm)"
-                  className={`p-2 rounded bg-gray-700 text-white border ${
-                    formData.xStepSize === "" || Number(formData.xStepSize) <= 0
-                      ? "border-red-500"
-                      : "border-gray-600 focus:border-teal-500"
+                  className={`rounded border bg-gray-700 p-2 text-white ${
+                    formData.xStepSize === '' || Number(formData.xStepSize) <= 0
+                      ? 'border-red-500'
+                      : 'border-gray-600 focus:border-teal-500'
                   } focus:outline-none`}
                   value={formData.xStepSize}
-                  onChange={(e) =>
-                    setFormData({ ...formData, xStepSize: e.target.value })
-                  }
+                  onChange={(e) => setFormData({ ...formData, xStepSize: e.target.value })}
                 />
                 <input
                   type="number"
                   placeholder="yStepSize (>0) (mm)"
-                  className={`p-2 rounded bg-gray-700 text-white border ${
-                    formData.yStepSize === "" || Number(formData.yStepSize) <= 0
-                      ? "border-red-500"
-                      : "border-gray-600 focus:border-teal-500"
+                  className={`rounded border bg-gray-700 p-2 text-white ${
+                    formData.yStepSize === '' || Number(formData.yStepSize) <= 0
+                      ? 'border-red-500'
+                      : 'border-gray-600 focus:border-teal-500'
                   } focus:outline-none`}
                   value={formData.yStepSize}
-                  onChange={(e) =>
-                    setFormData({ ...formData, yStepSize: e.target.value })
-                  }
+                  onChange={(e) => setFormData({ ...formData, yStepSize: e.target.value })}
                 />
               </>
             )}
             <input
               placeholder="delay (>=0) (s)"
-              className={`p-2 rounded bg-gray-700 text-white border ${
-                formData.delay !== "" &&
+              className={`rounded border bg-gray-700 p-2 text-white ${
+                formData.delay !== '' &&
                 (Number(formData.delay) < 0 || isNaN(Number(formData.delay)))
-                  ? "border-red-500"
-                  : "border-gray-600 focus:border-teal-500"
+                  ? 'border-red-500'
+                  : 'border-gray-600 focus:border-teal-500'
               } focus:outline-none`}
               value={formData.delay}
               onChange={(e) => {
                 const value = e.target.value;
-                if (
-                  value === "" ||
-                  (Number(value) >= 0 && !isNaN(Number(value)))
-                ) {
+                if (value === '' || (Number(value) >= 0 && !isNaN(Number(value)))) {
                   setFormData({ ...formData, delay: value });
                 }
               }}
@@ -330,60 +282,51 @@ export default function DeviceControls({
             <button
               onClick={handleSubmit}
               disabled={!isFormValid}
-              className={`flex-1 py-2 rounded text-white transition-colors ${
-                isFormValid
-                  ? "bg-teal-600 hover:bg-teal-700"
-                  : "bg-gray-600 cursor-not-allowed"
+              className={`flex-1 rounded py-2 text-white transition-colors ${
+                isFormValid ? 'bg-teal-600 hover:bg-teal-700' : 'cursor-not-allowed bg-gray-600'
               }`}
             >
               Start
             </button>
             <button
-              onClick={() => handleHome("")}
-              className="flex-1 bg-teal-600 text-white py-2 rounded hover:bg-teal-700 transition-colors"
+              onClick={() => handleHome('')}
+              className="flex-1 rounded bg-teal-600 py-2 text-white transition-colors hover:bg-teal-700"
             >
               Home XY
             </button>
             <button
-              onClick={() => handleHome("x")}
-              className="flex-1 bg-teal-600 text-white py-2 rounded hover:bg-teal-700 transition-colors"
+              onClick={() => handleHome('x')}
+              className="flex-1 rounded bg-teal-600 py-2 text-white transition-colors hover:bg-teal-700"
             >
               Home X
             </button>
             <button
-              onClick={() => handleHome("y")}
-              className="flex-1 bg-teal-600 text-white py-2 rounded hover:bg-teal-700 transition-colors"
+              onClick={() => handleHome('y')}
+              className="flex-1 rounded bg-teal-600 py-2 text-white transition-colors hover:bg-teal-700"
             >
               Home Y
             </button>
           </div>
           <button
             onClick={handleReset}
-            className="w-full bg-red-600 text-white py-2 rounded hover:bg-red-700 transition-colors"
+            className="w-full rounded bg-red-600 py-2 text-white transition-colors hover:bg-red-700"
           >
             Reset Values
           </button>
-          {status && (
-            <div className="text-center text-white mt-2">{status}</div>
-          )}
+          {status && <div className="mt-2 text-center text-white">{status}</div>}
         </div>
       )}
-      {activeTab === "lockin" && (
+      {activeTab === 'lockin' && (
         <div className="space-y-4">
           {/* Sensitivity Control */}
           <div className="flex items-center space-x-2">
-            <label className="text-white w-24">Sensitivity</label>
+            <label className="w-24 text-white">Sensitivity</label>
             <button
               onClick={() => changeLockinSensitivity(true)}
               disabled={lockinSettings.sensitivity === 27 || lockinConnected}
-              className="p-2 bg-gray-700 text-white rounded hover:bg-gray-600 disabled:opacity-50"
+              className="rounded bg-gray-700 p-2 text-white hover:bg-gray-600 disabled:opacity-50"
             >
-              <svg
-                className="w-4 h-4"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
+              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"
@@ -396,50 +339,45 @@ export default function DeviceControls({
               type="text"
               value={
                 {
-                  0: "1 V",
-                  1: "500 mV",
-                  2: "200 mV",
-                  3: "100 mV",
-                  4: "50 mV",
-                  5: "20 mV",
-                  6: "10 mV",
-                  7: "5 mV",
-                  8: "2 mV",
-                  9: "1 mV",
-                  10: "500 µV",
-                  11: "200 µV",
-                  12: "100 µV",
-                  13: "50 µV",
-                  14: "20 µV",
-                  15: "10 µV",
-                  16: "5 µV",
-                  17: "2 µV",
-                  18: "1 µV",
-                  19: "500 nV",
-                  20: "200 nV",
-                  21: "100 nV",
-                  22: "50 nV",
-                  23: "20 nV",
-                  24: "10 nV",
-                  25: "5 nV",
-                  26: "2 nV",
-                  27: "1 nV",
-                }[lockinSettings.sensitivity] || "Unknown"
+                  0: '1 V',
+                  1: '500 mV',
+                  2: '200 mV',
+                  3: '100 mV',
+                  4: '50 mV',
+                  5: '20 mV',
+                  6: '10 mV',
+                  7: '5 mV',
+                  8: '2 mV',
+                  9: '1 mV',
+                  10: '500 µV',
+                  11: '200 µV',
+                  12: '100 µV',
+                  13: '50 µV',
+                  14: '20 µV',
+                  15: '10 µV',
+                  16: '5 µV',
+                  17: '2 µV',
+                  18: '1 µV',
+                  19: '500 nV',
+                  20: '200 nV',
+                  21: '100 nV',
+                  22: '50 nV',
+                  23: '20 nV',
+                  24: '10 nV',
+                  25: '5 nV',
+                  26: '2 nV',
+                  27: '1 nV',
+                }[lockinSettings.sensitivity] || 'Unknown'
               }
               readOnly
-              className="p-2 rounded bg-gray-700 text-white border border-gray-600 w-24 text-center"
+              className="w-24 rounded border border-gray-600 bg-gray-700 p-2 text-center text-white"
             />
             <button
               onClick={() => changeLockinSensitivity(false)}
               disabled={lockinSettings.sensitivity === 0 || lockinConnected}
-              className="p-2 bg-gray-700 text-white rounded hover:bg-gray-600 disabled:opacity-50"
+              className="rounded bg-gray-700 p-2 text-white hover:bg-gray-600 disabled:opacity-50"
             >
-              <svg
-                className="w-4 h-4"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
+              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"
@@ -452,18 +390,13 @@ export default function DeviceControls({
 
           {/* Time Constant Control */}
           <div className="flex items-center space-x-2">
-            <label className="text-white w-24">Time Constant</label>
+            <label className="w-24 text-white">Time Constant</label>
             <button
               onClick={() => changeLockinTimeConstant(false)}
               disabled={lockinSettings.timeConstant === 0 || lockinConnected}
-              className="p-2 bg-gray-700 text-white rounded hover:bg-gray-600 disabled:opacity-50"
+              className="rounded bg-gray-700 p-2 text-white hover:bg-gray-600 disabled:opacity-50"
             >
-              <svg
-                className="w-4 h-4"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
+              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"
@@ -476,46 +409,41 @@ export default function DeviceControls({
               type="text"
               value={
                 {
-                  0: "1 µs",
-                  1: "3 µs",
-                  2: "10 µs",
-                  3: "30 µs",
-                  4: "100 µs",
-                  5: "300 µs",
-                  6: "1 ms",
-                  7: "3 ms",
-                  8: "10 ms",
-                  9: "30 ms",
-                  10: "100 ms",
-                  11: "300 ms",
-                  12: "1 s",
-                  13: "3 s",
-                  14: "10 s",
-                  15: "30 s",
-                  16: "100 s",
-                  17: "300 s",
-                  18: "1 ks",
-                  19: "3 ks",
-                  20: "10 ks",
-                  21: "30 ks",
-                  22: "100 ks",
-                  23: "300 ks",
-                }[lockinSettings.timeConstant] || "Unknown"
+                  0: '1 µs',
+                  1: '3 µs',
+                  2: '10 µs',
+                  3: '30 µs',
+                  4: '100 µs',
+                  5: '300 µs',
+                  6: '1 ms',
+                  7: '3 ms',
+                  8: '10 ms',
+                  9: '30 ms',
+                  10: '100 ms',
+                  11: '300 ms',
+                  12: '1 s',
+                  13: '3 s',
+                  14: '10 s',
+                  15: '30 s',
+                  16: '100 s',
+                  17: '300 s',
+                  18: '1 ks',
+                  19: '3 ks',
+                  20: '10 ks',
+                  21: '30 ks',
+                  22: '100 ks',
+                  23: '300 ks',
+                }[lockinSettings.timeConstant] || 'Unknown'
               }
               readOnly
-              className="p-2 rounded bg-gray-700 text-white border border-gray-600 w-24 text-center"
+              className="w-24 rounded border border-gray-600 bg-gray-700 p-2 text-center text-white"
             />
             <button
               onClick={() => changeLockinTimeConstant(true)}
               disabled={lockinSettings.timeConstant === 23 || lockinConnected} // Adjust to 30 if extending time constant map
-              className="p-2 bg-gray-700 text-white rounded hover:bg-gray-600 disabled:opacity-50"
+              className="rounded bg-gray-700 p-2 text-white hover:bg-gray-600 disabled:opacity-50"
             >
-              <svg
-                className="w-4 h-4"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
+              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"
@@ -527,32 +455,23 @@ export default function DeviceControls({
           </div>
         </div>
       )}
-      {activeTab === "multimeter" && (
+      {activeTab === 'multimeter' && (
         <div className="space-y-4">
           {/* Aperture Control */}
           <div className="flex items-center space-x-2">
-            <label className="text-white w-24">Aperture (NPLC)</label>
+            <label className="w-24 text-white">Aperture (NPLC)</label>
             <button
               onClick={() => {
                 const validNPLC = [0.02, 0.2, 1, 10, 100];
-                const currentIndex = validNPLC.indexOf(
-                  multimeterSettings.aperture
-                );
+                const currentIndex = validNPLC.indexOf(multimeterSettings.aperture);
                 if (currentIndex > 0) {
                   changeMultimeterAperture(validNPLC[currentIndex - 1]);
                 }
               }}
-              disabled={
-                multimeterSettings.aperture === 0.02 || multimeterConnected
-              }
-              className="p-2 bg-gray-700 text-white rounded hover:bg-gray-600 disabled:opacity-50"
+              disabled={multimeterSettings.aperture === 0.02 || multimeterConnected}
+              className="rounded bg-gray-700 p-2 text-white hover:bg-gray-600 disabled:opacity-50"
             >
-              <svg
-                className="w-4 h-4"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
+              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"
@@ -565,29 +484,20 @@ export default function DeviceControls({
               type="text"
               value={multimeterSettings.aperture.toString()}
               readOnly
-              className="p-2 rounded bg-gray-700 text-white border border-gray-600 w-24 text-center"
+              className="w-24 rounded border border-gray-600 bg-gray-700 p-2 text-center text-white"
             />
             <button
               onClick={() => {
                 const validNPLC = [0.02, 0.2, 1, 10, 100];
-                const currentIndex = validNPLC.indexOf(
-                  multimeterSettings.aperture
-                );
+                const currentIndex = validNPLC.indexOf(multimeterSettings.aperture);
                 if (currentIndex < validNPLC.length - 1) {
                   changeMultimeterAperture(validNPLC[currentIndex + 1]);
                 }
               }}
-              disabled={
-                multimeterSettings.aperture === 100 || multimeterConnected
-              }
-              className="p-2 bg-gray-700 text-white rounded hover:bg-gray-600 disabled:opacity-50"
+              disabled={multimeterSettings.aperture === 100 || multimeterConnected}
+              className="rounded bg-gray-700 p-2 text-white hover:bg-gray-600 disabled:opacity-50"
             >
-              <svg
-                className="w-4 h-4"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
+              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"
@@ -600,15 +510,15 @@ export default function DeviceControls({
 
           {/* Terminal Control */}
           <div className="flex items-center space-x-2">
-            <label className="text-white w-24">Terminal</label>
+            <label className="w-24 text-white">Terminal</label>
             <div className="flex space-x-4">
               <label className="flex items-center text-white">
                 <input
                   type="radio"
                   name="terminal"
                   value="front"
-                  checked={multimeterSettings.terminal === "fron"}
-                  onChange={() => changeMultimeterTerminal("fron")}
+                  checked={multimeterSettings.terminal === 'fron'}
+                  onChange={() => changeMultimeterTerminal('fron')}
                   className="mr-2 text-teal-600 focus:ring-teal-500"
                   disabled={multimeterConnected}
                 />
@@ -619,8 +529,8 @@ export default function DeviceControls({
                   type="radio"
                   name="terminal"
                   value="rear"
-                  checked={multimeterSettings.terminal === "rear"}
-                  onChange={() => changeMultimeterTerminal("rear")}
+                  checked={multimeterSettings.terminal === 'rear'}
+                  onChange={() => changeMultimeterTerminal('rear')}
                   className="mr-2 text-teal-600 focus:ring-teal-500"
                   disabled={multimeterConnected}
                 />

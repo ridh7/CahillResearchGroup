@@ -1,7 +1,7 @@
-"use client";
+'use client';
 
-import { useState } from "react";
-import Plot from "react-plotly.js";
+import { useState } from 'react';
+import Plot from 'react-plotly.js';
 
 type IsotropicPlotData = {
   freq_fit: number[];
@@ -93,110 +93,100 @@ type PlotData = {
 
 export default function FDPBDPage() {
   const [params, setParams] = useState<FDPBDParams>({
-    f_rolloff: "95000",
-    delay_1: "0.0000089",
-    delay_2: "-1.3e-11",
-    lambda_down: ["149.0", "0.1", "9.7"],
-    eta_down: ["1.0", "1.0", "1.0"],
-    c_down: ["2.44", "0.1", "2.73"],
-    h_down: ["0.07", "0.001", "1"],
-    niu: "0.26",
-    alpha_t: "0.00001885",
-    lambda_up: "0.028",
-    eta_up: "1.0",
-    c_up: "1192.0",
-    h_up: "0.001",
-    w_rms: "11.20",
-    x_offset: "12.60",
-    incident_pump: "1.06",
-    incident_probe: "0.85",
-    n_al: "2.9",
-    k_al: "8.2",
-    lens_transmittance: "0.93",
-    detector_factor: "74.0",
-    phi: "0",
-    rho: "2.70",
-    alphaT: "23.1e-6",
-    C11_0: "107.4",
-    C12_0: "60.5",
-    C44_0: "28.3",
-    lambda_down_x_sample: "0.3",
-    lambda_down_y_sample: "0.5",
-    lambda_down_z_sample: "0.3",
-    rho_sample: "1.38",
-    C11_0_sample: "12.11",
-    C12_0_sample: "5.06",
-    C13_0_sample: "5.68",
-    C33_0_sample: "7.06",
-    C44_0_sample: "1.20",
-    alphaT_perp: "70e-6",
-    alphaT_para: "60e-6",
+    f_rolloff: '95000',
+    delay_1: '0.0000089',
+    delay_2: '-1.3e-11',
+    lambda_down: ['149.0', '0.1', '9.7'],
+    eta_down: ['1.0', '1.0', '1.0'],
+    c_down: ['2.44', '0.1', '2.73'],
+    h_down: ['0.07', '0.001', '1'],
+    niu: '0.26',
+    alpha_t: '0.00001885',
+    lambda_up: '0.028',
+    eta_up: '1.0',
+    c_up: '1192.0',
+    h_up: '0.001',
+    w_rms: '11.20',
+    x_offset: '12.60',
+    incident_pump: '1.06',
+    incident_probe: '0.85',
+    n_al: '2.9',
+    k_al: '8.2',
+    lens_transmittance: '0.93',
+    detector_factor: '74.0',
+    phi: '0',
+    rho: '2.70',
+    alphaT: '23.1e-6',
+    C11_0: '107.4',
+    C12_0: '60.5',
+    C44_0: '28.3',
+    lambda_down_x_sample: '0.3',
+    lambda_down_y_sample: '0.5',
+    lambda_down_z_sample: '0.3',
+    rho_sample: '1.38',
+    C11_0_sample: '12.11',
+    C12_0_sample: '5.06',
+    C13_0_sample: '5.68',
+    C33_0_sample: '7.06',
+    C44_0_sample: '1.20',
+    alphaT_perp: '70e-6',
+    alphaT_para: '60e-6',
   });
   const fieldUnits: Record<string, string> = {
-    f_rolloff: "Hz",
-    delay_1: "s",
-    delay_2: "s",
-    lambda_down: "W/m-K",
-    eta_down: "",
-    c_down: "J/cm³-K",
-    h_down: "µm",
-    niu: "",
-    alpha_t: "1/K",
-    lambda_up: "W/m-K",
-    eta_up: "",
-    c_up: "J/m³-K",
-    h_up: "m",
-    w_rms: "µm",
-    x_offset: "µm",
-    incident_pump: "mW",
-    incident_probe: "mW",
-    n_al: "",
-    k_al: "",
-    lens_transmittance: "",
-    detector_factor: "V/rad",
-    phi: "degrees",
-    rho: "g/m³",
-    alphaT: "1/K",
-    C11_0: "GPa",
-    C12_0: "GPa",
-    C44_0: "GPa",
-    lambda_down_x_sample: "W/m-K",
-    lambda_down_y_sample: "W/m-K",
-    lambda_down_z_sample: "W/m-K",
-    rho_sample: "g/m³",
-    C11_0_sample: "GPa",
-    C12_0_sample: "GPa",
-    C13_0_sample: "GPa",
-    C33_0_sample: "GPa",
-    C44_0_sample: "GPa",
-    alphaT_perp: "1/K",
-    alphaT_para: "1/K",
+    f_rolloff: 'Hz',
+    delay_1: 's',
+    delay_2: 's',
+    lambda_down: 'W/m-K',
+    eta_down: '',
+    c_down: 'J/cm³-K',
+    h_down: 'µm',
+    niu: '',
+    alpha_t: '1/K',
+    lambda_up: 'W/m-K',
+    eta_up: '',
+    c_up: 'J/m³-K',
+    h_up: 'm',
+    w_rms: 'µm',
+    x_offset: 'µm',
+    incident_pump: 'mW',
+    incident_probe: 'mW',
+    n_al: '',
+    k_al: '',
+    lens_transmittance: '',
+    detector_factor: 'V/rad',
+    phi: 'degrees',
+    rho: 'g/m³',
+    alphaT: '1/K',
+    C11_0: 'GPa',
+    C12_0: 'GPa',
+    C44_0: 'GPa',
+    lambda_down_x_sample: 'W/m-K',
+    lambda_down_y_sample: 'W/m-K',
+    lambda_down_z_sample: 'W/m-K',
+    rho_sample: 'g/m³',
+    C11_0_sample: 'GPa',
+    C12_0_sample: 'GPa',
+    C13_0_sample: 'GPa',
+    C33_0_sample: 'GPa',
+    C44_0_sample: 'GPa',
+    alphaT_perp: '1/K',
+    alphaT_para: '1/K',
   };
   const [file, setFile] = useState<File | null>(null);
-  const [result, setResult] = useState<
-    FDPBDResult | AnisotropicFDPBDResult | null
-  >(null);
-  const [status, setStatus] = useState<string>("");
+  const [result, setResult] = useState<FDPBDResult | AnisotropicFDPBDResult | null>(null);
+  const [status, setStatus] = useState<string>('');
   const [isProcessing, setIsProcessing] = useState(false);
-  const [lensOption, setLensOption] = useState<"5x" | "10x" | "20x" | "custom">(
-    "5x"
-  );
-  const [transducerOption, setTransducerOption] = useState<"Al" | "custom">(
-    "Al"
-  );
-  const [mediumOption, setMediumOption] = useState<"air" | "custom">("air");
-  const [isotropyOption, setIsotropyOption] = useState<
-    "isotropy" | "anisotropy"
-  >("isotropy");
-  const [laserOption, setLaserOption] = useState<
-    "TOPS 1" | "TOPS 2" | "custom"
-  >("TOPS 1");
+  const [lensOption, setLensOption] = useState<'5x' | '10x' | '20x' | 'custom'>('5x');
+  const [transducerOption, setTransducerOption] = useState<'Al' | 'custom'>('Al');
+  const [mediumOption, setMediumOption] = useState<'air' | 'custom'>('air');
+  const [isotropyOption, setIsotropyOption] = useState<'isotropy' | 'anisotropy'>('isotropy');
+  const [laserOption, setLaserOption] = useState<'TOPS 1' | 'TOPS 2' | 'custom'>('TOPS 1');
 
   const isValidDecimal = (value: string | string[]) => {
     if (Array.isArray(value)) {
-      return value.every((v) => v !== "" && !isNaN(parseFloat(v)));
+      return value.every((v) => v !== '' && !isNaN(parseFloat(v)));
     }
-    return value !== "" && !isNaN(parseFloat(value));
+    return value !== '' && !isNaN(parseFloat(value));
   };
 
   const isFormValid = () => {
@@ -207,7 +197,7 @@ export default function FDPBDPage() {
       params.lambda_down[0],
       params.lambda_down[1],
       params.lambda_down[2],
-      ...(isotropyOption === "isotropy"
+      ...(isotropyOption === 'isotropy'
         ? [params.eta_down[0], params.eta_down[1], params.eta_down[2]]
         : []),
       params.c_down[0],
@@ -216,9 +206,9 @@ export default function FDPBDPage() {
       params.h_down[0],
       params.h_down[1],
       params.h_down[2],
-      ...(isotropyOption === "isotropy" ? [params.niu, params.alpha_t] : []),
+      ...(isotropyOption === 'isotropy' ? [params.niu, params.alpha_t] : []),
       params.lambda_up,
-      ...(isotropyOption === "isotropy" ? [params.eta_up, params.h_up] : []),
+      ...(isotropyOption === 'isotropy' ? [params.eta_up, params.h_up] : []),
       params.c_up,
       params.w_rms,
       params.x_offset,
@@ -228,7 +218,7 @@ export default function FDPBDPage() {
       params.k_al,
       params.lens_transmittance,
       params.detector_factor,
-      ...(isotropyOption === "anisotropy"
+      ...(isotropyOption === 'anisotropy'
         ? [
             params.phi,
             params.rho,
@@ -260,10 +250,7 @@ export default function FDPBDPage() {
   ) => {
     const value = e.target.value;
     setParams((prev) => {
-      if (
-        index !== undefined &&
-        ["lambda_down", "c_down", "h_down"].includes(field)
-      ) {
+      if (index !== undefined && ['lambda_down', 'c_down', 'h_down'].includes(field)) {
         const updatedArray = [...prev[field]];
         updatedArray[index] = value;
         return { ...prev, [field]: updatedArray };
@@ -271,36 +258,28 @@ export default function FDPBDPage() {
       return { ...prev, [field]: value };
     });
 
-    if (
-      [
-        "w_rms",
-        "x_offset",
-        "lens_transmittance",
-        "detector_factor",
-        "phi",
-      ].includes(field)
-    ) {
+    if (['w_rms', 'x_offset', 'lens_transmittance', 'detector_factor', 'phi'].includes(field)) {
       const lensValues = {
-        "5x": {
-          w_rms: "11.20",
-          x_offset: "12.60",
-          lens_transmittance: "0.93",
-          detector_factor: "74.0",
-          phi: "0",
+        '5x': {
+          w_rms: '11.20',
+          x_offset: '12.60',
+          lens_transmittance: '0.93',
+          detector_factor: '74.0',
+          phi: '0',
         },
-        "10x": {
-          w_rms: "5.60",
-          x_offset: "6.30",
-          lens_transmittance: "0.85",
-          detector_factor: "37.0",
-          phi: "0",
+        '10x': {
+          w_rms: '5.60',
+          x_offset: '6.30',
+          lens_transmittance: '0.85',
+          detector_factor: '37.0',
+          phi: '0',
         },
-        "20x": {
-          w_rms: "2.825",
-          x_offset: "3.15",
-          lens_transmittance: "0.80",
-          detector_factor: "18.5",
-          phi: "0",
+        '20x': {
+          w_rms: '2.825',
+          x_offset: '3.15',
+          lens_transmittance: '0.80',
+          detector_factor: '18.5',
+          phi: '0',
         },
       };
       const updatedParams = { ...params, [field]: value };
@@ -314,36 +293,30 @@ export default function FDPBDPage() {
             vals.phi === updatedParams.phi
         )
       ) {
-        setLensOption("custom");
+        setLensOption('custom');
       }
     }
     if (
-      (["lambda_down", "c_down", "h_down"].includes(field) && index === 0) ||
-      ["n_al", "k_al", "rho", "alphaT", "C11_0", "C12_0", "C44_0"].includes(
-        field
-      )
+      (['lambda_down', 'c_down', 'h_down'].includes(field) && index === 0) ||
+      ['n_al', 'k_al', 'rho', 'alphaT', 'C11_0', 'C12_0', 'C44_0'].includes(field)
     ) {
       const alValues = {
-        lambda_down_0: "149.0",
-        c_down_0: "2.44",
-        h_down_0: "0.07",
-        n_al: "2.9",
-        k_al: "8.2",
-        rho: "2.70",
-        alphaT: "23.1e-6",
-        C11_0: "107.4",
-        C12_0: "60.5",
-        C44_0: "28.3",
+        lambda_down_0: '149.0',
+        c_down_0: '2.44',
+        h_down_0: '0.07',
+        n_al: '2.9',
+        k_al: '8.2',
+        rho: '2.70',
+        alphaT: '23.1e-6',
+        C11_0: '107.4',
+        C12_0: '60.5',
+        C44_0: '28.3',
       };
       const updatedParams =
         index !== undefined
           ? {
               ...params,
-              [field]: [
-                ...params[field].slice(0, index),
-                value,
-                ...params[field].slice(index + 1),
-              ],
+              [field]: [...params[field].slice(0, index), value, ...params[field].slice(index + 1)],
             }
           : { ...params, [field]: value };
       if (
@@ -353,7 +326,7 @@ export default function FDPBDPage() {
           updatedParams.h_down[0] === alValues.h_down_0 &&
           updatedParams.n_al === alValues.n_al &&
           updatedParams.k_al === alValues.k_al &&
-          (isotropyOption === "isotropy" ||
+          (isotropyOption === 'isotropy' ||
             (updatedParams.rho === alValues.rho &&
               updatedParams.alphaT === alValues.alphaT &&
               updatedParams.C11_0 === alValues.C11_0 &&
@@ -361,62 +334,52 @@ export default function FDPBDPage() {
               updatedParams.C44_0 === alValues.C44_0))
         )
       ) {
-        setTransducerOption("custom");
+        setTransducerOption('custom');
       }
     }
-    if (["lambda_up", "eta_up", "c_up", "h_up"].includes(field)) {
+    if (['lambda_up', 'eta_up', 'c_up', 'h_up'].includes(field)) {
       const airValues = {
-        lambda_up: "0.028",
-        eta_up: "1.0",
-        c_up: "1192.0",
-        h_up: "0.001",
+        lambda_up: '0.028',
+        eta_up: '1.0',
+        c_up: '1192.0',
+        h_up: '0.001',
       };
       const updatedParams = { ...params, [field]: value };
       if (
         !(
           updatedParams.lambda_up === airValues.lambda_up &&
-          (isotropyOption === "anisotropy" ||
-            updatedParams.eta_up === airValues.eta_up) &&
+          (isotropyOption === 'anisotropy' || updatedParams.eta_up === airValues.eta_up) &&
           updatedParams.c_up === airValues.c_up &&
-          (isotropyOption === "anisotropy" ||
-            updatedParams.h_up === airValues.h_up)
+          (isotropyOption === 'anisotropy' || updatedParams.h_up === airValues.h_up)
         )
       ) {
-        setMediumOption("custom");
+        setMediumOption('custom');
       }
     }
-    if (field === "eta_down" && index !== undefined) {
-      const isotropyValue = ["1.0", "1.0", "1.0"];
+    if (field === 'eta_down' && index !== undefined) {
+      const isotropyValue = ['1.0', '1.0', '1.0'];
       const updatedArray = [...params.eta_down];
       updatedArray[index] = value;
       setParams((prev) => ({ ...prev, eta_down: updatedArray }));
-      if (updatedArray.join(",") !== isotropyValue.join(",")) {
-        setIsotropyOption("anisotropy");
+      if (updatedArray.join(',') !== isotropyValue.join(',')) {
+        setIsotropyOption('anisotropy');
       }
     }
-    if (
-      [
-        "f_rolloff",
-        "delay_1",
-        "delay_2",
-        "incident_pump",
-        "incident_probe",
-      ].includes(field)
-    ) {
+    if (['f_rolloff', 'delay_1', 'delay_2', 'incident_pump', 'incident_probe'].includes(field)) {
       const laserValues = {
-        "TOPS 1": {
-          f_rolloff: "95000",
-          delay_1: "0.0000089",
-          delay_2: "-1.3e-11",
-          incident_pump: "1.06",
-          incident_probe: "0.85",
+        'TOPS 1': {
+          f_rolloff: '95000',
+          delay_1: '0.0000089',
+          delay_2: '-1.3e-11',
+          incident_pump: '1.06',
+          incident_probe: '0.85',
         },
-        "TOPS 2": {
-          f_rolloff: "95000",
-          delay_1: "0.0000089",
-          delay_2: "-1.3e-11",
-          incident_pump: "1.06",
-          incident_probe: "0.85",
+        'TOPS 2': {
+          f_rolloff: '95000',
+          delay_1: '0.0000089',
+          delay_2: '-1.3e-11',
+          incident_pump: '1.06',
+          incident_probe: '0.85',
         },
       };
       const updatedParams = { ...params, [field]: value };
@@ -430,35 +393,35 @@ export default function FDPBDPage() {
             vals.incident_probe === updatedParams.incident_probe
         )
       ) {
-        setLaserOption("custom");
+        setLaserOption('custom');
       }
     }
   };
 
-  const handleLensOptionChange = (option: "5x" | "10x" | "20x" | "custom") => {
+  const handleLensOptionChange = (option: '5x' | '10x' | '20x' | 'custom') => {
     setLensOption(option);
-    if (option !== "custom") {
+    if (option !== 'custom') {
       const values = {
-        "5x": {
-          w_rms: "11.20",
-          x_offset: "12.60",
-          lens_transmittance: "0.93",
-          detector_factor: "74.0",
-          phi: "0",
+        '5x': {
+          w_rms: '11.20',
+          x_offset: '12.60',
+          lens_transmittance: '0.93',
+          detector_factor: '74.0',
+          phi: '0',
         },
-        "10x": {
-          w_rms: "5.60",
-          x_offset: "6.30",
-          lens_transmittance: "0.85",
-          detector_factor: "37.0",
-          phi: "0",
+        '10x': {
+          w_rms: '5.60',
+          x_offset: '6.30',
+          lens_transmittance: '0.85',
+          detector_factor: '37.0',
+          phi: '0',
         },
-        "20x": {
-          w_rms: "2.825",
-          x_offset: "3.15",
-          lens_transmittance: "0.80",
-          detector_factor: "18.5",
-          phi: "0",
+        '20x': {
+          w_rms: '2.825',
+          x_offset: '3.15',
+          lens_transmittance: '0.80',
+          detector_factor: '18.5',
+          phi: '0',
         },
       };
       setParams((prev) => ({
@@ -472,65 +435,65 @@ export default function FDPBDPage() {
     }
   };
 
-  const handleTransducerOptionChange = (option: "Al" | "custom") => {
+  const handleTransducerOptionChange = (option: 'Al' | 'custom') => {
     setTransducerOption(option);
-    if (option === "Al") {
+    if (option === 'Al') {
       setParams((prev) => ({
         ...prev,
-        lambda_down: ["149.0", prev.lambda_down[1], prev.lambda_down[2]],
-        c_down: ["2.44", prev.c_down[1], prev.c_down[2]],
-        h_down: ["0.07", prev.h_down[1], prev.h_down[2]],
-        n_al: "2.9",
-        k_al: "8.2",
-        rho: isotropyOption === "anisotropy" ? "2.70" : prev.rho,
-        alphaT: isotropyOption === "anisotropy" ? "23.1e-6" : prev.alphaT,
-        C11_0: isotropyOption === "anisotropy" ? "107.4" : prev.C11_0,
-        C12_0: isotropyOption === "anisotropy" ? "60.5" : prev.C12_0,
-        C44_0: isotropyOption === "anisotropy" ? "28.3" : prev.C44_0,
+        lambda_down: ['149.0', prev.lambda_down[1], prev.lambda_down[2]],
+        c_down: ['2.44', prev.c_down[1], prev.c_down[2]],
+        h_down: ['0.07', prev.h_down[1], prev.h_down[2]],
+        n_al: '2.9',
+        k_al: '8.2',
+        rho: isotropyOption === 'anisotropy' ? '2.70' : prev.rho,
+        alphaT: isotropyOption === 'anisotropy' ? '23.1e-6' : prev.alphaT,
+        C11_0: isotropyOption === 'anisotropy' ? '107.4' : prev.C11_0,
+        C12_0: isotropyOption === 'anisotropy' ? '60.5' : prev.C12_0,
+        C44_0: isotropyOption === 'anisotropy' ? '28.3' : prev.C44_0,
       }));
     }
   };
 
-  const handleMediumOptionChange = (option: "air" | "custom") => {
+  const handleMediumOptionChange = (option: 'air' | 'custom') => {
     setMediumOption(option);
-    if (option === "air") {
+    if (option === 'air') {
       setParams((prev) => ({
         ...prev,
-        lambda_up: "0.028",
-        eta_up: isotropyOption === "isotropy" ? "1.0" : prev.eta_up,
-        c_up: "1192.0",
-        h_up: isotropyOption === "isotropy" ? "0.001" : prev.h_up,
+        lambda_up: '0.028',
+        eta_up: isotropyOption === 'isotropy' ? '1.0' : prev.eta_up,
+        c_up: '1192.0',
+        h_up: isotropyOption === 'isotropy' ? '0.001' : prev.h_up,
       }));
     }
   };
 
-  const handleIsotropyOptionChange = (option: "isotropy" | "anisotropy") => {
+  const handleIsotropyOptionChange = (option: 'isotropy' | 'anisotropy') => {
     setIsotropyOption(option);
-    if (option === "isotropy") {
+    if (option === 'isotropy') {
       setParams((prev) => ({
         ...prev,
-        eta_down: ["1.0", "1.0", "1.0"],
+        eta_down: ['1.0', '1.0', '1.0'],
       }));
     }
   };
 
-  const handleLaserOptionChange = (option: "TOPS 1" | "TOPS 2" | "custom") => {
+  const handleLaserOptionChange = (option: 'TOPS 1' | 'TOPS 2' | 'custom') => {
     setLaserOption(option);
-    if (option !== "custom") {
+    if (option !== 'custom') {
       const values = {
-        "TOPS 1": {
-          f_rolloff: "95000",
-          delay_1: "0.0000089",
-          delay_2: "-1.3e-11",
-          incident_pump: "1.06",
-          incident_probe: "0.85",
+        'TOPS 1': {
+          f_rolloff: '95000',
+          delay_1: '0.0000089',
+          delay_2: '-1.3e-11',
+          incident_pump: '1.06',
+          incident_probe: '0.85',
         },
-        "TOPS 2": {
-          f_rolloff: "95000",
-          delay_1: "0.0000089",
-          delay_2: "-1.3e-11",
-          incident_pump: "1.06",
-          incident_probe: "0.85",
+        'TOPS 2': {
+          f_rolloff: '95000',
+          delay_1: '0.0000089',
+          delay_2: '-1.3e-11',
+          incident_pump: '1.06',
+          incident_probe: '0.85',
         },
       };
       setParams((prev) => ({
@@ -546,75 +509,75 @@ export default function FDPBDPage() {
 
   const handleClear = () => {
     setParams({
-      f_rolloff: "",
-      delay_1: "",
-      delay_2: "",
-      lambda_down: ["", "", ""],
-      eta_down: ["", "", ""],
-      c_down: ["", "", ""],
-      h_down: ["", "", ""],
-      niu: "",
-      alpha_t: "",
-      lambda_up: "",
-      eta_up: "",
-      c_up: "",
-      h_up: "",
-      w_rms: "",
-      x_offset: "",
-      incident_pump: "",
-      incident_probe: "",
-      n_al: "",
-      k_al: "",
-      lens_transmittance: "",
-      detector_factor: "",
-      phi: "",
-      rho: "",
-      alphaT: "",
-      C11_0: "",
-      C12_0: "",
-      C44_0: "",
-      lambda_down_x_sample: "",
-      lambda_down_y_sample: "",
-      lambda_down_z_sample: "",
-      rho_sample: "",
-      C11_0_sample: "",
-      C12_0_sample: "",
-      C13_0_sample: "",
-      C33_0_sample: "",
-      C44_0_sample: "",
-      alphaT_perp: "",
-      alphaT_para: "",
+      f_rolloff: '',
+      delay_1: '',
+      delay_2: '',
+      lambda_down: ['', '', ''],
+      eta_down: ['', '', ''],
+      c_down: ['', '', ''],
+      h_down: ['', '', ''],
+      niu: '',
+      alpha_t: '',
+      lambda_up: '',
+      eta_up: '',
+      c_up: '',
+      h_up: '',
+      w_rms: '',
+      x_offset: '',
+      incident_pump: '',
+      incident_probe: '',
+      n_al: '',
+      k_al: '',
+      lens_transmittance: '',
+      detector_factor: '',
+      phi: '',
+      rho: '',
+      alphaT: '',
+      C11_0: '',
+      C12_0: '',
+      C44_0: '',
+      lambda_down_x_sample: '',
+      lambda_down_y_sample: '',
+      lambda_down_z_sample: '',
+      rho_sample: '',
+      C11_0_sample: '',
+      C12_0_sample: '',
+      C13_0_sample: '',
+      C33_0_sample: '',
+      C44_0_sample: '',
+      alphaT_perp: '',
+      alphaT_para: '',
     });
     setFile(null);
-    setLensOption("custom");
-    setTransducerOption("custom");
-    setMediumOption("custom");
-    setIsotropyOption("anisotropy");
-    setLaserOption("custom");
-    setStatus("");
+    setLensOption('custom');
+    setTransducerOption('custom');
+    setMediumOption('custom');
+    setIsotropyOption('anisotropy');
+    setLaserOption('custom');
+    setStatus('');
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
-    if (selectedFile && selectedFile.type === "text/plain") {
+    if (selectedFile && selectedFile.type === 'text/plain') {
       setFile(selectedFile);
-      setStatus("");
+      setStatus('');
     } else {
       setFile(null);
-      setStatus("Please upload a .txt file");
+      setStatus('Please upload a .txt file');
     }
   };
 
   const handleSubmit = async () => {
     if (!file) {
-      setStatus("Please upload a data file");
+      setStatus('Please upload a data file');
       return;
     }
     setIsProcessing(true);
-    setStatus("Processing...");
+    setStatus('Processing...');
 
     const formData = new FormData();
-    formData.append("file", file);
+    formData.append('file', file);
 
     const modifiedParams = {
       ...params,
@@ -622,12 +585,8 @@ export default function FDPBDPage() {
       x_offset: (parseFloat(params.x_offset) * 1e-6).toString(),
       incident_probe: (parseFloat(params.incident_probe) * 1e-3).toString(),
       incident_pump: (parseFloat(params.incident_pump) * 1e-3).toString(),
-      c_down: params.c_down.map((c_down_i) =>
-        (parseFloat(c_down_i) * 1e6).toString()
-      ),
-      h_down: params.h_down.map((h_down_i) =>
-        (parseFloat(h_down_i) * 1e-6).toString()
-      ),
+      c_down: params.c_down.map((c_down_i) => (parseFloat(c_down_i) * 1e6).toString()),
+      h_down: params.h_down.map((h_down_i) => (parseFloat(h_down_i) * 1e-6).toString()),
       rho: (parseFloat(params.rho) * 1e3).toString(),
       rho_sample: (parseFloat(params.rho_sample) * 1e3).toString(),
       C11_0: (parseFloat(params.C11_0) * 1e9).toString(),
@@ -642,11 +601,8 @@ export default function FDPBDPage() {
 
     const visibleParams = {
       ...modifiedParams,
-      eta_down:
-        isotropyOption === "isotropy"
-          ? modifiedParams.eta_down.join(",")
-          : undefined,
-      ...(isotropyOption === "anisotropy"
+      eta_down: isotropyOption === 'isotropy' ? modifiedParams.eta_down.join(',') : undefined,
+      ...(isotropyOption === 'anisotropy'
         ? {
             eta_up: undefined,
             h_up: undefined,
@@ -675,76 +631,68 @@ export default function FDPBDPage() {
             alphaT_para: undefined,
           }),
     };
-    formData.append("params", JSON.stringify(visibleParams));
+    formData.append('params', JSON.stringify(visibleParams));
 
     try {
       const endpoint =
-        isotropyOption === "isotropy"
-          ? "http://localhost:8000/fdpbd/analyze"
-          : "http://localhost:8000/fdpbd/analyze_anisotropy";
+        isotropyOption === 'isotropy'
+          ? 'http://localhost:8000/fdpbd/analyze'
+          : 'http://localhost:8000/fdpbd/analyze_anisotropy';
       const response = await fetch(endpoint, {
-        method: "POST",
+        method: 'POST',
         body: formData,
       });
       const data = await response.json();
       if (response.ok) {
         setResult(data);
-        setStatus("Analysis completed");
+        setStatus('Analysis completed');
       } else {
-        setStatus(`Error: ${data.detail || "Unknown error"}`);
+        setStatus(`Error: ${data.detail || 'Unknown error'}`);
       }
     } catch (error) {
-      console.error("Error:", error);
-      setStatus("Error occurred during analysis");
+      console.error('Error:', error);
+      setStatus('Error occurred during analysis');
     } finally {
       setIsProcessing(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-gray-900 flex flex-col">
+    <div className="flex min-h-screen flex-col bg-gray-900">
       {/* Header */}
-      <header className="bg-gray-800 p-4 flex justify-between items-center">
-        <h1 className="text-white text-xl font-semibold">Analysis</h1>
+      <header className="flex items-center justify-between bg-gray-800 p-4">
+        <h1 className="text-xl font-semibold text-white">Analysis</h1>
         <a href="/" className="text-white hover:text-teal-400">
           Back to Dashboard
         </a>
       </header>
 
       {/* Main Layout */}
-      <div className="flex flex-1 p-4 space-x-4">
+      <div className="flex flex-1 space-x-4 p-4">
         {/* Left Panel: Input Form */}
-        <div className="w-1/3 flex flex-col space-y-4">
-          <div className="bg-gray-800 p-4 rounded-lg shadow-md">
-            <h2 className="text-white text-lg font-semibold mb-4">
-              Parameters
-            </h2>
+        <div className="flex w-1/3 flex-col space-y-4">
+          <div className="rounded-lg bg-gray-800 p-4 shadow-md">
+            <h2 className="mb-4 text-lg font-semibold text-white">Parameters</h2>
             {/* File Upload */}
             <div className="mb-6">
-              <h3 className="text-white text-md font-semibold mb-2">
-                Data File (.txt)
-              </h3>
+              <h3 className="text-md mb-2 font-semibold text-white">Data File (.txt)</h3>
               <input
                 type="file"
                 accept=".txt"
                 onChange={handleFileChange}
-                className="bg-gray-700 text-white p-2 rounded w-full"
+                className="w-full rounded bg-gray-700 p-2 text-white"
                 disabled={isProcessing}
               />
             </div>
 
             {/* Experimental Inputs */}
             <div className="mb-6">
-              <h3 className="text-white text-md font-semibold mb-2">
-                Experimental Inputs
-              </h3>
+              <h3 className="text-md mb-2 font-semibold text-white">Experimental Inputs</h3>
               {/* Isotropy */}
-              <div className="bg-gray-700 p-4 rounded-lg mb-4">
-                <h4 className="text-white text-sm font-semibold mb-2">
-                  Isotropy
-                </h4>
-                <div className="flex space-x-4 mb-2">
-                  {["isotropy", "anisotropy"].map((opt) => (
+              <div className="mb-4 rounded-lg bg-gray-700 p-4">
+                <h4 className="mb-2 text-sm font-semibold text-white">Isotropy</h4>
+                <div className="mb-2 flex space-x-4">
+                  {['isotropy', 'anisotropy'].map((opt) => (
                     <label key={opt} className="flex items-center text-white">
                       <input
                         type="radio"
@@ -752,9 +700,7 @@ export default function FDPBDPage() {
                         value={opt}
                         checked={isotropyOption === opt}
                         onChange={() =>
-                          handleIsotropyOptionChange(
-                            opt as "isotropy" | "anisotropy"
-                          )
+                          handleIsotropyOptionChange(opt as 'isotropy' | 'anisotropy')
                         }
                         className="mr-2"
                         disabled={isProcessing}
@@ -765,12 +711,10 @@ export default function FDPBDPage() {
                 </div>
               </div>
               {/* Lens Magnification */}
-              <div className="bg-gray-700 p-4 rounded-lg mb-4">
-                <h4 className="text-white text-sm font-semibold mb-2">
-                  Lens Magnification
-                </h4>
-                <div className="flex space-x-4 mb-2">
-                  {["5x", "10x", "20x", "custom"].map((opt) => (
+              <div className="mb-4 rounded-lg bg-gray-700 p-4">
+                <h4 className="mb-2 text-sm font-semibold text-white">Lens Magnification</h4>
+                <div className="mb-2 flex space-x-4">
+                  {['5x', '10x', '20x', 'custom'].map((opt) => (
                     <label key={opt} className="flex items-center text-white">
                       <input
                         type="radio"
@@ -778,9 +722,7 @@ export default function FDPBDPage() {
                         value={opt}
                         checked={lensOption === opt}
                         onChange={() =>
-                          handleLensOptionChange(
-                            opt as "5x" | "10x" | "20x" | "custom"
-                          )
+                          handleLensOptionChange(opt as '5x' | '10x' | '20x' | 'custom')
                         }
                         className="mr-2"
                         disabled={isProcessing}
@@ -790,42 +732,36 @@ export default function FDPBDPage() {
                   ))}
                 </div>
                 {[
-                  { field: "w_rms", label: `W RMS [${fieldUnits.w_rms}]` },
+                  { field: 'w_rms', label: `W RMS [${fieldUnits.w_rms}]` },
                   {
-                    field: "x_offset",
+                    field: 'x_offset',
                     label: `X Offset [${fieldUnits.x_offset}]`,
                   },
                   {
-                    field: "lens_transmittance",
+                    field: 'lens_transmittance',
                     label: `Lens Transmittance ${
-                      fieldUnits.lens_transmittance
-                        ? `[${fieldUnits.lens_transmittance}]`
-                        : ""
+                      fieldUnits.lens_transmittance ? `[${fieldUnits.lens_transmittance}]` : ''
                     }`,
                   },
                   {
-                    field: "detector_factor",
+                    field: 'detector_factor',
                     label: `Detector Factor [${fieldUnits.detector_factor}]`,
                   },
-                  ...(isotropyOption === "anisotropy"
-                    ? [{ field: "phi", label: `Phi [${fieldUnits.phi}]` }]
+                  ...(isotropyOption === 'anisotropy'
+                    ? [{ field: 'phi', label: `Phi [${fieldUnits.phi}]` }]
                     : []),
                 ].map((param) => (
-                  <div key={param.field} className="flex flex-col mb-2">
-                    <label className="text-white text-sm mb-1">
-                      {param.label}
-                    </label>
+                  <div key={param.field} className="mb-2 flex flex-col">
+                    <label className="mb-1 text-sm text-white">{param.label}</label>
                     <input
                       type="number"
                       step="any"
                       value={params[param.field as keyof FDPBDParams]}
-                      onChange={(e) =>
-                        handleInputChange(e, param.field as keyof FDPBDParams)
-                      }
-                      className={`bg-gray-800 text-white p-2 rounded focus:outline-none border-2 ${
+                      onChange={(e) => handleInputChange(e, param.field as keyof FDPBDParams)}
+                      className={`rounded border-2 bg-gray-800 p-2 text-white focus:outline-none ${
                         isValidDecimal(params[param.field as keyof FDPBDParams])
-                          ? "border-gray-600 focus:border-teal-500"
-                          : "border-red-500"
+                          ? 'border-gray-600 focus:border-teal-500'
+                          : 'border-red-500'
                       }`}
                       disabled={isProcessing}
                       required
@@ -834,10 +770,10 @@ export default function FDPBDPage() {
                 ))}
               </div>
               {/* Laser */}
-              <div className="bg-gray-700 p-4 rounded-lg">
-                <h4 className="text-white text-sm font-semibold mb-2">Laser</h4>
-                <div className="flex space-x-4 mb-2">
-                  {["TOPS 1", "TOPS 2", "custom"].map((opt) => (
+              <div className="rounded-lg bg-gray-700 p-4">
+                <h4 className="mb-2 text-sm font-semibold text-white">Laser</h4>
+                <div className="mb-2 flex space-x-4">
+                  {['TOPS 1', 'TOPS 2', 'custom'].map((opt) => (
                     <label key={opt} className="flex items-center text-white">
                       <input
                         type="radio"
@@ -845,9 +781,7 @@ export default function FDPBDPage() {
                         value={opt}
                         checked={laserOption === opt}
                         onChange={() =>
-                          handleLaserOptionChange(
-                            opt as "TOPS 1" | "TOPS 2" | "custom"
-                          )
+                          handleLaserOptionChange(opt as 'TOPS 1' | 'TOPS 2' | 'custom')
                         }
                         className="mr-2"
                         disabled={isProcessing}
@@ -858,41 +792,37 @@ export default function FDPBDPage() {
                 </div>
                 {[
                   {
-                    field: "f_rolloff",
+                    field: 'f_rolloff',
                     label: `f Rolloff [${fieldUnits.f_rolloff}]`,
                   },
                   {
-                    field: "delay_1",
+                    field: 'delay_1',
                     label: `Delay 1 [${fieldUnits.delay_1}]`,
                   },
                   {
-                    field: "delay_2",
+                    field: 'delay_2',
                     label: `Delay 2 [${fieldUnits.delay_2}]`,
                   },
                   {
-                    field: "incident_pump",
+                    field: 'incident_pump',
                     label: `Incident Pump [${fieldUnits.incident_pump}]`,
                   },
                   {
-                    field: "incident_probe",
+                    field: 'incident_probe',
                     label: `Incident Probe [${fieldUnits.incident_probe}]`,
                   },
                 ].map((param) => (
-                  <div key={param.field} className="flex flex-col mb-2">
-                    <label className="text-white text-sm mb-1">
-                      {param.label}
-                    </label>
+                  <div key={param.field} className="mb-2 flex flex-col">
+                    <label className="mb-1 text-sm text-white">{param.label}</label>
                     <input
                       type="number"
                       step="any"
                       value={params[param.field as keyof FDPBDParams]}
-                      onChange={(e) =>
-                        handleInputChange(e, param.field as keyof FDPBDParams)
-                      }
-                      className={`bg-gray-800 text-white p-2 rounded focus:outline-none border-2 ${
+                      onChange={(e) => handleInputChange(e, param.field as keyof FDPBDParams)}
+                      className={`rounded border-2 bg-gray-800 p-2 text-white focus:outline-none ${
                         isValidDecimal(params[param.field as keyof FDPBDParams])
-                          ? "border-gray-600 focus:border-teal-500"
-                          : "border-red-500"
+                          ? 'border-gray-600 focus:border-teal-500'
+                          : 'border-red-500'
                       }`}
                       disabled={isProcessing}
                       required
@@ -904,25 +834,19 @@ export default function FDPBDPage() {
 
             {/* Sample Inputs */}
             <div className="mb-6">
-              <h3 className="text-white text-md font-semibold mb-2">
-                Sample Inputs
-              </h3>
+              <h3 className="text-md mb-2 font-semibold text-white">Sample Inputs</h3>
               {/* Medium */}
-              <div className="bg-gray-700 p-4 rounded-lg mb-4">
-                <h4 className="text-white text-sm font-semibold mb-2">
-                  Medium
-                </h4>
-                <div className="flex space-x-4 mb-2">
-                  {["air", "custom"].map((opt) => (
+              <div className="mb-4 rounded-lg bg-gray-700 p-4">
+                <h4 className="mb-2 text-sm font-semibold text-white">Medium</h4>
+                <div className="mb-2 flex space-x-4">
+                  {['air', 'custom'].map((opt) => (
                     <label key={opt} className="flex items-center text-white">
                       <input
                         type="radio"
                         name="medium"
                         value={opt}
                         checked={mediumOption === opt}
-                        onChange={() =>
-                          handleMediumOptionChange(opt as "air" | "custom")
-                        }
+                        onChange={() => handleMediumOptionChange(opt as 'air' | 'custom')}
                         className="mr-2"
                         disabled={isProcessing}
                       />
@@ -932,37 +856,31 @@ export default function FDPBDPage() {
                 </div>
                 {[
                   {
-                    field: "lambda_up",
+                    field: 'lambda_up',
                     label: `Lambda Up [${fieldUnits.lambda_up}]`,
                   },
-                  { field: "c_up", label: `C Up [${fieldUnits.c_up}]` },
-                  ...(isotropyOption === "isotropy"
+                  { field: 'c_up', label: `C Up [${fieldUnits.c_up}]` },
+                  ...(isotropyOption === 'isotropy'
                     ? [
                         {
-                          field: "eta_up",
-                          label: `Eta Up ${
-                            fieldUnits.eta_up ? `[${fieldUnits.eta_up}]` : ""
-                          }`,
+                          field: 'eta_up',
+                          label: `Eta Up ${fieldUnits.eta_up ? `[${fieldUnits.eta_up}]` : ''}`,
                         },
-                        { field: "h_up", label: `H Up [${fieldUnits.h_up}]` },
+                        { field: 'h_up', label: `H Up [${fieldUnits.h_up}]` },
                       ]
                     : []),
                 ].map((param) => (
-                  <div key={param.field} className="flex flex-col mb-2">
-                    <label className="text-white text-sm mb-1">
-                      {param.label}
-                    </label>
+                  <div key={param.field} className="mb-2 flex flex-col">
+                    <label className="mb-1 text-sm text-white">{param.label}</label>
                     <input
                       type="number"
                       step="any"
                       value={params[param.field as keyof FDPBDParams]}
-                      onChange={(e) =>
-                        handleInputChange(e, param.field as keyof FDPBDParams)
-                      }
-                      className={`bg-gray-800 text-white p-2 rounded focus:outline-none border-2 ${
+                      onChange={(e) => handleInputChange(e, param.field as keyof FDPBDParams)}
+                      className={`rounded border-2 bg-gray-800 p-2 text-white focus:outline-none ${
                         isValidDecimal(params[param.field as keyof FDPBDParams])
-                          ? "border-gray-600 focus:border-teal-500"
-                          : "border-red-500"
+                          ? 'border-gray-600 focus:border-teal-500'
+                          : 'border-red-500'
                       }`}
                       disabled={isProcessing}
                       required
@@ -971,21 +889,17 @@ export default function FDPBDPage() {
                 ))}
               </div>
               {/* Transducer Layer */}
-              <div className="bg-gray-700 p-4 rounded-lg mb-4">
-                <h4 className="text-white text-sm font-semibold mb-2">
-                  Transducer Layer
-                </h4>
-                <div className="flex space-x-4 mb-2">
-                  {["Al", "custom"].map((opt) => (
+              <div className="mb-4 rounded-lg bg-gray-700 p-4">
+                <h4 className="mb-2 text-sm font-semibold text-white">Transducer Layer</h4>
+                <div className="mb-2 flex space-x-4">
+                  {['Al', 'custom'].map((opt) => (
                     <label key={opt} className="flex items-center text-white">
                       <input
                         type="radio"
                         name="transducer"
                         value={opt}
                         checked={transducerOption === opt}
-                        onChange={() =>
-                          handleTransducerOptionChange(opt as "Al" | "custom")
-                        }
+                        onChange={() => handleTransducerOptionChange(opt as 'Al' | 'custom')}
                         className="mr-2"
                         disabled={isProcessing}
                       />
@@ -995,92 +909,73 @@ export default function FDPBDPage() {
                 </div>
                 {[
                   {
-                    field: "lambda_down",
+                    field: 'lambda_down',
                     index: 0,
                     label: `Lambda Down [${fieldUnits.lambda_down}]`,
                   },
                   {
-                    field: "c_down",
+                    field: 'c_down',
                     index: 0,
                     label: `C Down [${fieldUnits.c_down}]`,
                   },
                   {
-                    field: "h_down",
+                    field: 'h_down',
                     index: 0,
                     label: `h Down [${fieldUnits.h_down}]`,
                   },
-                  ...(isotropyOption === "isotropy"
+                  ...(isotropyOption === 'isotropy'
                     ? [
                         {
-                          field: "eta_down",
+                          field: 'eta_down',
                           index: 0,
                           label: `Eta Down ${
-                            fieldUnits.eta_down
-                              ? `[${fieldUnits.eta_down}]`
-                              : ""
+                            fieldUnits.eta_down ? `[${fieldUnits.eta_down}]` : ''
                           }`,
                         },
                       ]
                     : []),
                   {
-                    field: "n_al",
-                    label: `Refractive Index (n) ${
-                      fieldUnits.n_al ? `[${fieldUnits.n_al}]` : ""
-                    }`,
+                    field: 'n_al',
+                    label: `Refractive Index (n) ${fieldUnits.n_al ? `[${fieldUnits.n_al}]` : ''}`,
                   },
                   {
-                    field: "k_al",
-                    label: `Imaginary Index (k) ${
-                      fieldUnits.k_al ? `[${fieldUnits.k_al}]` : ""
-                    }`,
+                    field: 'k_al',
+                    label: `Imaginary Index (k) ${fieldUnits.k_al ? `[${fieldUnits.k_al}]` : ''}`,
                   },
-                  ...(isotropyOption === "anisotropy"
+                  ...(isotropyOption === 'anisotropy'
                     ? [
-                        { field: "rho", label: `Rho [${fieldUnits.rho}]` },
+                        { field: 'rho', label: `Rho [${fieldUnits.rho}]` },
                         {
-                          field: "alphaT",
+                          field: 'alphaT',
                           label: `Alpha T [${fieldUnits.alphaT}]`,
                         },
-                        { field: "C11_0", label: `C11 [${fieldUnits.C11_0}]` },
-                        { field: "C12_0", label: `C12 [${fieldUnits.C12_0}]` },
-                        { field: "C44_0", label: `C44 [${fieldUnits.C44_0}]` },
+                        { field: 'C11_0', label: `C11 [${fieldUnits.C11_0}]` },
+                        { field: 'C12_0', label: `C12 [${fieldUnits.C12_0}]` },
+                        { field: 'C44_0', label: `C44 [${fieldUnits.C44_0}]` },
                       ]
                     : []),
                 ].map((param) => (
-                  <div
-                    key={`${param.field}${param.index ?? ""}`}
-                    className="flex flex-col mb-2"
-                  >
-                    <label className="text-white text-sm mb-1">
-                      {param.label}
-                    </label>
+                  <div key={`${param.field}${param.index ?? ''}`} className="mb-2 flex flex-col">
+                    <label className="mb-1 text-sm text-white">{param.label}</label>
                     <input
                       type="number"
                       step="any"
                       value={
                         param.index !== undefined
-                          ? params[param.field as keyof FDPBDParams][
-                              param.index
-                            ]
+                          ? params[param.field as keyof FDPBDParams][param.index]
                           : params[param.field as keyof FDPBDParams]
                       }
                       onChange={(e) =>
-                        handleInputChange(
-                          e,
-                          param.field as keyof FDPBDParams,
-                          param.index
-                        )
+                        handleInputChange(e, param.field as keyof FDPBDParams, param.index)
                       }
-                      className={`bg-gray-800 text-white p-2 rounded focus:outline-none border-2 ${
+                      className={`rounded border-2 bg-gray-800 p-2 text-white focus:outline-none ${
                         isValidDecimal(
                           param.index !== undefined
-                            ? params[param.field as keyof FDPBDParams][
-                                param.index
-                              ]
+                            ? params[param.field as keyof FDPBDParams][param.index]
                             : params[param.field as keyof FDPBDParams]
                         )
-                          ? "border-gray-600 focus:border-teal-500"
-                          : "border-red-500"
+                          ? 'border-gray-600 focus:border-teal-500'
+                          : 'border-red-500'
                       }`}
                       disabled={isProcessing}
                       required
@@ -1089,63 +984,44 @@ export default function FDPBDPage() {
                 ))}
               </div>
               {/* Interface Layer */}
-              {isotropyOption === "isotropy" && (
-                <div className="bg-gray-700 p-4 rounded-lg mb-4">
-                  <h4 className="text-white text-sm font-semibold mb-2">
-                    Interface Layer
-                  </h4>
+              {isotropyOption === 'isotropy' && (
+                <div className="mb-4 rounded-lg bg-gray-700 p-4">
+                  <h4 className="mb-2 text-sm font-semibold text-white">Interface Layer</h4>
                   {[
                     {
-                      field: "lambda_down",
+                      field: 'lambda_down',
                       index: 1,
                       label: `Lambda Down [${fieldUnits.lambda_down}]`,
                     },
                     {
-                      field: "c_down",
+                      field: 'c_down',
                       index: 1,
                       label: `C Down [${fieldUnits.c_down}]`,
                     },
                     {
-                      field: "h_down",
+                      field: 'h_down',
                       index: 1,
                       label: `h Down [${fieldUnits.h_down}]`,
                     },
                     {
-                      field: "eta_down",
+                      field: 'eta_down',
                       index: 1,
-                      label: `Eta Down ${
-                        fieldUnits.eta_down ? `[${fieldUnits.eta_down}]` : ""
-                      }`,
+                      label: `Eta Down ${fieldUnits.eta_down ? `[${fieldUnits.eta_down}]` : ''}`,
                     },
                   ].map((param) => (
-                    <div
-                      key={`${param.field}${param.index}`}
-                      className="flex flex-col mb-2"
-                    >
-                      <label className="text-white text-sm mb-1">
-                        {param.label}
-                      </label>
+                    <div key={`${param.field}${param.index}`} className="mb-2 flex flex-col">
+                      <label className="mb-1 text-sm text-white">{param.label}</label>
                       <input
                         type="number"
                         step="any"
-                        value={
-                          params[param.field as keyof FDPBDParams][param.index]
-                        }
+                        value={params[param.field as keyof FDPBDParams][param.index]}
                         onChange={(e) =>
-                          handleInputChange(
-                            e,
-                            param.field as keyof FDPBDParams,
-                            param.index
-                          )
+                          handleInputChange(e, param.field as keyof FDPBDParams, param.index)
                         }
-                        className={`bg-gray-800 text-white p-2 rounded focus:outline-none border-2 ${
-                          isValidDecimal(
-                            params[param.field as keyof FDPBDParams][
-                              param.index
-                            ]
-                          )
-                            ? "border-gray-600 focus:border-teal-500"
-                            : "border-red-500"
+                        className={`rounded border-2 bg-gray-800 p-2 text-white focus:outline-none ${
+                          isValidDecimal(params[param.field as keyof FDPBDParams][param.index])
+                            ? 'border-gray-600 focus:border-teal-500'
+                            : 'border-red-500'
                         }`}
                         disabled={isProcessing}
                         required
@@ -1155,134 +1031,115 @@ export default function FDPBDPage() {
                 </div>
               )}
               {/* Sample Layer */}
-              <div className="bg-gray-700 p-4 rounded-lg mb-4">
-                <h4 className="text-white text-sm font-semibold mb-2">
-                  Sample Layer
-                </h4>
+              <div className="mb-4 rounded-lg bg-gray-700 p-4">
+                <h4 className="mb-2 text-sm font-semibold text-white">Sample Layer</h4>
                 {[
-                  ...(isotropyOption === "isotropy"
+                  ...(isotropyOption === 'isotropy'
                     ? [
                         {
-                          field: "lambda_down",
+                          field: 'lambda_down',
                           index: 2,
                           label: `Lambda Down [${fieldUnits.lambda_down}]`,
                         },
                         {
-                          field: "c_down",
+                          field: 'c_down',
                           index: 2,
                           label: `C Down [${fieldUnits.c_down}]`,
                         },
                         {
-                          field: "h_down",
+                          field: 'h_down',
                           index: 2,
                           label: `h Down [${fieldUnits.h_down}]`,
                         },
                         {
-                          field: "eta_down",
+                          field: 'eta_down',
                           index: 2,
                           label: `Eta Down ${
-                            fieldUnits.eta_down
-                              ? `[${fieldUnits.eta_down}]`
-                              : ""
+                            fieldUnits.eta_down ? `[${fieldUnits.eta_down}]` : ''
                           }`,
                         },
                         {
-                          field: "alpha_t",
+                          field: 'alpha_t',
                           label: `Alpha T [${fieldUnits.alpha_t}]`,
                         },
                         {
-                          field: "niu",
-                          label: `Niu ${
-                            fieldUnits.niu ? `[${fieldUnits.niu}]` : ""
-                          }`,
+                          field: 'niu',
+                          label: `Niu ${fieldUnits.niu ? `[${fieldUnits.niu}]` : ''}`,
                         },
                       ]
                     : [
                         {
-                          field: "lambda_down_x_sample",
+                          field: 'lambda_down_x_sample',
                           label: `Lambda Down X [${fieldUnits.lambda_down_x_sample}]`,
                         },
                         {
-                          field: "lambda_down_y_sample",
+                          field: 'lambda_down_y_sample',
                           label: `Lambda Down Y [${fieldUnits.lambda_down_y_sample}]`,
                         },
                         {
-                          field: "lambda_down_z_sample",
+                          field: 'lambda_down_z_sample',
                           label: `Lambda Down Z [${fieldUnits.lambda_down_z_sample}]`,
                         },
                         {
-                          field: "c_down",
+                          field: 'c_down',
                           index: 2,
                           label: `C Down [${fieldUnits.c_down}]`,
                         },
                         {
-                          field: "rho_sample",
+                          field: 'rho_sample',
                           label: `Rho [${fieldUnits.rho_sample}]`,
                         },
                         {
-                          field: "C11_0_sample",
+                          field: 'C11_0_sample',
                           label: `C11 [${fieldUnits.C11_0_sample}]`,
                         },
                         {
-                          field: "C12_0_sample",
+                          field: 'C12_0_sample',
                           label: `C12 [${fieldUnits.C12_0_sample}]`,
                         },
                         {
-                          field: "C13_0_sample",
+                          field: 'C13_0_sample',
                           label: `C13 [${fieldUnits.C13_0_sample}]`,
                         },
                         {
-                          field: "C33_0_sample",
+                          field: 'C33_0_sample',
                           label: `C33 [${fieldUnits.C33_0_sample}]`,
                         },
                         {
-                          field: "C44_0_sample",
+                          field: 'C44_0_sample',
                           label: `C44 [${fieldUnits.C44_0_sample}]`,
                         },
                         {
-                          field: "alphaT_perp",
+                          field: 'alphaT_perp',
                           label: `Alpha T Perpendicular [${fieldUnits.alphaT_perp}]`,
                         },
                         {
-                          field: "alphaT_para",
+                          field: 'alphaT_para',
                           label: `Alpha T Parallel [${fieldUnits.alphaT_para}]`,
                         },
                       ]),
                 ].map((param) => (
-                  <div
-                    key={`${param.field}${param.index ?? ""}`}
-                    className="flex flex-col mb-2"
-                  >
-                    <label className="text-white text-sm mb-1">
-                      {param.label}
-                    </label>
+                  <div key={`${param.field}${param.index ?? ''}`} className="mb-2 flex flex-col">
+                    <label className="mb-1 text-sm text-white">{param.label}</label>
                     <input
                       type="number"
                       step="any"
                       value={
                         param.index !== undefined
-                          ? params[param.field as keyof FDPBDParams][
-                              param.index
-                            ]
+                          ? params[param.field as keyof FDPBDParams][param.index]
                           : params[param.field as keyof FDPBDParams]
                       }
                       onChange={(e) =>
-                        handleInputChange(
-                          e,
-                          param.field as keyof FDPBDParams,
-                          param.index
-                        )
+                        handleInputChange(e, param.field as keyof FDPBDParams, param.index)
                       }
-                      className={`bg-gray-800 text-white p-2 rounded focus:outline-none border-2 ${
+                      className={`rounded border-2 bg-gray-800 p-2 text-white focus:outline-none ${
                         isValidDecimal(
                           param.index !== undefined
-                            ? params[param.field as keyof FDPBDParams][
-                                param.index
-                              ]
+                            ? params[param.field as keyof FDPBDParams][param.index]
                             : params[param.field as keyof FDPBDParams]
                         )
-                          ? "border-gray-600 focus:border-teal-500"
-                          : "border-red-500"
+                          ? 'border-gray-600 focus:border-teal-500'
+                          : 'border-red-500'
                       }`}
                       disabled={isProcessing}
                       required
@@ -1297,17 +1154,17 @@ export default function FDPBDPage() {
               <button
                 onClick={handleSubmit}
                 disabled={isProcessing || !isFormValid()}
-                className={`flex-1 py-2 rounded text-white ${
+                className={`flex-1 rounded py-2 text-white ${
                   isProcessing || !isFormValid()
-                    ? "bg-gray-600 cursor-not-allowed"
-                    : "bg-teal-500 hover:bg-teal-600"
+                    ? 'cursor-not-allowed bg-gray-600'
+                    : 'bg-teal-500 hover:bg-teal-600'
                 }`}
               >
-                {isProcessing ? "Processing..." : "Run Analysis"}
+                {isProcessing ? 'Processing...' : 'Run Analysis'}
               </button>
               <button
                 onClick={handleClear}
-                className="flex-1 py-2 rounded text-white bg-gray-500 hover:bg-gray-600"
+                className="flex-1 rounded bg-gray-500 py-2 text-white hover:bg-gray-600"
                 disabled={isProcessing}
               >
                 Clear
@@ -1316,7 +1173,7 @@ export default function FDPBDPage() {
             {status && (
               <p
                 className={`mt-2 text-sm ${
-                  status.includes("Error") ? "text-red-400" : "text-green-400"
+                  status.includes('Error') ? 'text-red-400' : 'text-green-400'
                 }`}
               >
                 {status}
@@ -1326,50 +1183,46 @@ export default function FDPBDPage() {
         </div>
 
         {/* Right Panel: Results and Graphs */}
-        <div className="w-2/3 flex flex-col space-y-4">
+        <div className="flex w-2/3 flex-col space-y-4">
           {result && (
             <>
-              <div className="bg-gray-800 p-4 rounded-lg shadow-md">
-                <h2 className="text-white text-lg font-semibold mb-4">
-                  Results
-                </h2>
+              <div className="rounded-lg bg-gray-800 p-4 shadow-md">
+                <h2 className="mb-4 text-lg font-semibold text-white">Results</h2>
                 {result && (
                   <>
-                    {isotropyOption === "isotropy" &&
+                    {isotropyOption === 'isotropy' &&
                       (() => {
                         const isotropicResult = result as FDPBDResult;
                         return (
                           <>
                             <p className="text-white">
-                              Thermal Conductivity:{" "}
-                              {isotropicResult.lambda_measure.toFixed(3)} W/m-K
+                              Thermal Conductivity: {isotropicResult.lambda_measure.toFixed(3)}{' '}
+                              W/m-K
                             </p>
                             <p className="text-white">
-                              Thermal Expansion:{" "}
-                              {isotropicResult.alpha_t_fitted.toExponential(3)}{" "}
+                              Thermal Expansion: {isotropicResult.alpha_t_fitted.toExponential(3)}{' '}
                               /K
                             </p>
                           </>
                         );
                       })()}
-                    {isotropyOption === "anisotropy" &&
+                    {isotropyOption === 'anisotropy' &&
                       (() => {
-                        const anisotropicResult =
-                          result as AnisotropicFDPBDResult;
+                        const anisotropicResult = result as AnisotropicFDPBDResult;
                         return (
                           <>
                             <p className="text-white">
-                              Peak Frequency:{" "}
+                              Peak Frequency:{' '}
                               {anisotropicResult.f_peak
                                 ? anisotropicResult.f_peak.toFixed(2)
-                                : "N/A"}{" "}
+                                : 'N/A'}{' '}
                               Hz
                             </p>
                             <p className="text-white">
-                              Ratio at Peak:{" "}
+                              Ratio at Peak:{' '}
                               {anisotropicResult.ratio_at_peak
                                 ? anisotropicResult.ratio_at_peak.toFixed(4)
-                                : "N/A"}
+                                : 'N/A'}
                             </p>
                           </>
                         );
@@ -1377,92 +1230,90 @@ export default function FDPBDPage() {
                   </>
                 )}
               </div>
-              <div className="bg-gray-800 p-4 rounded-lg shadow-md">
-                <h2 className="text-white text-lg font-semibold mb-4">
-                  Graphs
-                </h2>
+              <div className="rounded-lg bg-gray-800 p-4 shadow-md">
+                <h2 className="mb-4 text-lg font-semibold text-white">Graphs</h2>
                 <div className="flex flex-col space-y-4">
-                  {isotropyOption === "isotropy" && result && (
+                  {isotropyOption === 'isotropy' && result && (
                     <>
                       <Plot
                         data={[
                           {
                             x: (result as FDPBDResult).plot_data.freq_fit,
                             y: (result as FDPBDResult).plot_data.v_corr_in_fit,
-                            type: "scatter",
-                            mode: "markers",
-                            name: "In-phase (data)",
-                            marker: { color: "black" },
+                            type: 'scatter',
+                            mode: 'markers',
+                            name: 'In-phase (data)',
+                            marker: { color: 'black' },
                           },
                           {
                             x: (result as FDPBDResult).plot_data.freq_fit,
                             y: (result as FDPBDResult).plot_data.v_corr_out_fit,
-                            type: "scatter",
-                            mode: "markers",
-                            name: "Out-of-phase (data)",
-                            marker: { color: "black" },
+                            type: 'scatter',
+                            mode: 'markers',
+                            name: 'Out-of-phase (data)',
+                            marker: { color: 'black' },
                           },
                           {
                             x: (result as FDPBDResult).plot_data.freq_fit,
                             y: (result as FDPBDResult).plot_data.delta_in,
-                            type: "scatter",
-                            mode: "lines",
-                            name: "In-phase (model)",
-                            line: { color: "blue" },
+                            type: 'scatter',
+                            mode: 'lines',
+                            name: 'In-phase (model)',
+                            line: { color: 'blue' },
                           },
                           {
                             x: (result as FDPBDResult).plot_data.freq_fit,
                             y: (result as FDPBDResult).plot_data.delta_out,
-                            type: "scatter",
-                            mode: "lines",
-                            name: "Out-of-phase (model)",
-                            line: { color: "red" },
+                            type: 'scatter',
+                            mode: 'lines',
+                            name: 'Out-of-phase (model)',
+                            line: { color: 'red' },
                           },
                         ]}
                         layout={{
-                          title: "In/Out-of-phase",
+                          title: 'In/Out-of-phase',
                           xaxis: {
                             title: {
-                              text: "Frequency (Hz)",
-                              font: { size: 14, color: "black" },
+                              text: 'Frequency (Hz)',
+                              font: { size: 14, color: 'black' },
                               standoff: 10,
                             },
-                            type: "log",
+                            type: 'log',
                             showgrid: false,
-                            tickfont: { size: 12, color: "black" },
+                            tickfont: { size: 12, color: 'black' },
                             showticklabels: true,
-                            tickmode: "auto",
+                            tickmode: 'auto',
                             nticks: 3,
                           },
                           yaxis: {
                             title: {
-                              text: "In/Out-of-phase (V)",
-                              font: { size: 14, color: "black" },
+                              text: 'In/Out-of-phase (V)',
+                              font: { size: 14, color: 'black' },
                               standoff: 10,
                             },
                             showgrid: false,
-                            tickfont: { size: 12, color: "black" },
+                            tickfont: { size: 12, color: 'black' },
                             showticklabels: true,
-                            tickmode: "auto",
+                            tickmode: 'auto',
                             nticks: 5,
                           },
-                          legend: { x: 1, xanchor: "right", y: 1 },
-                          plot_bgcolor: "white",
-                          paper_bgcolor: "white",
-                          font: { color: "black" },
+                          legend: { x: 1, xanchor: 'right', y: 1 },
+                          plot_bgcolor: 'white',
+                          paper_bgcolor: 'white',
+                          font: { color: 'black' },
                           width: 800,
                           height: 400,
                           margin: { l: 60, r: 40, t: 60, b: 60 },
                           shapes: [
                             {
-                              type: "rect",
-                              xref: "paper",
-                              yref: "paper",
+                              type: 'rect',
+                              xref: 'paper',
+                              yref: 'paper',
                               x0: 0,
                               y0: 0,
                               x1: 1,
                               y1: 1,
-                              line: { color: "black", width: 2 },
+                              line: { color: 'black', width: 2 },
                             },
                           ],
                         }}
@@ -1471,162 +1322,153 @@ export default function FDPBDPage() {
                         data={[
                           {
                             x: (result as FDPBDResult).plot_data.freq_fit,
-                            y: (result as FDPBDResult).plot_data
-                              .v_corr_ratio_fit,
-                            type: "scatter",
-                            mode: "markers",
-                            name: "Ratio (data)",
-                            marker: { color: "black" },
+                            y: (result as FDPBDResult).plot_data.v_corr_ratio_fit,
+                            type: 'scatter',
+                            mode: 'markers',
+                            name: 'Ratio (data)',
+                            marker: { color: 'black' },
                           },
                           {
                             x: (result as FDPBDResult).plot_data.freq_fit,
                             y: (result as FDPBDResult).plot_data.delta_ratio,
-                            type: "scatter",
-                            mode: "lines",
-                            name: "Ratio (model)",
-                            line: { color: "blue" },
+                            type: 'scatter',
+                            mode: 'lines',
+                            name: 'Ratio (model)',
+                            line: { color: 'blue' },
                           },
                         ]}
                         layout={{
-                          title: "Ratio",
+                          title: 'Ratio',
                           xaxis: {
                             title: {
-                              text: "Frequency (Hz)",
-                              font: { size: 14, color: "black" },
+                              text: 'Frequency (Hz)',
+                              font: { size: 14, color: 'black' },
                               standoff: 10,
                             },
-                            type: "log",
+                            type: 'log',
                             showgrid: false,
-                            tickfont: { size: 12, color: "black" },
+                            tickfont: { size: 12, color: 'black' },
                             showticklabels: true,
-                            tickmode: "auto",
+                            tickmode: 'auto',
                             nticks: 3,
                           },
                           yaxis: {
                             title: {
-                              text: "Ratio",
-                              font: { size: 14, color: "black" },
+                              text: 'Ratio',
+                              font: { size: 14, color: 'black' },
                               standoff: 10,
                             },
-                            type: "log",
+                            type: 'log',
                             showgrid: false,
-                            tickfont: { size: 12, color: "black" },
+                            tickfont: { size: 12, color: 'black' },
                             showticklabels: true,
-                            tickmode: "auto",
+                            tickmode: 'auto',
                             nticks: 5,
                           },
-                          legend: { x: 1, xanchor: "right", y: 1 },
-                          plot_bgcolor: "white",
-                          paper_bgcolor: "white",
-                          font: { color: "black" },
+                          legend: { x: 1, xanchor: 'right', y: 1 },
+                          plot_bgcolor: 'white',
+                          paper_bgcolor: 'white',
+                          font: { color: 'black' },
                           width: 800,
                           height: 400,
                           margin: { l: 60, r: 40, t: 60, b: 60 },
                           shapes: [
                             {
-                              type: "rect",
-                              xref: "paper",
-                              yref: "paper",
+                              type: 'rect',
+                              xref: 'paper',
+                              yref: 'paper',
                               x0: 0,
                               y0: 0,
                               x1: 1,
                               y1: 1,
-                              line: { color: "black", width: 2 },
+                              line: { color: 'black', width: 2 },
                             },
                           ],
                         }}
                       />
                     </>
                   )}
-                  {isotropyOption === "anisotropy" && result && (
+                  {isotropyOption === 'anisotropy' && result && (
                     <>
                       <Plot
                         data={[
                           {
-                            x: (result as AnisotropicFDPBDResult).plot_data
-                              .exp_freqs,
-                            y: (result as AnisotropicFDPBDResult).plot_data
-                              .in_exp,
-                            type: "scatter",
-                            mode: "markers",
-                            name: "In-phase (data)",
-                            marker: { color: "black" },
+                            x: (result as AnisotropicFDPBDResult).plot_data.exp_freqs,
+                            y: (result as AnisotropicFDPBDResult).plot_data.in_exp,
+                            type: 'scatter',
+                            mode: 'markers',
+                            name: 'In-phase (data)',
+                            marker: { color: 'black' },
                           },
                           {
-                            x: (result as AnisotropicFDPBDResult).plot_data
-                              .exp_freqs,
-                            y: (result as AnisotropicFDPBDResult).plot_data
-                              .out_exp,
-                            type: "scatter",
-                            mode: "markers",
-                            name: "Out-of-phase (data)",
-                            marker: { color: "black" },
+                            x: (result as AnisotropicFDPBDResult).plot_data.exp_freqs,
+                            y: (result as AnisotropicFDPBDResult).plot_data.out_exp,
+                            type: 'scatter',
+                            mode: 'markers',
+                            name: 'Out-of-phase (data)',
+                            marker: { color: 'black' },
                           },
                           {
-                            x: (result as AnisotropicFDPBDResult).plot_data
-                              .model_freqs,
-                            y: (result as AnisotropicFDPBDResult).plot_data
-                              .in_model,
-                            type: "scatter",
-                            mode: "lines",
-                            name: "In-phase (model)",
-                            line: { color: "blue" },
+                            x: (result as AnisotropicFDPBDResult).plot_data.model_freqs,
+                            y: (result as AnisotropicFDPBDResult).plot_data.in_model,
+                            type: 'scatter',
+                            mode: 'lines',
+                            name: 'In-phase (model)',
+                            line: { color: 'blue' },
                           },
                           {
-                            x: (result as AnisotropicFDPBDResult).plot_data
-                              .model_freqs,
-                            y: (result as AnisotropicFDPBDResult).plot_data
-                              .out_model,
-                            type: "scatter",
-                            mode: "lines",
-                            name: "Out-of-phase (model)",
-                            line: { color: "red" },
+                            x: (result as AnisotropicFDPBDResult).plot_data.model_freqs,
+                            y: (result as AnisotropicFDPBDResult).plot_data.out_model,
+                            type: 'scatter',
+                            mode: 'lines',
+                            name: 'Out-of-phase (model)',
+                            line: { color: 'red' },
                           },
                         ]}
                         layout={{
-                          title: "In/Out-of-phase",
+                          title: 'In/Out-of-phase',
                           xaxis: {
                             title: {
-                              text: "Frequency (Hz)",
-                              font: { size: 14, color: "black" },
+                              text: 'Frequency (Hz)',
+                              font: { size: 14, color: 'black' },
                               standoff: 10,
                             },
-                            type: "log",
+                            type: 'log',
                             showgrid: false,
-                            tickfont: { size: 12, color: "black" },
+                            tickfont: { size: 12, color: 'black' },
                             showticklabels: true,
-                            tickmode: "auto",
+                            tickmode: 'auto',
                             nticks: 3,
                           },
                           yaxis: {
                             title: {
-                              text: "In/Out-of-phase (V)",
-                              font: { size: 14, color: "black" },
+                              text: 'In/Out-of-phase (V)',
+                              font: { size: 14, color: 'black' },
                               standoff: 10,
                             },
                             showgrid: false,
-                            tickfont: { size: 12, color: "black" },
+                            tickfont: { size: 12, color: 'black' },
                             showticklabels: true,
-                            tickmode: "auto",
+                            tickmode: 'auto',
                             nticks: 5,
                           },
-                          legend: { x: 1, xanchor: "right", y: 1 },
-                          plot_bgcolor: "white",
-                          paper_bgcolor: "white",
-                          font: { color: "black" },
+                          legend: { x: 1, xanchor: 'right', y: 1 },
+                          plot_bgcolor: 'white',
+                          paper_bgcolor: 'white',
+                          font: { color: 'black' },
                           width: 800,
                           height: 400,
                           margin: { l: 60, r: 40, t: 60, b: 60 },
                           shapes: [
                             {
-                              type: "rect",
-                              xref: "paper",
-                              yref: "paper",
+                              type: 'rect',
+                              xref: 'paper',
+                              yref: 'paper',
                               x0: 0,
                               y0: 0,
                               x1: 1,
                               y1: 1,
-                              line: { color: "black", width: 2 },
+                              line: { color: 'black', width: 2 },
                             },
                           ],
                         }}
@@ -1634,71 +1476,67 @@ export default function FDPBDPage() {
                       <Plot
                         data={[
                           {
-                            x: (result as AnisotropicFDPBDResult).plot_data
-                              .exp_freqs,
-                            y: (result as AnisotropicFDPBDResult).plot_data
-                              .ratio_exp,
-                            type: "scatter",
-                            mode: "markers",
-                            name: "Ratio (data)",
-                            marker: { color: "black" },
+                            x: (result as AnisotropicFDPBDResult).plot_data.exp_freqs,
+                            y: (result as AnisotropicFDPBDResult).plot_data.ratio_exp,
+                            type: 'scatter',
+                            mode: 'markers',
+                            name: 'Ratio (data)',
+                            marker: { color: 'black' },
                           },
                           {
-                            x: (result as AnisotropicFDPBDResult).plot_data
-                              .model_freqs,
-                            y: (result as AnisotropicFDPBDResult).plot_data
-                              .ratio_model,
-                            type: "scatter",
-                            mode: "lines",
-                            name: "Ratio (model)",
-                            line: { color: "blue" },
+                            x: (result as AnisotropicFDPBDResult).plot_data.model_freqs,
+                            y: (result as AnisotropicFDPBDResult).plot_data.ratio_model,
+                            type: 'scatter',
+                            mode: 'lines',
+                            name: 'Ratio (model)',
+                            line: { color: 'blue' },
                           },
                         ]}
                         layout={{
-                          title: "Ratio",
+                          title: 'Ratio',
                           xaxis: {
                             title: {
-                              text: "Frequency (Hz)",
-                              font: { size: 14, color: "black" },
+                              text: 'Frequency (Hz)',
+                              font: { size: 14, color: 'black' },
                               standoff: 10,
                             },
-                            type: "log",
+                            type: 'log',
                             showgrid: false,
-                            tickfont: { size: 12, color: "black" },
+                            tickfont: { size: 12, color: 'black' },
                             showticklabels: true,
-                            tickmode: "auto",
+                            tickmode: 'auto',
                             nticks: 3,
                           },
                           yaxis: {
                             title: {
-                              text: "Ratio",
-                              font: { size: 14, color: "black" },
+                              text: 'Ratio',
+                              font: { size: 14, color: 'black' },
                               standoff: 10,
                             },
-                            type: "log",
+                            type: 'log',
                             showgrid: false,
-                            tickfont: { size: 12, color: "black" },
+                            tickfont: { size: 12, color: 'black' },
                             showticklabels: true,
-                            tickmode: "auto",
+                            tickmode: 'auto',
                             nticks: 5,
                           },
-                          legend: { x: 1, xanchor: "right", y: 1 },
-                          plot_bgcolor: "white",
-                          paper_bgcolor: "white",
-                          font: { color: "black" },
+                          legend: { x: 1, xanchor: 'right', y: 1 },
+                          plot_bgcolor: 'white',
+                          paper_bgcolor: 'white',
+                          font: { color: 'black' },
                           width: 800,
                           height: 400,
                           margin: { l: 60, r: 40, t: 60, b: 60 },
                           shapes: [
                             {
-                              type: "rect",
-                              xref: "paper",
-                              yref: "paper",
+                              type: 'rect',
+                              xref: 'paper',
+                              yref: 'paper',
                               x0: 0,
                               y0: 0,
                               x1: 1,
                               y1: 1,
-                              line: { color: "black", width: 2 },
+                              line: { color: 'black', width: 2 },
                             },
                           ],
                         }}
@@ -1713,8 +1551,8 @@ export default function FDPBDPage() {
       </div>
 
       {/* Footer */}
-      <footer className="bg-gray-800 p-2 text-white text-sm flex justify-between">
-        <div>Status: {status || "Idle"}</div>
+      <footer className="flex justify-between bg-gray-800 p-2 text-sm text-white">
+        <div>Status: {status || 'Idle'}</div>
         <div>{new Date().toLocaleString()}</div>
       </footer>
     </div>

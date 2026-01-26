@@ -1,4 +1,4 @@
-import { FormData } from "../app/page";
+import { FormData } from '../app/page';
 
 type MetadataPanelProps = {
   formData: FormData;
@@ -8,28 +8,25 @@ type MetadataPanelProps = {
 interface MetadataField {
   key: keyof FormData;
   label: string;
-  type?: "text" | "textarea"; // Optional, defaults to "text"
+  type?: 'text' | 'textarea'; // Optional, defaults to "text"
 }
 
-export default function MetadataPanel({
-  formData,
-  setFormData,
-}: MetadataPanelProps) {
+export default function MetadataPanel({ formData, setFormData }: MetadataPanelProps) {
   const metadataFields: MetadataField[] = [
-    { key: "sampleId", label: "Sample ID" },
-    { key: "comments", label: "Comments", type: "textarea" },
+    { key: 'sampleId', label: 'Sample ID' },
+    { key: 'comments', label: 'Comments', type: 'textarea' },
   ];
 
   return (
-    <div className="bg-gray-800 p-4 rounded-lg shadow-lg">
-      <h2 className="text-white text-lg font-semibold mb-4">Sample Metadata</h2>
+    <div className="rounded-lg bg-gray-800 p-4 shadow-lg">
+      <h2 className="mb-4 text-lg font-semibold text-white">Sample Metadata</h2>
       <div className="space-y-4">
         {metadataFields.map((field) =>
-          field.type === "textarea" ? (
+          field.type === 'textarea' ? (
             <textarea
               key={field.key}
               placeholder={field.label}
-              className="w-full p-2 rounded bg-gray-700 text-white border border-gray-600 focus:border-teal-500 focus:outline-none"
+              className="w-full rounded border border-gray-600 bg-gray-700 p-2 text-white focus:border-teal-500 focus:outline-none"
               value={formData[field.key as keyof FormData]}
               onChange={(e) =>
                 setFormData({
@@ -44,7 +41,7 @@ export default function MetadataPanel({
               key={field.key}
               type="text"
               placeholder={field.label}
-              className="w-full p-2 rounded bg-gray-700 text-white border border-gray-600 focus:border-teal-500 focus:outline-none"
+              className="w-full rounded border border-gray-600 bg-gray-700 p-2 text-white focus:border-teal-500 focus:outline-none"
               value={formData[field.key as keyof FormData]}
               onChange={(e) =>
                 setFormData({

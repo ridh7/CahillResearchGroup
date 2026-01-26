@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect } from 'react';
 import {
   LineChart,
   Line,
@@ -8,7 +8,7 @@ import {
   Tooltip,
   Legend,
   ResponsiveContainer,
-} from "recharts";
+} from 'recharts';
 
 interface DataPoint {
   time: number; // Relative time in seconds
@@ -73,9 +73,7 @@ export default function RealTimeGraphs({
   useEffect(() => {
     if (multimeterConnected && multimeterStartTime !== null) {
       const time = (Date.now() - multimeterStartTime) / 1000; // Convert to seconds
-      setMultimeterValues((prev) =>
-        [...prev, { time, value: multimeterData.value }].slice(-100)
-      );
+      setMultimeterValues((prev) => [...prev, { time, value: multimeterData.value }].slice(-100));
     }
   }, [multimeterData, multimeterConnected]);
 
@@ -84,10 +82,8 @@ export default function RealTimeGraphs({
   return (
     <div className="space-y-6">
       {/* Lock-in Amplifier X vs. Time */}
-      <div className="bg-black p-4 rounded-lg shadow-lg">
-        <h3 className="text-white text-lg font-semibold mb-2">
-          Lock-in Amplifier X vs. Time
-        </h3>
+      <div className="rounded-lg bg-black p-4 shadow-lg">
+        <h3 className="mb-2 text-lg font-semibold text-white">Lock-in Amplifier X vs. Time</h3>
         <ResponsiveContainer width="100%" height={200}>
           <LineChart data={xData}>
             <CartesianGrid stroke="#444" strokeDasharray="3 3" />
@@ -96,27 +92,27 @@ export default function RealTimeGraphs({
               tickFormatter={formatTime}
               stroke="#fff"
               label={{
-                value: "Time (s)",
-                position: "insideBottom",
+                value: 'Time (s)',
+                position: 'insideBottom',
                 offset: -5,
-                fill: "#fff",
+                fill: '#fff',
               }}
             />
             <YAxis
               stroke="#fff"
               label={{
-                value: "X",
+                value: 'X',
                 angle: -90,
-                position: "insideLeft",
-                fill: "#fff",
+                position: 'insideLeft',
+                fill: '#fff',
               }}
             />
             <Tooltip
               labelFormatter={formatTime}
-              contentStyle={{ backgroundColor: "#333", border: "none" }}
-              labelStyle={{ color: "#fff" }}
+              contentStyle={{ backgroundColor: '#333', border: 'none' }}
+              labelStyle={{ color: '#fff' }}
             />
-            <Legend wrapperStyle={{ color: "#fff" }} />
+            <Legend wrapperStyle={{ color: '#fff' }} />
             <Line
               type="monotone"
               dataKey="value"
@@ -129,10 +125,8 @@ export default function RealTimeGraphs({
       </div>
 
       {/* Lock-in Amplifier Y vs. Time */}
-      <div className="bg-black p-4 rounded-lg shadow-lg">
-        <h3 className="text-white text-lg font-semibold mb-2">
-          Lock-in Amplifier Y vs. Time
-        </h3>
+      <div className="rounded-lg bg-black p-4 shadow-lg">
+        <h3 className="mb-2 text-lg font-semibold text-white">Lock-in Amplifier Y vs. Time</h3>
         <ResponsiveContainer width="100%" height={200}>
           <LineChart data={yData}>
             <CartesianGrid stroke="#444" strokeDasharray="3 3" />
@@ -141,27 +135,27 @@ export default function RealTimeGraphs({
               tickFormatter={formatTime}
               stroke="#fff"
               label={{
-                value: "Time (s)",
-                position: "insideBottom",
+                value: 'Time (s)',
+                position: 'insideBottom',
                 offset: -5,
-                fill: "#fff",
+                fill: '#fff',
               }}
             />
             <YAxis
               stroke="#fff"
               label={{
-                value: "Y",
+                value: 'Y',
                 angle: -90,
-                position: "insideLeft",
-                fill: "#fff",
+                position: 'insideLeft',
+                fill: '#fff',
               }}
             />
             <Tooltip
               labelFormatter={formatTime}
-              contentStyle={{ backgroundColor: "#333", border: "none" }}
-              labelStyle={{ color: "#fff" }}
+              contentStyle={{ backgroundColor: '#333', border: 'none' }}
+              labelStyle={{ color: '#fff' }}
             />
-            <Legend wrapperStyle={{ color: "#fff" }} />
+            <Legend wrapperStyle={{ color: '#fff' }} />
             <Line
               type="monotone"
               dataKey="value"
@@ -174,10 +168,8 @@ export default function RealTimeGraphs({
       </div>
 
       {/* Multimeter Voltage vs. Time */}
-      <div className="bg-black p-4 rounded-lg shadow-lg">
-        <h3 className="text-white text-lg font-semibold mb-2">
-          Multimeter Voltage vs. Time
-        </h3>
+      <div className="rounded-lg bg-black p-4 shadow-lg">
+        <h3 className="mb-2 text-lg font-semibold text-white">Multimeter Voltage vs. Time</h3>
         <ResponsiveContainer width="100%" height={200}>
           <LineChart data={multimeterValues}>
             <CartesianGrid stroke="#444" strokeDasharray="3 3" />
@@ -186,27 +178,27 @@ export default function RealTimeGraphs({
               tickFormatter={formatTime}
               stroke="#fff"
               label={{
-                value: "Time (s)",
-                position: "insideBottom",
+                value: 'Time (s)',
+                position: 'insideBottom',
                 offset: -5,
-                fill: "#fff",
+                fill: '#fff',
               }}
             />
             <YAxis
               stroke="#fff"
               label={{
-                value: "Voltage (V)",
+                value: 'Voltage (V)',
                 angle: -90,
-                position: "insideLeft",
-                fill: "#fff",
+                position: 'insideLeft',
+                fill: '#fff',
               }}
             />
             <Tooltip
               labelFormatter={formatTime}
-              contentStyle={{ backgroundColor: "#333", border: "none" }}
-              labelStyle={{ color: "#fff" }}
+              contentStyle={{ backgroundColor: '#333', border: 'none' }}
+              labelStyle={{ color: '#fff' }}
             />
-            <Legend wrapperStyle={{ color: "#fff" }} />
+            <Legend wrapperStyle={{ color: '#fff' }} />
             <Line
               type="monotone"
               dataKey="value"
