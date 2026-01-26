@@ -47,13 +47,27 @@ export default function HeatmapPanel({ setStatus }: HeatmapPanelProps) {
     }
   };
 
+  /**
+   * Convert 1D CSV data to 2D heatmap grids
+   *
+   * Algorithm:
+   * 1. Round position coordinates to 1 decimal place to handle floating-point precision
+   *    (e.g., 0.100000001 becomes 0.1)
+   * 2. Filter invalid data points (NaN, Infinity)
+   * 3. Extract unique X/Y coordinates to define grid dimensions
+   * 4. Create empty 2D arrays (grids) for each z-value type
+   * 5. Map each CSV point to its grid position using coordinate indices
+   *
+   * Creates 4 separate heatmaps: Voltage, X-Voltage, Y-Voltage, and X/Y Ratio
+   */
   const generateHeatmaps = () => {
     if (csvData.length === 0) {
       setStatus('No CSV data uploaded');
       return;
     }
 
-    // Extract and round PositionX and PositionY
+    // Round to 1 decimal place to handle floating-point precision issues
+    // Prevents coordinates like 0.1000000001 from being treated as distinct from 0.1
     const xValues = csvData.map((row) => Math.round(parseFloat(row.PositionX) * 10) / 10);
     const yValues = csvData.map((row) => Math.round(parseFloat(row.PositionY) * 10) / 10);
     // Extract z-values for each heatmap
@@ -88,16 +102,20 @@ export default function HeatmapPanel({ setStatus }: HeatmapPanelProps) {
       return;
     }
 
-    // Get unique X and Y values for grid
+    // Extract unique sorted coordinates to define grid dimensions
+    // Sorting ensures consistent grid layout
     const uniqueX = [...new Set(filteredData.map((d) => d.x))].sort((a, b) => a - b);
     const uniqueY = [...new Set(filteredData.map((d) => d.y))].sort((a, b) => a - b);
 
-    // Create 2D grids for each z-value type
+    // Create 2D grids initialized with zeros
+    // Grid dimensions: rows = unique Y values, columns = unique X values
     const voltageGrid: number[][] = uniqueY.map(() => Array(uniqueX.length).fill(0));
     const xVoltageGrid: number[][] = uniqueY.map(() => Array(uniqueX.length).fill(0));
     const yVoltageGrid: number[][] = uniqueY.map(() => Array(uniqueX.length).fill(0));
     const ratioGrid: number[][] = uniqueY.map(() => Array(uniqueX.length).fill(0));
 
+    // Map each data point to its grid position using coordinate indices
+    // This converts sparse CSV data into dense 2D arrays for Plotly heatmaps
     filteredData.forEach((point) => {
       const xIndex = uniqueX.indexOf(point.x);
       const yIndex = uniqueY.indexOf(point.y);

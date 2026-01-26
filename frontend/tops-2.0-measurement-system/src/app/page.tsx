@@ -4,7 +4,6 @@ import { useState, useRef, useEffect } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import MetadataPanel from '../components/MetadataPanel';
 import DeviceControls from '../components/DeviceControls';
-import GraphsPanel from '../components/GraphsPanel';
 import OutputPanel from '../components/OutputPanel';
 import SettingsPanel from '../components/SettingsPanel';
 import HeatmapPanel from '../components/HeatmapPanel';
@@ -105,10 +104,10 @@ export default function CalculatePage() {
   const [lockinConnected, setLockinConnected] = useState(false);
   const [multimeterConnected, setMultimeterConnected] = useState(false);
   const [stageConnected, setStageConnected] = useState(false);
-  const [resetLockinTrigger, setResetLockinTrigger] = useState(false);
-  const [resetMultimeterTrigger, setResetMultimeterTrigger] = useState(false);
-  const [lockinStartTime, setLockinStartTime] = useState<number | null>(null);
-  const [multimeterStartTime, setMultimeterStartTime] = useState<number | null>(null);
+  const [, setResetLockinTrigger] = useState(false);
+  const [, setResetMultimeterTrigger] = useState(false);
+  const [, setLockinStartTime] = useState<number | null>(null);
+  const [, setMultimeterStartTime] = useState<number | null>(null);
   const [lockinWs, setLockinWs] = useState<WebSocket | null>(null);
   const [multimeterWs, setMultimeterWs] = useState<WebSocket | null>(null);
   const [stageWs, setStageWs] = useState<WebSocket | null>(null);
@@ -140,6 +139,18 @@ export default function CalculatePage() {
     },
   };
 
+  /**
+   * WebSocket State Machine for Lock-in Amplifier Connection
+   *
+   * Handles four possible WebSocket states to prevent race conditions
+   * when users rapidly toggle connect/disconnect:
+   *
+   * - OPEN: Connection already established, reuse it
+   * - CLOSING/CLOSED: Stale connection, clean up and create new one
+   * - CONNECTING: Connection in progress, attach handlers and wait
+   *   (prevents duplicate connection attempts)
+   * - null/undefined: No connection exists, create new one
+   */
   const connectLockin = () => {
     if (lockinWs) {
       switch (lockinWs.readyState) {
@@ -155,6 +166,8 @@ export default function CalculatePage() {
           setLockinWs(null);
           break;
         case WebSocket.CONNECTING:
+          // Don't create a new connection - attach handlers to existing one
+          // This prevents duplicate connections when button is clicked rapidly
           console.log('Lockin WebSocket already connecting, waiting...');
           lockinWs.onopen = () => {
             setLockinConnected(true);
@@ -213,6 +226,14 @@ export default function CalculatePage() {
     }
   };
 
+  /**
+   * Gracefully disconnect Lock-in WebSocket
+   *
+   * Checks state before closing to avoid errors:
+   * - CLOSED: Already disconnected, just cleanup state
+   * - CLOSING: Already in progress, attach onclose handler to finish cleanup
+   * - Otherwise: Initiate close and cleanup when complete
+   */
   const disconnectLockin = () => {
     console.log('Disconnecting lockin, current state: ', lockinWs?.readyState);
     if (!lockinWs || lockinWs.readyState === WebSocket.CLOSED) {
@@ -531,11 +552,6 @@ export default function CalculatePage() {
       console.error('Error:', error);
       setStatus('Error occurred');
     }
-  };
-
-  const handleResetComplete = () => {
-    setResetLockinTrigger(false);
-    setResetMultimeterTrigger(false);
   };
 
   const changeLockinSensitivity = async (increment: boolean) => {

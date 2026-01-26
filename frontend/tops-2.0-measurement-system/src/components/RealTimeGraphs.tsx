@@ -47,6 +47,17 @@ export default function RealTimeGraphs({
   const [yData, setYData] = useState<DataPoint[]>([]);
   const [multimeterValues, setMultimeterValues] = useState<DataPoint[]>([]);
 
+  /**
+   * Reset Trigger Pattern
+   *
+   * When parent sets resetLockin=true, we:
+   * 1. Clear the data arrays
+   * 2. Call onResetComplete() to notify parent
+   * 3. Parent resets the trigger back to false
+   *
+   * This callback pattern prevents infinite loops while allowing
+   * the parent to control when resets occur
+   */
   useEffect(() => {
     if (resetLockin) {
       setXData([]);
@@ -62,20 +73,29 @@ export default function RealTimeGraphs({
     }
   }, [resetMultimeter, onResetComplete]);
 
+  /**
+   * Rolling 100-point window for real-time data
+   *
+   * Appends new data points and keeps only the most recent 100 using .slice(-100)
+   * This prevents unbounded memory growth during long-running experiments
+   *
+   * Time calculation: Uses relative timestamps (seconds since connection)
+   * instead of absolute time for cleaner graph axes
+   */
   useEffect(() => {
     if (lockinConnected && lockinStartTime !== null) {
       const time = (Date.now() - lockinStartTime) / 1000; // Convert to seconds
       setXData((prev) => [...prev, { time, value: lockinData.X }].slice(-100));
       setYData((prev) => [...prev, { time, value: lockinData.Y }].slice(-100));
     }
-  }, [lockinData, lockinConnected]);
+  }, [lockinData, lockinConnected, lockinStartTime]);
 
   useEffect(() => {
     if (multimeterConnected && multimeterStartTime !== null) {
       const time = (Date.now() - multimeterStartTime) / 1000; // Convert to seconds
       setMultimeterValues((prev) => [...prev, { time, value: multimeterData.value }].slice(-100));
     }
-  }, [multimeterData, multimeterConnected]);
+  }, [multimeterData, multimeterConnected, multimeterStartTime]);
 
   const formatTime = (time: number) => `${time.toFixed(1)}s`; // Simple seconds format
 

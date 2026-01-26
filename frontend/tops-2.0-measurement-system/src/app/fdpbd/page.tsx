@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import Plot from 'react-plotly.js';
 
 type IsotropicPlotData = {
@@ -79,16 +80,6 @@ type FDPBDParams = {
   C44_0_sample: string;
   alphaT_perp: string;
   alphaT_para: string;
-};
-
-type PlotData = {
-  freq_fit: number[];
-  v_corr_in_fit: number[];
-  v_corr_out_fit: number[];
-  v_corr_ratio_fit: number[];
-  delta_in: number[];
-  delta_out: number[];
-  delta_ratio: number[];
 };
 
 export default function FDPBDPage() {
@@ -189,6 +180,24 @@ export default function FDPBDPage() {
     return value !== '' && !isNaN(parseFloat(value));
   };
 
+  /**
+   * Conditional Form Validation Based on Isotropy Mode
+   *
+   * Required fields differ between isotropy and anisotropy models:
+   *
+   * Isotropy mode:
+   * - Requires: eta_down[0,1,2], niu, alpha_t, eta_up, h_up
+   * - Simpler physics model with fewer parameters
+   *
+   * Anisotropy mode:
+   * - Requires: phi, rho, alphaT, C11/C12/C44 (elastic constants),
+   *   lambda_down (x,y,z), sample properties (rho, C11/C12/C13/C33/C44),
+   *   alphaT (perpendicular & parallel)
+   * - More complex model accounting for directional material properties
+   *
+   * Uses spread operator (...) to conditionally include field groups
+   * based on selected physics model
+   */
   const isFormValid = () => {
     const fields = [
       params.f_rolloff,
@@ -258,6 +267,16 @@ export default function FDPBDPage() {
       return { ...prev, [field]: value };
     });
 
+    /**
+     * Automatic Preset Detection for Lens Configuration
+     *
+     * When user manually edits any lens-related parameter (w_rms, x_offset, etc.),
+     * this checks if the new combination of values matches any known preset (5x, 10x, 20x).
+     *
+     * If no match found, automatically switch to "custom" to indicate user has
+     * deviated from standard configurations. This prevents confusion where the UI
+     * shows "10x" but values don't actually match the 10x preset.
+     */
     if (['w_rms', 'x_offset', 'lens_transmittance', 'detector_factor', 'phi'].includes(field)) {
       const lensValues = {
         '5x': {
@@ -662,9 +681,9 @@ export default function FDPBDPage() {
       {/* Header */}
       <header className="flex items-center justify-between bg-gray-800 p-4">
         <h1 className="text-xl font-semibold text-white">Analysis</h1>
-        <a href="/" className="text-white hover:text-teal-400">
+        <Link href="/" className="text-white hover:text-teal-400">
           Back to Dashboard
-        </a>
+        </Link>
       </header>
 
       {/* Main Layout */}
