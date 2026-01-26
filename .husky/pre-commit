@@ -1,3 +1,2 @@
 #!/usr/bin/env sh
-cd frontend/tops-2.0-measurement-system
 npx lint-staged

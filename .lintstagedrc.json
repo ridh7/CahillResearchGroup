@@ -1,0 +1,13 @@
+{
+  "frontend/**/*.{js,jsx,ts,tsx}": [
+    "cd frontend/tops-2.0-measurement-system && eslint --fix",
+    "cd frontend/tops-2.0-measurement-system && prettier --write"
+  ],
+  "frontend/**/*.{json,md,css}": [
+    "cd frontend/tops-2.0-measurement-system && prettier --write"
+  ],
+  "backend/**/*.py": [
+    "cd backend && myenv/Scripts/python.exe -m black",
+    "cd backend && myenv/Scripts/python.exe -m ruff check --fix"
+  ]
+}
