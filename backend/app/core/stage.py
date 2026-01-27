@@ -1,11 +1,13 @@
-import clr
 import time
 import traceback
 from datetime import datetime
+from threading import Thread
+
+import clr
+
+from app.core.shared_state import shared_state
 from app.models.state import global_state
 from app.utils.file_utils import save_to_file
-from app.core.shared_state import shared_state
-from threading import Thread
 
 clr.AddReference(
     "C:\\Program Files\\Thorlabs\\Kinesis\\Thorlabs.MotionControl.DeviceManagerCLI.dll"
@@ -17,11 +19,10 @@ clr.AddReference(
     "C:\\Program Files\\Thorlabs\\Kinesis\\ThorLabs.MotionControl.Benchtop.BrushlessMotorCLI.dll"
 )
 
+from System import Decimal, Math
+from Thorlabs.MotionControl.Benchtop.BrushlessMotorCLI import *
 from Thorlabs.MotionControl.DeviceManagerCLI import *
 from Thorlabs.MotionControl.GenericMotorCLI import *
-from Thorlabs.MotionControl.Benchtop.BrushlessMotorCLI import *
-from System import Decimal
-from System import Math
 
 
 class ThorlabsBBD302:
@@ -92,7 +93,7 @@ class ThorlabsBBD302:
         delay,
     ):
 
-        if delay == None:
+        if delay is None:
             delay = 1
         if movement_mode == "steps":
             x_step_size = abs(x2 - x1) / x_steps

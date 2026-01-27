@@ -1,6 +1,7 @@
 import numpy as np
 from scipy import linalg as la
-from app.core.fdpbd.data_processing import load_data, calculate_leaking, correct_data
+
+from app.core.fdpbd.data_processing import calculate_leaking, correct_data, load_data
 
 
 def simpson_integration(y: np.ndarray, dx: float) -> float:
@@ -53,7 +54,7 @@ def compute_surface_displacement(
     C44_1 = (C11_0_1 - C12_0_1 + C44_0_1) / 3
     C12_1 = (C11_0_1 + 5 * C12_0_1 - 2 * C44_0_1) / 6
     C13_1 = (C11_0_1 + 2 * C12_0_1 - 4 * C44_0_1) / 3
-    C46_1 = 0.0
+    # C46_1 = 0.0
     C22_1 = C11_1
     C23_1 = C13_1
     C55_1 = C44_1

@@ -1,6 +1,7 @@
 import os
 import uuid
-from fastapi import UploadFile, HTTPException
+
+from fastapi import HTTPException, UploadFile
 
 
 async def save_uploaded_file(file: UploadFile) -> str:

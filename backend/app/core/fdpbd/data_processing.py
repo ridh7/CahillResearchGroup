@@ -1,7 +1,8 @@
 """Functions for loading and correcting FD-PBD experimental data."""
 
-import numpy as np
 import os
+
+import numpy as np
 
 
 def load_data(

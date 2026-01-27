@@ -1,5 +1,4 @@
 import pyvisa
-import time
 
 
 class BKPrecision5493C:

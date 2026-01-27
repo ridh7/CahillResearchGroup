@@ -1,5 +1,6 @@
 import numpy as np
-from app.core.fdpbd.data_processing import load_data, correct_data, calculate_leaking
+
+from app.core.fdpbd.data_processing import calculate_leaking, correct_data, load_data
 from app.core.fdpbd.fitting import fit_in_out
 from app.core.fdpbd.thermal_model import compute_steady_state_heat, delta_bo_theta
 

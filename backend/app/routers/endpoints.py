@@ -1,24 +1,24 @@
-from fastapi import APIRouter, UploadFile, File, HTTPException, Form
-from concurrent.futures import ThreadPoolExecutor
 import asyncio
-from app.models.stage import *
-from app.models.channel import *
-from app.models.lockin import *
-from app.models.multimeter import *
-from app.models.state import global_state
-from app.models.fdpbd import FDPBDParams, FDPBDResult
-from app.services.fdpbd_service import analyze_fdpbd
-from app.core.fdpbd_analysis import run_fdpbd_analysis
+import json
+import os
+import tempfile
+from concurrent.futures import ThreadPoolExecutor
+
+from fastapi import APIRouter, File, Form, HTTPException, UploadFile
+from System import Decimal
+
 from app.core.anisotropic_analysis import run_anisotropic_analysis
+from app.core.fdpbd_analysis import run_fdpbd_analysis
+from app.models.channel import ChannelParams, Settings
+from app.models.fdpbd import FDPBDParams, FDPBDResult
+from app.models.lockin import LockinSensitivityRequest, LockinTimeConstantRequest
 from app.models.models import (
     AnisotropicFDPBDParams,
     AnisotropicFDPBDResult,
 )
-import clr
-from System import Decimal
-import json
-import tempfile
-import os
+from app.models.multimeter import MultimeterApertureRequest, MultimeterTerminalRequest
+from app.models.stage import MoveAndLogParams, MovementParams, RectangleParams
+from app.models.state import global_state
 
 router = APIRouter()
 executor = ThreadPoolExecutor()
@@ -183,7 +183,7 @@ async def get_current_position():
             ),
         )
         return {"status": "success", "x": f"{position[0]}", "y": f"{position[1]}"}
-    except Exception as e:
+    except Exception:
         return {"status": "error", "x": "NaN", "y": "NaN"}
 
 

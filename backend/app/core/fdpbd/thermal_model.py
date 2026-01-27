@@ -1,9 +1,8 @@
 """Functions for thermal modeling in FD-PBD analysis."""
 
 import numpy as np
-import time
-from scipy.integrate import quad
 from scipy.special import j1
+
 from .integration import romberg_integration
 
 

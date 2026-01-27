@@ -2,6 +2,7 @@
 
 import numpy as np
 from scipy.optimize import least_squares
+
 from .thermal_model import delta_bo_theta
 
 
