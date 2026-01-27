@@ -2,10 +2,19 @@ import pyvisa
 
 
 class SR865A:
+    """
+    SR865A Lock-in Amplifier driver using PyVISA for GPIB communication.
+
+    The SR865A measures weak AC signals by correlating the input with a
+    reference frequency. Sensitivity and time constant are controlled via
+    integer codes (0-27 and 0-23 respectively) that map to physical units.
+    """
+
     def __init__(self, resource_name=None):
         try:
             self.rm = pyvisa.ResourceManager()
             if resource_name is None:
+                # Auto-detect SR865A by USB PID "3769" in resource string
                 resources = self.rm.list_resources()
                 for res in resources:
                     if "3769" in res:
@@ -16,6 +25,10 @@ class SR865A:
             print(f"---Connecting to lockin: {resource_name}")
             self.inst = self.rm.open_resource(resource_name)
             self.inst.timeout = 5000
+
+            # SR865A sensitivity mapping (codes 0-27 to voltage units)
+            # Code determines full-scale input range for voltage measurements
+            # Lower codes = higher sensitivity (1V max), higher codes = lower sensitivity (1nV max)
             self.volatage_sensitivity_map = {
                 0: "V",
                 1: "mV",
@@ -46,6 +59,10 @@ class SR865A:
                 26: "nV",
                 27: "nV",
             }
+
+            # Current sensitivity mapping (codes 0-27 to actual values in Amperes)
+            # Used for current input mode measurements
+            # Values follow 1-2-5 sequence: 1µA, 500nA, 200nA, 100nA, etc.
             self.current_sensitivity_map = [
                 1e-6,
                 5e-7,
@@ -76,6 +93,11 @@ class SR865A:
                 2e-15,
                 1e-15,
             ]
+
+            # Time constant mapping (codes 0-23 to integration time)
+            # Determines low-pass filter cutoff frequency for noise reduction
+            # Longer time constant = more averaging = better SNR but slower response
+            # Range: 1µs (fast, noisy) to 300ks (slow, clean)
             self.time_constant_map = {
                 0: "1 µs",
                 1: "3 µs",
@@ -106,6 +128,13 @@ class SR865A:
             print(f"---Locking initialization error: {e}")
 
     def read_values(self):
+        """
+        Read X, Y, and frequency from the lock-in amplifier.
+
+        X and Y are the in-phase and quadrature components of the
+        measured signal, representing amplitude*cos(phase) and
+        amplitude*sin(phase) respectively.
+        """
         x = float(self.inst.query("OUTP? 0"))
         y = float(self.inst.query("OUTP? 1"))
         freq = float(self.inst.query("FREQ?"))

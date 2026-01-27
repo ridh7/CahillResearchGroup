@@ -26,13 +26,28 @@ from Thorlabs.MotionControl.GenericMotorCLI import *
 
 
 class ThorlabsBBD302:
+    """
+    Thorlabs BBD302 2-channel brushless motor controller driver.
+
+    Controls X-Y motorized stage via Thorlabs .NET SDK (pythonnet).
+    Initialization sequence:
+    1. Build device list and connect to controller
+    2. For each channel: start polling → enable → load config → home
+    3. Homing ensures absolute position reference (finds limit switches)
+
+    Delays between steps allow .NET SDK to complete hardware initialization.
+    """
+
     def __init__(self, serial_number=None, channel_count=2):
         try:
             self.channel = {}
             self.motor_config = {}
             self.channel_count = channel_count
+
+            # Build device list from Thorlabs .NET SDK
             DeviceManagerCLI.BuildDeviceList()
             if serial_number is None:
+                # Auto-detect BBD302 by known serial number
                 devices = DeviceManagerCLI.GetDeviceList()
                 for dev in devices:
                     if dev == "103387864":
@@ -46,16 +61,26 @@ class ThorlabsBBD302:
                 print(f"---Connected to: {self.device.GetDeviceInfo().Description}")
             else:
                 print("---Device initialization error")
+
+            # Initialize each channel (1=X axis, 2=Y axis)
             for channel_number in range(1, self.channel_count + 1):
                 print(f"---Initializing channel {channel_number}")
                 self.channel[channel_number] = self.device.GetChannel(channel_number)
+
+                # StartPolling(250ms) enables position updates from hardware
                 self.channel[channel_number].StartPolling(250)
                 time.sleep(0.25)
+
+                # EnableDevice powers on the motor driver
                 self.channel[channel_number].EnableDevice()
                 time.sleep(0.25)
+
+                # Load motor configuration (acceleration, velocity limits)
                 self.motor_config[channel_number] = self.channel[
                     channel_number
                 ].LoadMotorConfiguration(self.channel[channel_number].DeviceID)
+
+                # Home(60000ms timeout) finds limit switch to establish zero position
                 print(f"---Homing channel {channel_number}")
                 self.channel[channel_number].Home(60000)
                 time.sleep(1)
@@ -152,7 +177,23 @@ class ThorlabsBBD302:
             print(f"---Error in moving: {e}")
 
     def move_and_log(self, x, y, x_step_size, sample_rate):
+        """
+        Perform bidirectional zigzag scan with continuous data logging.
+
+        Algorithm:
+        1. Increase polling rate to 1ms for faster position updates
+        2. For each X step:
+           - Scan Y upward (start_y → target_y) or downward (current_y → start_y)
+           - Log instrument data continuously during Y movement
+           - Capture first point, continuous points during motion, and end point
+           - Reverse Y direction for next X step (bidirectional scan reduces time)
+        3. Filter output: remove out-of-bounds and duplicate position samples
+
+        Bidirectional scanning is critical for time-efficient 2D mapping, reducing
+        total scan time by ~50% compared to unidirectional (no Y return moves).
+        """
         try:
+            # Increase polling frequency for high-resolution position tracking
             self.channel[1].StartPolling(1)
             self.channel[2].StartPolling(1)  # 1ms polling for Y channel
             target_x = float(x)
@@ -172,7 +213,7 @@ class ThorlabsBBD302:
             actual_sample_count = 0  # Total samples recorded
             going_up = True  # Start with upward scan
 
-            # Iterate over X positions
+            # Iterate over X positions in bidirectional zigzag pattern
             while current_x <= Decimal(
                 target_x + x_step_size / 2
             ):  # Decimal comparison
@@ -210,17 +251,23 @@ class ThorlabsBBD302:
                 scan_data = [first_values]  # Start scan_data with first point
                 actual_sample_count += 1
 
-                # Move and log in the current direction
+                # Move stage in separate thread while logging in main thread
+                # This allows continuous data acquisition during motion
                 move_thread = Thread(target=move_stage, args=(current_x, end_y))
                 move_thread.start()
                 print(f"---Started moving to ({current_x}, {end_y})")
 
+                # Poll position and log data continuously until Y reaches target
                 while True:
                     pos_y = self.channel[2].DevicePosition  # Decimal
                     if Math.Abs(pos_y - end_y) < Decimal(0.01):
                         break
 
                     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")
+
+                    # Read latest instrument values from shared_state cache
+                    # (populated by WebSocket streaming threads at ~200Hz)
+                    # This avoids blocking GPIB communication during continuous scan
                     with shared_state.value_lock:
                         lockin_values = (
                             shared_state.latest_lockin_values.copy()
@@ -282,17 +329,19 @@ class ThorlabsBBD302:
                 actual_sample_count += 1
 
                 # Append scan data (reverse if downward to maintain Y increasing order)
+                # This ensures CSV output has monotonically increasing Y values
                 if going_up:
                     data.extend(scan_data)
                 else:
                     data.extend(reversed(scan_data))
 
-                # Increment X and switch direction
+                # Step to next X position and reverse Y scan direction
                 current_x += Decimal(x_step_size)
                 self.channel[1].MoveTo(current_x, 600000)
-                going_up = not going_up  # Toggle direction
+                going_up = not going_up  # Toggle for bidirectional scanning
 
-            # Filter data: bounds and duplicates
+            # Post-processing: filter out-of-bounds and duplicate samples
+            # Bounds extended slightly to account for overshoot/settling
             start_x -= Decimal(x_step_size / 2)
             end_x = Decimal(target_x + x_step_size / 2)
             start_y -= Decimal(0.05)
@@ -308,12 +357,12 @@ class ThorlabsBBD302:
                 min_y = min(start_y, end_y)
                 max_y = max(start_y, end_y)
 
-                # Check bounds
+                # Check bounds (remove samples captured during acceleration/deceleration)
                 within_bounds = (start_x <= pos_x <= end_x) and (
                     min_y <= pos_y <= max_y
                 )
 
-                # Check for duplicates (skip if same as previous)
+                # Check for duplicates (occurs when stage is stationary at endpoints)
                 is_duplicate = prev_pos_y is not None and pos_y == prev_pos_y
 
                 if within_bounds and not is_duplicate:

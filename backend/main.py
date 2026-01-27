@@ -15,6 +15,14 @@ from app.routers import endpoints
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):  # noqa: ARG001
+    """
+    Application lifespan manager for instrument initialization and cleanup.
+
+    Startup: Initialize all instruments (stage, lock-in, multimeter) in sequence.
+    Order matters - stage initialization includes homing which takes ~10s.
+
+    Shutdown: Close all WebSocket connections and disconnect stage hardware.
+    """
     global_state.stage = ThorlabsBBD302()
     global_state.lockin = SR865A()
     global_state.multimeter = BKPrecision5493C()
@@ -45,6 +53,14 @@ app.include_router(endpoints.router)
 
 
 async def send_lockin_data(websocket: WebSocket):
+    """
+    Stream lock-in amplifier data to frontend at ~200Hz (5ms interval).
+
+    Uses pause mechanism to prevent reading during stage scan operations,
+    as simultaneous GPIB queries can cause device communication conflicts.
+    Cached values in shared_state allow other operations to access latest
+    data without blocking WebSocket stream.
+    """
     while True:
         if shared_state.pause_lockin_reading.is_set():
             await asyncio.sleep(0.02)
@@ -57,6 +73,12 @@ async def send_lockin_data(websocket: WebSocket):
 
 
 async def send_multimeter_data(websocket: WebSocket):
+    """
+    Stream multimeter voltage readings to frontend at ~200Hz (5ms interval).
+
+    Caches latest value in shared_state for synchronous access during
+    stage scans, ensuring voltage measurements align with position data.
+    """
     while True:
         value = global_state.multimeter.read_value()
         with shared_state.value_lock:
@@ -66,6 +88,12 @@ async def send_multimeter_data(websocket: WebSocket):
 
 
 async def send_stage_data(websocket: WebSocket):
+    """
+    Stream motorized stage position to frontend at ~200Hz (5ms interval).
+
+    Position updates are polled from Thorlabs .NET SDK and cached for
+    synchronous access during move operations and scan logging.
+    """
     while True:
         values = global_state.stage.read_values()
         with shared_state.value_lock:
@@ -76,6 +104,18 @@ async def send_stage_data(websocket: WebSocket):
 
 @app.websocket("/ws/lockin")
 async def websocket_endpoint(websocket: WebSocket):
+    """
+    WebSocket endpoint for lock-in amplifier real-time data streaming.
+
+    Lifecycle management:
+    1. Close any existing connection (prevents duplicate streams when user
+       rapidly reconnects)
+    2. Accept new connection and store in global_state
+    3. Start async task to stream data
+    4. On disconnect/error: cancel task, cleanup global reference, close socket
+
+    This pattern ensures only one active stream per instrument at a time.
+    """
     if global_state.ws_lockin is not None:
         with suppress(Exception):
             await global_state.ws_lockin.close()
@@ -97,6 +137,11 @@ async def websocket_endpoint(websocket: WebSocket):
 
 @app.websocket("/ws/multimeter")
 async def websocket_multimeter_endpoint(websocket: WebSocket):
+    """WebSocket endpoint for multimeter real-time voltage streaming.
+
+    Uses same connection lifecycle pattern as lock-in endpoint to ensure
+    single active stream, preventing measurement conflicts.
+    """
     if global_state.ws_multimeter is not None:
         with suppress(Exception):
             await global_state.ws_multimeter.close()
@@ -118,6 +163,11 @@ async def websocket_multimeter_endpoint(websocket: WebSocket):
 
 @app.websocket("/ws/stage")
 async def websocket_stage_endpoint(websocket: WebSocket):
+    """WebSocket endpoint for motorized stage position streaming.
+
+    Streams X/Y position updates to frontend for real-time position tracking
+    during manual movements and automated scans.
+    """
     if global_state.ws_stage is not None:
         with suppress(Exception):
             await global_state.ws_stage.close()

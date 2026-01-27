@@ -2,10 +2,20 @@ import pyvisa
 
 
 class BKPrecision5493C:
+    """
+    BK Precision 5493C digital multimeter driver using PyVISA for GPIB/USB.
+
+    Default configuration: DC voltage measurement, rear terminals, 0.2 NPLC aperture.
+    NPLC (Number of Power Line Cycles) controls integration time:
+    - Lower NPLC = faster readings, more noise (0.02 NPLC ≈ 0.33ms @ 60Hz)
+    - Higher NPLC = slower readings, better noise rejection (100 NPLC ≈ 1.67s @ 60Hz)
+    """
+
     def __init__(self, resource_name=None):
         try:
             self.rm = pyvisa.ResourceManager()
             if resource_name is None:
+                # Auto-detect by serial number in resource string
                 resources = self.rm.list_resources()
                 for res in resources:
                     if "W114239033" in res:
@@ -16,10 +26,14 @@ class BKPrecision5493C:
             print(f"---Connecting to multimeter: {resource_name}")
             self.inst = self.rm.open_resource(resource_name)
             self.inst.timeout = 5000
-            self.inst.write("*RST")
-            self.inst.write("CONF:VOLT:DC")
-            self.inst.write("SENS:VOLT:DC:NPLC 0.2")
-            self.inst.write("rear")
+
+            # Initialize to known state
+            self.inst.write("*RST")  # Reset to factory defaults
+            self.inst.write("CONF:VOLT:DC")  # DC voltage mode
+            self.inst.write(
+                "SENS:VOLT:DC:NPLC 0.2"
+            )  # 0.2 power line cycles (fast, ~3ms)
+            self.inst.write("rear")  # Use rear terminal inputs
             print(
                 f"---Multimeter initialized with {self.inst.query("ROUT:TERM?")} terminal and {self.inst.query("SENS:VOLT:DC:NPLC?")} PLC aperture."
             )

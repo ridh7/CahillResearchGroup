@@ -26,6 +26,7 @@ executor = ThreadPoolExecutor()
 
 @router.post("/move")
 async def move(params: MovementParams):
+    """Move stage to absolute (X, Y) position in mm."""
     try:
         await asyncio.get_event_loop().run_in_executor(
             executor, lambda: global_state.stage.move(params.x, params.y)
@@ -37,6 +38,13 @@ async def move(params: MovementParams):
 
 @router.post("/move_and_log")
 async def move_and_log(params: MoveAndLogParams):
+    """
+    Perform bidirectional zigzag scan with continuous data logging.
+
+    Scans from current position to (x, y) in a raster pattern,
+    logging instrument data at specified sample_rate during motion.
+    Saves results to timestamped CSV file in data/ directory.
+    """
     try:
         await asyncio.get_event_loop().run_in_executor(
             executor,
@@ -51,6 +59,13 @@ async def move_and_log(params: MoveAndLogParams):
 
 @router.post("/start")
 async def start_movement(params: RectangleParams):
+    """
+    Perform unidirectional rectangular grid scan (legacy endpoint).
+
+    Scans rectangular region with uniform X/Y steps, pausing at each point
+    to collect measurements. Closes all WebSocket connections after completion
+    to signal end of scan. Superseded by /move_and_log for faster scanning.
+    """
     try:
         future = asyncio.get_event_loop().run_in_executor(
             executor,
