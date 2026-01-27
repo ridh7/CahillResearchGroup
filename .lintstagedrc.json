@@ -1,10 +1,10 @@
 {
   "frontend/**/*.{js,jsx,ts,tsx}": [
-    "cd frontend/tops-2.0-measurement-system && eslint --fix",
-    "cd frontend/tops-2.0-measurement-system && prettier --write"
+    "bash -c 'cd frontend/tops-2.0-measurement-system && npx eslint --fix \"$@\"' --",
+    "bash -c 'cd frontend/tops-2.0-measurement-system && npx prettier --write \"$@\"' --"
   ],
   "frontend/**/*.{json,md,css}": [
-    "cd frontend/tops-2.0-measurement-system && prettier --write"
+    "bash -c 'cd frontend/tops-2.0-measurement-system && npx prettier --write \"$@\"' --"
   ],
   "backend/**/*.py": [
     "backend/myenv/Scripts/python.exe -m black",
