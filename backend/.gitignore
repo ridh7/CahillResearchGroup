@@ -3,3 +3,7 @@
 **/__pycache__
 /.idea
 /myenv
+/*.egg-info
+/.mypy_cache
+/.ruff_cache
+/build
