@@ -6,7 +6,7 @@ from fastapi import HTTPException, UploadFile
 
 async def save_uploaded_file(file: UploadFile) -> str:
     """Save uploaded file to data/ directory and return filename without extension."""
-    if not file.filename.endswith(".txt"):
+    if file.filename and not file.filename.endswith(".txt"):
         raise HTTPException(status_code=400, detail="Only .txt files are allowed")
 
     # Ensure data/ directory exists
@@ -23,4 +23,6 @@ async def save_uploaded_file(file: UploadFile) -> str:
             f.write(content)
         return filename
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to save file: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to save file: {str(e)}"
+        ) from e

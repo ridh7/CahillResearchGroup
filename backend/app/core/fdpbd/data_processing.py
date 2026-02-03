@@ -3,11 +3,18 @@
 import os
 
 import numpy as np
+from numpy.typing import NDArray
 
 
 def load_data(
     filename: str,
-) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+) -> tuple[
+    NDArray[np.float64],
+    NDArray[np.float64],
+    NDArray[np.float64],
+    NDArray[np.float64],
+    NDArray[np.float64],
+]:
     """
     Load experimental data from a text file.
 
@@ -21,7 +28,7 @@ def load_data(
     if not os.path.exists(filepath):
         raise FileNotFoundError(f"Data file {filepath} not found.")
 
-    data = np.loadtxt(filepath).T
+    data: NDArray[np.float64] = np.loadtxt(filepath).T
     v_in = data[0]
     v_out = data[1]
     freq = data[2]
@@ -31,8 +38,8 @@ def load_data(
 
 
 def calculate_leaking(
-    freq: np.ndarray, f_rolloff: float, delay_1: float, delay_2: float
-) -> np.ndarray:
+    freq: NDArray[np.float64], f_rolloff: float, delay_1: float, delay_2: float
+) -> NDArray[np.complex128]:
     """
     Calculate the complex leaking correction factor.
 
@@ -45,16 +52,19 @@ def calculate_leaking(
     Returns:
         Complex leaking correction factor.
     """
-    return (
+    res: NDArray[np.complex128] = (
         1.0
         / (1 + 1j * freq / f_rolloff)
         / np.exp(1j * (delay_1 * freq + delay_2 * freq**2))
     )
+    return res
 
 
 def correct_data(
-    v_out: np.ndarray, v_in: np.ndarray, complex_leaking: np.ndarray
-) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    v_out: NDArray[np.float64],
+    v_in: NDArray[np.float64],
+    complex_leaking: NDArray[np.complex128],
+) -> tuple[NDArray[np.float64], NDArray[np.float64], NDArray[np.float64]]:
     """
     Correct measured data using the leaking factor.
 

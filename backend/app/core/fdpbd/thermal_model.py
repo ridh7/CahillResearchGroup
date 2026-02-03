@@ -1,6 +1,7 @@
 """Functions for thermal modeling in FD-PBD analysis."""
 
 import numpy as np
+from numpy.typing import NDArray
 from scipy.special import j1
 
 from .integration import romberg_integration
@@ -165,11 +166,11 @@ def bi_fdtr_bo_temp(
     g = g_up * g_down / (g_up + g_down)  # Total Green's function
 
     # Gaussian beam profiles in Hankel space (Fourier transform of exp(-r²/w²))
-    s = np.exp(-np.pi**2 * r_probe**2 / 2 * k**2)  # Probe sensitivity profile
-    p = a_pump * np.exp(-np.pi**2 * r_pump**2 / 2 * k**2)  # Pump heating profile
+    s = np.exp(-(np.pi**2) * r_probe**2 / 2 * k**2)  # Probe sensitivity profile
+    p = a_pump * np.exp(-(np.pi**2) * r_pump**2 / 2 * k**2)  # Pump heating profile
 
     # Complete integrand: thermal response × probe × pump
-    result = g * s * p
+    result: NDArray[np.complex128] = g * s * p
     return result[0] if is_scalar else result
 
 
@@ -263,6 +264,6 @@ def delta_bo_theta(
 
         # Complete integrand: calibration × geometry × Bessel × deflection × temperature
         integrand = -c_probe * weight * bessel * defl * temp
-        delta_theta[i] = np.trapz(integrand, k)  # Trapezoidal integration over k
+        delta_theta[i] = np.trapezoid(integrand, k)  # Trapezoidal integration over k
 
     return delta_theta

@@ -318,21 +318,23 @@ async def fdpbd_analyze(params: str = Form(...), file: UploadFile = File(...)):
             ]
         # Validate with FDPBDParams
         validated_params = FDPBDParams(**params_dict)
-        result = await analyze_fdpbd(validated_params.dict(), file)
+        result = await analyze_fdpbd(validated_params, file)
         return result
-    except json.JSONDecodeError:
-        raise HTTPException(status_code=400, detail="Invalid JSON format in params")
+    except json.JSONDecodeError as e:
+        raise HTTPException(
+            status_code=400, detail="Invalid JSON format in params"
+        ) from e
     except ValueError as e:
         raise HTTPException(
             status_code=400, detail=f"Invalid eta_down format: {str(e)}"
-        )
+        ) from e
     except HTTPException as e:
         raise e
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
-async def analyze_fdpbd(params: dict, file: UploadFile) -> FDPBDResult:
+async def analyze_fdpbd(params: FDPBDParams, file: UploadFile) -> FDPBDResult:
     """Helper function to process FD-PBD analysis."""
     with tempfile.NamedTemporaryFile(delete=False, suffix=".txt", dir="data") as tmp:
         content = await file.read()
@@ -372,16 +374,18 @@ async def fdpbd_analyze_anisotropic(
         validated_params = AnisotropicFDPBDParams(**params_dict)
         result = await analyze_anisotropic(validated_params.dict(), file)
         return result
-    except json.JSONDecodeError:
-        raise HTTPException(status_code=400, detail="Invalid JSON format in params")
+    except json.JSONDecodeError as e:
+        raise HTTPException(
+            status_code=400, detail="Invalid JSON format in params"
+        ) from e
     except ValueError as e:
         raise HTTPException(
             status_code=400, detail=f"Invalid parameter format: {str(e)}"
-        )
+        ) from e
     except HTTPException as e:
         raise e
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.get("/")

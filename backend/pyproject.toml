@@ -59,6 +59,9 @@ known-first-party = ["app"]
 [tool.ruff.lint.per-file-ignores]
 "app/core/stage.py" = ["E402", "F403", "F405"]  # pythonnet requires DLL loading before imports
 "app/core/anisotropic_analysis.py" = ["N806", "N803"]  # Scientific variables use specific capitalization
+"app/core/fdpbd/thermal_model.py" = ["N806"]  # Scientific variables use specific capitalization
+"app/models/models.py" = ["N815"]  # Pydantic field names match API contract
+"app/routers/endpoints.py" = ["B008"]  # FastAPI uses File(...)/Form(...) as defaults by design
 
 [tool.ruff.format]
 quote-style = "double"

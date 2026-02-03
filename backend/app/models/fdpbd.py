@@ -1,5 +1,3 @@
-from typing import List
-
 from pydantic import BaseModel
 
 
@@ -7,10 +5,10 @@ class FDPBDParams(BaseModel):
     f_rolloff: float
     delay_1: float
     delay_2: float
-    lambda_down: List[float]
-    eta_down: List[float]
-    c_down: List[float]
-    h_down: List[float]
+    lambda_down: list[float]
+    eta_down: list[float]
+    c_down: list[float]
+    h_down: list[float]
     niu: float
     alpha_t: float
     lambda_up: float
@@ -28,13 +26,13 @@ class FDPBDParams(BaseModel):
 
 
 class PlotData(BaseModel):
-    freq_fit: List[float]
-    v_corr_in_fit: List[float]
-    v_corr_out_fit: List[float]
-    v_corr_ratio_fit: List[float]
-    delta_in: List[float]
-    delta_out: List[float]
-    delta_ratio: List[float]
+    freq_fit: list[float]
+    v_corr_in_fit: list[float]
+    v_corr_out_fit: list[float]
+    v_corr_ratio_fit: list[float]
+    delta_in: list[float]
+    delta_out: list[float]
+    delta_ratio: list[float]
 
 
 class FDPBDResult(BaseModel):

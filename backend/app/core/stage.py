@@ -5,9 +5,10 @@ from threading import Thread
 
 import clr
 
-from app.core.shared_state import shared_state
 from app.models.state import global_state
 from app.utils.file_utils import save_to_file
+
+from .shared_state import shared_state
 
 clr.AddReference(
     "C:\\Program Files\\Thorlabs\\Kinesis\\Thorlabs.MotionControl.DeviceManagerCLI.dll"
@@ -117,7 +118,6 @@ class ThorlabsBBD302:
         movement_mode,
         delay,
     ):
-
         if delay is None:
             delay = 1
         if movement_mode == "steps":
@@ -146,10 +146,15 @@ class ThorlabsBBD302:
                     values = global_state.lockin.read_values()
                 finally:
                     shared_state.pause_lockin_reading.clear()
-                values["timestamp"] = timestamp
-                values["positionX"] = self.channel[1].DevicePosition
-                values["positionY"] = self.channel[2].DevicePosition
-                values["voltage"] = global_state.multimeter.read_value()
+                if values:
+                    values["timestamp"] = timestamp
+                    values["positionX"] = self.channel[1].DevicePosition
+                    values["positionY"] = self.channel[2].DevicePosition
+                    values["voltage"] = (
+                        global_state.multimeter.read_value()
+                        if global_state.multimeter
+                        else None
+                    )
                 data.append(values)
                 time.sleep(delay)
                 # Calculate next x position using iteration count to avoid accumulation of floating point error
@@ -162,8 +167,16 @@ class ThorlabsBBD302:
 
     def read_values(self):
         try:
-            x = global_state.stage.channel[1].DevicePosition
-            y = global_state.stage.channel[2].DevicePosition
+            x = (
+                global_state.stage.channel[1].DevicePosition
+                if global_state.stage
+                else None
+            )
+            y = (
+                global_state.stage.channel[2].DevicePosition
+                if global_state.stage
+                else None
+            )
             return {"x": f"{x}", "y": f"{y}"}
         except Exception as e:
             print(f"Error reading from stage: {e}")

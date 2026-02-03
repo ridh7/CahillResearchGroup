@@ -1,7 +1,7 @@
 import numpy as np
 from scipy import linalg as la
 
-from app.core.fdpbd.data_processing import calculate_leaking, correct_data, load_data
+from .fdpbd.data_processing import calculate_leaking, correct_data, load_data
 
 
 def simpson_integration(y: np.ndarray, dx: float) -> float:
@@ -9,7 +9,8 @@ def simpson_integration(y: np.ndarray, dx: float) -> float:
     n = y.size
     if n < 3 or n % 2 == 0:
         raise ValueError("Simpson integration requires odd number of points ≥ 3.")
-    return dx / 3 * (y[0] + y[-1] + 4 * y[1:-1:2].sum() + 2 * y[2:-1:2].sum())
+    res: float = dx / 3 * (y[0] + y[-1] + 4 * y[1:-1:2].sum() + 2 * y[2:-1:2].sum())
+    return res
 
 
 def compute_surface_displacement(
@@ -386,7 +387,7 @@ def fit_rough_analysis(
             log_r = np.log(ratio)
             p_r = np.polyfit(log_f, log_r, 1)
             log_fmax_val = np.log(f_max)
-            ratio_at_fmax = np.exp(np.polyval(p_r, log_fmax_val))
+            ratio_at_fmax = float(np.exp(np.polyval(p_r, log_fmax_val)))
         except (np.linalg.LinAlgError, ValueError):
             pass
 
@@ -465,7 +466,7 @@ def run_anisotropic_analysis(params: dict, data_filename: str) -> dict:
     v_corr_in, v_corr_out, v_corr_ratio = correct_data(v_out, v_in, complex_leaking)
 
     # Average sum voltage
-    v_sum_avg = np.mean(v_sum)
+    v_sum_avg = float(np.mean(v_sum))
 
     # Build p and psi grids
     up_p = 8 / transformed_params["w_rms"]

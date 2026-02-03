@@ -7,7 +7,7 @@
     "bash -c 'cd frontend/tops-2.0-measurement-system && npx prettier --write \"$@\"' --"
   ],
   "backend/**/*.py": [
-    "backend/myenv/Scripts/python.exe -m black",
+    "backend/myenv/Scripts/python.exe -m ruff format",
     "backend/myenv/Scripts/python.exe -m ruff check --fix"
   ]
 }

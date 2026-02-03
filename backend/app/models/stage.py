@@ -1,5 +1,3 @@
-from typing import Optional
-
 from pydantic import BaseModel
 
 
@@ -8,12 +6,12 @@ class RectangleParams(BaseModel):
     x2: float
     y1: float
     y2: float
-    x_steps: Optional[int] = None
-    y_steps: Optional[int] = None
-    x_step_size: Optional[float] = None
-    y_step_size: Optional[float] = None
+    x_steps: int | None = None
+    y_steps: int | None = None
+    x_step_size: float | None = None
+    y_step_size: float | None = None
     movement_mode: str
-    delay: Optional[float] = None
+    delay: float | None = None
 
 
 class MovementParams(BaseModel):

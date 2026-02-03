@@ -1,36 +1,61 @@
+from typing import TypedDict
+
 import numpy as np
 
-from app.core.fdpbd.data_processing import calculate_leaking, correct_data, load_data
-from app.core.fdpbd.fitting import fit_in_out
-from app.core.fdpbd.thermal_model import compute_steady_state_heat, delta_bo_theta
+from app.models.fdpbd import FDPBDParams
+
+from .fdpbd.data_processing import calculate_leaking, correct_data, load_data
+from .fdpbd.fitting import fit_in_out
+from .fdpbd.thermal_model import compute_steady_state_heat, delta_bo_theta
 
 
-def run_fdpbd_analysis(params, data_filename):
+class PlotData(TypedDict):
+    """Plot data for FDPBD analysis results."""
+
+    freq_fit: list[float]
+    v_corr_in_fit: list[float]
+    v_corr_out_fit: list[float]
+    v_corr_ratio_fit: list[float]
+    delta_in: list[float]
+    delta_out: list[float]
+    delta_ratio: list[float]
+
+
+class FDPBDResult(TypedDict):
+    """Result structure for FDPBD analysis."""
+
+    lambda_measure: float
+    alpha_t_fitted: float
+    t_ss_heat: float
+    plot_data: PlotData
+
+
+def run_fdpbd_analysis(params: FDPBDParams, data_filename: str) -> FDPBDResult:
     """Run FD-PBD analysis with given parameters and data file."""
     # Extract parameters
-    f_rolloff = params["f_rolloff"]
-    delay_1 = params["delay_1"]
-    delay_2 = params["delay_2"]
-    lambda_down = np.array(params["lambda_down"])
-    eta_down = np.array(params["eta_down"])
-    c_down = np.array(params["c_down"])
-    h_down = np.array(params["h_down"])
-    niu = params["niu"]
-    alpha_t = params["alpha_t"]
-    lambda_up = params["lambda_up"]
-    eta_up = params["eta_up"]
-    c_up = params["c_up"]
-    h_up = params["h_up"]
-    w_rms = params["w_rms"]
-    x_offset = params["x_offset"]
+    f_rolloff = params.f_rolloff
+    delay_1 = params.delay_1
+    delay_2 = params.delay_2
+    lambda_down = np.array(params.lambda_down)
+    eta_down = np.array(params.eta_down)
+    c_down = np.array(params.c_down)
+    h_down = np.array(params.h_down)
+    niu = params.niu
+    alpha_t = params.alpha_t
+    lambda_up = params.lambda_up
+    eta_up = params.eta_up
+    c_up = params.c_up
+    h_up = params.h_up
+    w_rms = params.w_rms
+    x_offset = params.x_offset
     r_pump = w_rms
     r_probe = w_rms
-    incident_pump = params["incident_pump"]
-    incident_probe = params["incident_probe"]
-    n_al = params["n_al"]
-    k_al = params["k_al"]
-    lens_transmittance = params["lens_transmittance"]
-    detector_factor = params["detector_factor"]
+    incident_pump = params.incident_pump
+    incident_probe = params.incident_probe
+    n_al = params.n_al
+    k_al = params.k_al
+    lens_transmittance = params.lens_transmittance
+    detector_factor = params.detector_factor
 
     # Derived parameters
     refl_al = abs(n_al - 1 + 1j * k_al) ** 2 / abs(n_al + 1 + 1j * k_al) ** 2
@@ -39,7 +64,7 @@ def run_fdpbd_analysis(params, data_filename):
     a_dc = (incident_pump + incident_probe) * absorbed_pump
 
     # Load data
-    v_out, v_in, v_ratio, v_sum, freq = load_data(data_filename)
+    v_out, v_in, _, v_sum, freq = load_data(data_filename)
 
     # Calculate leaking correction
     complex_leaking = calculate_leaking(freq, f_rolloff, delay_1, delay_2)
@@ -79,7 +104,7 @@ def run_fdpbd_analysis(params, data_filename):
     x_guess = [lambda_down[2], coef]
     lb = [0.0, -100.0]
     ub = [100.0, 100.0]
-    x_sol, confidence = fit_in_out(
+    x_sol, _ = fit_in_out(
         x_guess,
         v_corr_in_fit,
         v_corr_out_fit,

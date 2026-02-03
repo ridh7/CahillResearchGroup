@@ -35,7 +35,7 @@ class BKPrecision5493C:
             )  # 0.2 power line cycles (fast, ~3ms)
             self.inst.write("rear")  # Use rear terminal inputs
             print(
-                f"---Multimeter initialized with {self.inst.query("ROUT:TERM?")} terminal and {self.inst.query("SENS:VOLT:DC:NPLC?")} PLC aperture."
+                f"---Multimeter initialized with {self.inst.query('ROUT:TERM?')} terminal and {self.inst.query('SENS:VOLT:DC:NPLC?')} PLC aperture."
             )
         except Exception as e:
             print(f"---Multimeter initialization error: {e}")
@@ -103,7 +103,7 @@ class BKPrecision5493C:
         Get current terminal setting.
         """
         try:
-            return "fron" if "Front" in f"{self.inst.query("ROUT:TERM?")}" else "rear"
+            return "fron" if "Front" in f"{self.inst.query('ROUT:TERM?')}" else "rear"
         except Exception as e:
             print(f"Error getting terminal: {e}")
             return None

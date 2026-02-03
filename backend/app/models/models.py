@@ -1,5 +1,3 @@
-from typing import Dict, List, Optional
-
 from pydantic import BaseModel
 
 
@@ -38,9 +36,9 @@ class AnisotropicFDPBDParams(BaseModel):
     f_rolloff: float
     delay_1: float
     delay_2: float
-    lambda_down: List[Optional[float]]
-    c_down: List[Optional[float]]
-    h_down: List[Optional[float]]
+    lambda_down: list[float | None]
+    c_down: list[float | None]
+    h_down: list[float | None]
     incident_pump: float
     w_rms: float
     x_offset: float
@@ -70,9 +68,9 @@ class AnisotropicFDPBDParams(BaseModel):
 
 
 class AnisotropicFDPBDResult(BaseModel):
-    f_peak: Optional[float]
-    ratio_at_peak: Optional[float]
-    lambda_measure: Optional[float]
-    alpha_t_fitted: Optional[float]
-    t_ss_heat: Optional[float]
-    plot_data: Dict[str, List[float]]
+    f_peak: float | None
+    ratio_at_peak: float | None
+    lambda_measure: float | None
+    alpha_t_fitted: float | None
+    t_ss_heat: float | None
+    plot_data: dict[str, list[float]]

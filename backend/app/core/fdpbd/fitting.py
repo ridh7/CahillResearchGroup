@@ -1,6 +1,7 @@
 """Functions for fitting FD-PBD data to thermal models."""
 
 import numpy as np
+from numpy.typing import NDArray
 from scipy.optimize import least_squares
 
 from .thermal_model import delta_bo_theta
@@ -77,14 +78,23 @@ def fit_in_out(
         )
     )
     result = least_squares(
-        lambda x: model(x, freq) - v_target, x_guess, bounds=(lb, ub), method="trf"
+        lambda x: model(x, freq) - v_target,  # type: ignore[misc]
+        x_guess,
+        bounds=(lb, ub),
+        method="trf",
     )
     x_sol = result.x
 
     # Approximate 95% confidence intervals (simplified)
     jac = result.jac
     resid = result.fun
-    cov = np.linalg.inv(jac.T @ jac) * np.mean(resid**2)
+    # Convert jac to ndarray for matrix operations
+    jac_array: NDArray[np.float64] = (
+        np.asarray(jac.todense()) if hasattr(jac, "todense") else np.asarray(jac)
+    )
+    cov: NDArray[np.float64] = np.linalg.inv(jac_array.T @ jac_array) * np.mean(
+        resid**2
+    )
     confidence = 1.96 * np.sqrt(np.diag(cov))  # 95% CI
     return x_sol, confidence
 
@@ -142,6 +152,8 @@ def fit_ratio(
         return -np.real(delta_theta) / np.imag(delta_theta)
 
     result = least_squares(
-        lambda x: model(x, freq) - v_corr_ratio, [x_guess], method="trf"
+        lambda x: model(x, freq) - v_corr_ratio,  # type: ignore[misc]
+        [x_guess],
+        method="trf",
     )
-    return result.x[0]
+    return float(result.x[0])
