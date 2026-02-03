@@ -1,5 +1,3 @@
-from typing import TypedDict
-
 import numpy as np
 
 from app.models.fdpbd import FDPBDParams
@@ -9,28 +7,7 @@ from .fdpbd.fitting import fit_in_out
 from .fdpbd.thermal_model import compute_steady_state_heat, delta_bo_theta
 
 
-class PlotData(TypedDict):
-    """Plot data for FDPBD analysis results."""
-
-    freq_fit: list[float]
-    v_corr_in_fit: list[float]
-    v_corr_out_fit: list[float]
-    v_corr_ratio_fit: list[float]
-    delta_in: list[float]
-    delta_out: list[float]
-    delta_ratio: list[float]
-
-
-class FDPBDResult(TypedDict):
-    """Result structure for FDPBD analysis."""
-
-    lambda_measure: float
-    alpha_t_fitted: float
-    t_ss_heat: float
-    plot_data: PlotData
-
-
-def run_fdpbd_analysis(params: FDPBDParams, data_filename: str) -> FDPBDResult:
+def run_fdpbd_analysis(params: FDPBDParams, data_filename: str) -> dict:
     """Run FD-PBD analysis with given parameters and data file."""
     # Extract parameters
     f_rolloff = params.f_rolloff

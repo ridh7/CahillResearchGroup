@@ -1,3 +1,5 @@
+from typing import Any, cast
+
 import pyvisa
 
 
@@ -24,7 +26,9 @@ class BKPrecision5493C:
             if resource_name is None:
                 raise Exception("BK Precision 5493C not found!")
             print(f"---Connecting to multimeter: {resource_name}")
-            self.inst = self.rm.open_resource(resource_name)
+            self.inst: Any = cast(
+                Any, self.rm.open_resource(resource_name)
+            )  # PyVISA Resource lacks stubs
             self.inst.timeout = 5000
 
             # Initialize to known state

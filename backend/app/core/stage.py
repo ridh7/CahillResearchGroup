@@ -46,15 +46,15 @@ class ThorlabsBBD302:
             self.channel_count = channel_count
 
             # Build device list from Thorlabs .NET SDK
-            DeviceManagerCLI.BuildDeviceList()
+            DeviceManagerCLI.BuildDeviceList()  # type: ignore[name-defined]
             if serial_number is None:
                 # Auto-detect BBD302 by known serial number
-                devices = DeviceManagerCLI.GetDeviceList()
+                devices = DeviceManagerCLI.GetDeviceList()  # type: ignore[name-defined]
                 for dev in devices:
                     if dev == "103387864":
                         serial_number = dev
             print(f"---Connecting to stage with serial number: {serial_number}")
-            self.device = BenchtopBrushlessMotor.CreateBenchtopBrushlessMotor(
+            self.device = BenchtopBrushlessMotor.CreateBenchtopBrushlessMotor(  # type: ignore[name-defined]
                 serial_number
             )
             self.device.Connect(serial_number)
@@ -143,7 +143,11 @@ class ThorlabsBBD302:
                 shared_state.pause_lockin_reading.set()
                 try:
                     time.sleep(0.02)
-                    values = global_state.lockin.read_values()
+                    values = (
+                        global_state.lockin.read_values()
+                        if global_state.lockin
+                        else None
+                    )
                 finally:
                     shared_state.pause_lockin_reading.clear()
                 if values:

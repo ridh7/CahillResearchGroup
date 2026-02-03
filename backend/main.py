@@ -61,11 +61,15 @@ async def send_lockin_data(websocket: WebSocket):
     Cached values in shared_state allow other operations to access latest
     data without blocking WebSocket stream.
     """
+    if global_state.lockin is None:
+        await websocket.close(code=1003, reason="Lock-in amplifier not initialized")
+        return
+    lockin = global_state.lockin  # Capture reference for type narrowing
     while True:
         if shared_state.pause_lockin_reading.is_set():
             await asyncio.sleep(0.02)
             continue
-        values = global_state.lockin.read_values()
+        values = lockin.read_values()
         with shared_state.value_lock:
             shared_state.latest_lockin_values = values
         await websocket.send_json(values)
@@ -79,8 +83,12 @@ async def send_multimeter_data(websocket: WebSocket):
     Caches latest value in shared_state for synchronous access during
     stage scans, ensuring voltage measurements align with position data.
     """
+    if global_state.multimeter is None:
+        await websocket.close(code=1003, reason="Multimeter not initialized")
+        return
+    multimeter = global_state.multimeter  # Capture reference for type narrowing
     while True:
-        value = global_state.multimeter.read_value()
+        value = multimeter.read_value()
         with shared_state.value_lock:
             shared_state.latest_multimeter_value = value
         await websocket.send_json({"value": value})
@@ -94,8 +102,12 @@ async def send_stage_data(websocket: WebSocket):
     Position updates are polled from Thorlabs .NET SDK and cached for
     synchronous access during move operations and scan logging.
     """
+    if global_state.stage is None:
+        await websocket.close(code=1003, reason="Stage not initialized")
+        return
+    stage = global_state.stage  # Capture reference for type narrowing
     while True:
-        values = global_state.stage.read_values()
+        values = stage.read_values()
         with shared_state.value_lock:
             shared_state.latest_stage_values = values
         await websocket.send_json(values)
