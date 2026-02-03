@@ -19,20 +19,16 @@ This backend provides:
 
 ## Tech Stack
 
-| Category            | Technology       | Version |
-| ------------------- | ---------------- | ------- |
-| **Framework**       | FastAPI          | Latest  |
-| **Language**        | Python           | 3.10+   |
-| **Validation**      | Pydantic         | Latest  |
-| **Instrument I/O**  | PyVISA           | Latest  |
-| **.NET Bridge**     | pythonnet        | Latest  |
-| **Scientific**      | NumPy            | Latest  |
-|                     | SciPy            | Latest  |
-|                     | Matplotlib       | Latest  |
-| **Code Quality**    | Black            | 24.10.0 |
-|                     | Ruff             | 0.8.4   |
-| **Git Hooks**       | Husky            | (root)  |
-|                     | lint-staged      | (root)  |
+| Category            | Technology       |
+| ------------------- | ---------------- |
+| **Framework**       | FastAPI          |
+| **Language**        | Python 3.10+     |
+| **Validation**      | Pydantic         |
+| **Instrument I/O**  | PyVISA           |
+| **.NET Bridge**     | pythonnet        |
+| **Scientific**      | NumPy, SciPy, Matplotlib |
+| **Code Quality**    | Ruff (format + lint), mypy (type checking) |
+| **Git Hooks**       | Husky, lint-staged (configured in root) |
 
 ## Getting Started
 
@@ -63,11 +59,8 @@ myenv\Scripts\activate
 # Unix/MacOS:
 source myenv/bin/activate
 
-# Install dependencies
-pip install -r requirements.txt
-
-# Install development dependencies (optional)
-pip install -r requirements-dev.txt
+# Install dependencies (production and development)
+pip install -e .
 ```
 
 ### Running the Server
@@ -108,24 +101,19 @@ backend/
 │   │   └── endpoints.py             # REST API endpoints
 │   │
 │   ├── models/
-│   │   ├── state.py                 # Global state (instrument instances)
+│   │   ├── state.py                 # Global state (instrument instances, typed)
 │   │   ├── lockin.py                # Pydantic models for lock-in
 │   │   ├── multimeter.py            # Pydantic models for multimeter
 │   │   ├── stage.py                 # Pydantic models for stage
 │   │   ├── fdpbd.py                 # Pydantic models for FD-PBD analysis
 │   │   └── models.py                # Shared data models
 │   │
-│   ├── services/
-│   │   └── fdpbd_service.py         # FD-PBD analysis orchestration
-│   │
 │   └── utils/
 │       ├── file_utils.py            # CSV saving with timestamps
 │       └── file_upload.py           # File upload handling
 │
 ├── data/                            # CSV output directory (auto-created)
-├── requirements.txt                 # Production dependencies
-├── requirements-dev.txt             # Development dependencies (Black, Ruff)
-└── pyproject.toml                   # Black and Ruff configuration
+└── pyproject.toml                   # Project config, dependencies, ruff/mypy settings
 ```
 
 ### Data Flow
@@ -312,18 +300,22 @@ Frequency-Domain Photothermal Beam Deflection (FD-PBD) measures thermal properti
 
 Pre-commit hooks (configured in root `.lintstagedrc.json`):
 
-- **Black**: Code formatter (88 char line length)
-- **Ruff**: Linter + import sorter (pycodestyle + pyflakes + isort)
+- **Ruff format**: Code formatter (88 char line length)
+- **Ruff check**: Linter + import sorter (pycodestyle + pyflakes + isort)
+- **mypy**: Static type checker
 
 ```bash
 # Format code manually
-black .
+ruff format .
 
 # Lint and auto-fix
 ruff check . --fix
 
 # Check without fixing
 ruff check .
+
+# Type check
+mypy app
 ```
 
 ### Adding New Instruments
@@ -376,8 +368,7 @@ ruff check .
 
 1. Create analysis function in `app/core/`
 2. Define Pydantic models in `app/models/`
-3. Add endpoint in `app/routers/endpoints.py`
-4. Optional: Create service layer in `app/services/` for orchestration
+3. Add endpoint in `app/routers/endpoints.py` with proper type annotations and None guards
 
 ## API Reference
 
