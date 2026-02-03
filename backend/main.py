@@ -27,6 +27,7 @@ async def lifespan(app: FastAPI):  # noqa: ARG001
     global_state.lockin = SR865A()
     global_state.multimeter = BKPrecision5493C()
     shared_state.pause_lockin_reading.clear()
+    shared_state.pause_stage_reading.clear()
     yield
     for ws in [
         global_state.ws_lockin,
@@ -101,12 +102,18 @@ async def send_stage_data(websocket: WebSocket):
 
     Position updates are polled from Thorlabs .NET SDK and cached for
     synchronous access during move operations and scan logging.
+
+    Pauses during scans to prevent VISA resource locking conflicts when
+    scan thread needs exclusive device access for high-frequency position reads.
     """
     if global_state.stage is None:
         await websocket.close(code=1003, reason="Stage not initialized")
         return
     stage = global_state.stage  # Capture reference for type narrowing
     while True:
+        if shared_state.pause_stage_reading.is_set():
+            await asyncio.sleep(0.02)
+            continue
         values = stage.read_values()
         with shared_state.value_lock:
             shared_state.latest_stage_values = values

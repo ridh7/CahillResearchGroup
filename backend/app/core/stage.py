@@ -141,24 +141,35 @@ class ThorlabsBBD302:
                 )
                 timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")
                 shared_state.pause_lockin_reading.set()
+                shared_state.pause_stage_reading.set()
                 try:
                     time.sleep(0.02)
-                    values = (
+                    # Read all devices while WebSockets are paused
+                    lockin_values = (
                         global_state.lockin.read_values()
                         if global_state.lockin
                         else None
                     )
-                finally:
-                    shared_state.pause_lockin_reading.clear()
-                if values:
-                    values["timestamp"] = timestamp
-                    values["positionX"] = self.channel[1].DevicePosition
-                    values["positionY"] = self.channel[2].DevicePosition
-                    values["voltage"] = (
+                    multimeter_value = (
                         global_state.multimeter.read_value()
                         if global_state.multimeter
                         else None
                     )
+                    position_x = self.channel[1].DevicePosition
+                    position_y = self.channel[2].DevicePosition
+                finally:
+                    shared_state.pause_lockin_reading.clear()
+                    shared_state.pause_stage_reading.clear()
+
+                # Build values dict after clearing pause
+                if lockin_values:
+                    values = lockin_values.copy()
+                    values["timestamp"] = timestamp
+                    values["positionX"] = position_x
+                    values["positionY"] = position_y
+                    values["voltage"] = multimeter_value
+                else:
+                    values = None
                 data.append(values)
                 time.sleep(delay)
                 # Calculate next x position using iteration count to avoid accumulation of floating point error
@@ -210,6 +221,9 @@ class ThorlabsBBD302:
         total scan time by ~50% compared to unidirectional (no Y return moves).
         """
         try:
+            # Pause stage WebSocket to prevent VISA resource locking conflicts
+            shared_state.pause_stage_reading.set()
+
             # Increase polling frequency for high-resolution position tracking
             self.channel[1].StartPolling(1)
             self.channel[2].StartPolling(1)  # 1ms polling for Y channel
@@ -420,3 +434,6 @@ class ThorlabsBBD302:
             if tb:
                 filename, line_number, func_name, text = tb[-1]
                 print(f"---Error occurred at line {line_number} in {filename}: {text}")
+        finally:
+            # Resume stage WebSocket streaming
+            shared_state.pause_stage_reading.clear()

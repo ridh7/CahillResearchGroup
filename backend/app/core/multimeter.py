@@ -50,7 +50,7 @@ class BKPrecision5493C:
             return reading
         except Exception as e:
             print(f"Error reading from multimeter: {e}")
-            return None
+            return 0.0
 
     def configure_measurement(self, mode="VOLT:DC"):
         """

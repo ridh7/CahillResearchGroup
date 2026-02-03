@@ -139,16 +139,24 @@ class SR865A:
         measured signal, representing amplitude*cos(phase) and
         amplitude*sin(phase) respectively.
         """
-        x = float(self.inst.query("OUTP? 0"))
-        y = float(self.inst.query("OUTP? 1"))
-        freq = float(self.inst.query("FREQ?"))
-        # sensitivity_code = int(self.inst.query("SCAL?"))
-        # unit = self.volatage_sensitivity_map[sensitivity_code]
-        return {
-            "X": x,
-            "Y": y,
-            "frequency": freq,
-        }
+        try:
+            x = float(self.inst.query("OUTP? 0"))
+            y = float(self.inst.query("OUTP? 1"))
+            freq = float(self.inst.query("FREQ?"))
+            # sensitivity_code = int(self.inst.query("SCAL?"))
+            # unit = self.volatage_sensitivity_map[sensitivity_code]
+            return {
+                "X": x,
+                "Y": y,
+                "frequency": freq,
+            }
+        except Exception as e:
+            print(f"Error reading from lockin: {e}")
+            return {
+                "X": 0.0,
+                "Y": 0.0,
+                "frequency": 0.0,
+            }
 
     def get_sensitivity(self):
         return int(self.inst.query("SCAL?"))

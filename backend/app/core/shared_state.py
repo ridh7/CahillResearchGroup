@@ -20,6 +20,8 @@ class SharedState:
         value_lock: Threading lock to prevent race conditions
         pause_lockin_reading: Event flag to pause lock-in queries during scans
             (prevents GPIB conflicts when stage scan needs exclusive access)
+        pause_stage_reading: Event flag to pause stage position queries during scans
+            (prevents VISA resource locking when scan thread needs exclusive device access)
     """
 
     def __init__(self):
@@ -28,6 +30,7 @@ class SharedState:
         self.latest_stage_values = None
         self.value_lock = threading.Lock()
         self.pause_lockin_reading = asyncio.Event()
+        self.pause_stage_reading = asyncio.Event()
 
 
 shared_state = SharedState()
