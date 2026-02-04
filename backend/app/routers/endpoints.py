@@ -425,8 +425,3 @@ async def fdpbd_analyze_anisotropic(
         raise e
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)) from e
-
-
-@router.get("/")
-def read_root():
-    return {"status": "API is running"}
