@@ -28,6 +28,7 @@ async def lifespan(app: FastAPI):  # noqa: ARG001
     global_state.multimeter = BKPrecision5493C()
     shared_state.pause_lockin_reading.clear()
     shared_state.pause_stage_reading.clear()
+    shared_state.pause_multimeter_reading.clear()
     yield
     for ws in [
         global_state.ws_lockin,
@@ -89,6 +90,9 @@ async def send_multimeter_data(websocket: WebSocket):
         return
     multimeter = global_state.multimeter  # Capture reference for type narrowing
     while True:
+        if shared_state.pause_multimeter_reading.is_set():
+            await asyncio.sleep(0.02)
+            continue
         value = multimeter.read_value()
         with shared_state.value_lock:
             shared_state.latest_multimeter_value = value

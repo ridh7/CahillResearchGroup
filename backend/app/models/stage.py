@@ -24,3 +24,9 @@ class MoveAndLogParams(BaseModel):
     y: float
     x_step_size: float
     sample_rate: float
+
+
+class ContinuousScanParams(BaseModel):
+    x: float
+    y: float
+    x_step_size: float

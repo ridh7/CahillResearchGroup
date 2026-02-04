@@ -17,7 +17,12 @@ from app.models.models import (
     AnisotropicFDPBDResult,
 )
 from app.models.multimeter import MultimeterApertureRequest, MultimeterTerminalRequest
-from app.models.stage import MoveAndLogParams, MovementParams, RectangleParams
+from app.models.stage import (
+    ContinuousScanParams,
+    MoveAndLogParams,
+    MovementParams,
+    RectangleParams,
+)
 from app.models.state import global_state
 
 router = APIRouter()
@@ -116,6 +121,31 @@ async def start_movement(params: RectangleParams):
                     ws = None
                 except Exception as close_error:
                     print(f"Error closing {ws} websocket: {close_error}")
+        return {"status": "error", "message": str(e)}
+
+
+@router.post("/continuous_scan")
+async def continuous_scan(params: ContinuousScanParams):
+    """
+    Continuous bidirectional scan with direct parallel device reads.
+
+    Scans from current position to (x, y) with given x_step_size.
+    Reads lock-in and multimeter in parallel at maximum hardware speed.
+    Saves results to timestamped CSV file.
+    """
+    print(
+        f"---/continuous_scan endpoint hit: x={params.x}, y={params.y}, step={params.x_step_size}"
+    )
+    if global_state.stage is None:
+        raise HTTPException(status_code=503, detail="Stage not initialized")
+    stage = global_state.stage
+    try:
+        await asyncio.get_event_loop().run_in_executor(
+            executor,
+            lambda: stage.continuous_scan(params.x, params.y, params.x_step_size),
+        )
+        return {"status": "success", "message": "Continuous scan completed"}
+    except Exception as e:
         return {"status": "error", "message": str(e)}
 
 

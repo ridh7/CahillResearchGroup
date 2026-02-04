@@ -1,5 +1,6 @@
 import time
 import traceback
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from threading import Thread
 
@@ -437,3 +438,126 @@ class ThorlabsBBD302:
         finally:
             # Resume stage WebSocket streaming
             shared_state.pause_stage_reading.clear()
+
+    def continuous_scan(self, x_end, y_end, x_step_size):
+        """
+        Continuous bidirectional scan with parallel device reads.
+
+        Moves the stage continuously along Y while reading lock-in (SNAP? 0,1)
+        and multimeter (READ?) in parallel via ThreadPoolExecutor. No sleep
+        between reads — samples as fast as the hardware allows.
+
+        Frequency is read once at scan start (constant during scan).
+        """
+        print("---continuous_scan called")
+        lockin = global_state.lockin
+        multimeter = global_state.multimeter
+        if lockin is None or multimeter is None:
+            print("---Error: lockin or multimeter not initialized")
+            return
+
+        try:
+            # Pause all WebSocket device reads
+            shared_state.pause_lockin_reading.set()
+            shared_state.pause_stage_reading.set()
+            shared_state.pause_multimeter_reading.set()
+            time.sleep(0.05)  # Let in-progress WebSocket reads finish
+            print("---WebSocket reads paused")
+
+            # Read frequency once (constant during scan)
+            freq = float(lockin.inst.query("FREQ?"))
+            print(f"---Frequency: {freq}")
+
+            # High-resolution position polling
+            self.channel[1].StartPolling(1)
+            self.channel[2].StartPolling(1)
+
+            start_x = self.channel[1].DevicePosition
+            start_y = self.channel[2].DevicePosition
+            print(f"---Start position: ({start_x}, {start_y})")
+            current_x = start_x
+            target_x = Decimal(float(x_end))
+            target_y = Decimal(float(y_end))
+            x_step = Decimal(float(x_step_size))
+            print(f"---Target: ({target_x}, {target_y}), step: {x_step}")
+
+            data = []
+            sample_count = 0
+            prev_sample_count = 0
+            start_time = time.time()
+            going_up = True
+            executor = ThreadPoolExecutor(max_workers=2)
+
+            try:
+                while current_x <= target_x + x_step / Decimal(2):
+                    print(f"---X sweep at {current_x}, going_up={going_up}")
+                    # Move X to position (blocking)
+                    self.channel[1].MoveTo(current_x, 60000)
+
+                    # Determine Y target for this sweep
+                    y_target = target_y if going_up else start_y
+
+                    # Start Y movement in background
+                    move_thread = Thread(
+                        target=self.channel[2].MoveTo, args=(y_target, 600000)
+                    )
+                    move_thread.start()
+
+                    # Tight read loop — parallel reads via executor
+                    sweep_start_time = time.time()
+                    while move_thread.is_alive():
+                        future_snap = executor.submit(lockin.snap)
+                        future_voltage = executor.submit(multimeter.read_value)
+                        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")
+
+                        snap_x, snap_y = future_snap.result()
+                        voltage = future_voltage.result()
+
+                        data.append(
+                            {
+                                "timestamp": timestamp,
+                                "positionX": float(str(current_x)),
+                                "positionY": None,
+                                "X": snap_x,
+                                "Y": snap_y,
+                                "frequency": freq,
+                                "voltage": voltage,
+                            }
+                        )
+                        sample_count += 1
+
+                    move_thread.join()
+                    sweep_time = time.time() - sweep_start_time
+                    sweep_samples = sample_count - prev_sample_count
+                    sweep_rate = sweep_samples / sweep_time if sweep_time > 0 else 0
+                    print(
+                        f"---  Y sweep: {sweep_samples} samples in {sweep_time:.3f}s ({sweep_rate:.1f} samples/s)"
+                    )
+                    prev_sample_count = sample_count
+
+                    # Step X and reverse Y direction
+                    current_x += x_step
+                    going_up = not going_up
+
+            finally:
+                executor.shutdown(wait=False)
+
+            elapsed = time.time() - start_time
+            rate = sample_count / elapsed if elapsed > 0 else 0
+            print(
+                f"---Continuous scan: {sample_count} samples in {elapsed:.2f}s "
+                f"({rate:.1f} samples/second)"
+            )
+
+            save_to_file(data)
+
+        except Exception as e:
+            print(f"---Error in continuous_scan: {e}")
+            traceback.print_exc()
+        finally:
+            # Restore polling and resume WebSocket reads
+            self.channel[1].StartPolling(250)
+            self.channel[2].StartPolling(250)
+            shared_state.pause_lockin_reading.clear()
+            shared_state.pause_stage_reading.clear()
+            shared_state.pause_multimeter_reading.clear()

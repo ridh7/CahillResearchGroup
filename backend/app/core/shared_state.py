@@ -31,6 +31,7 @@ class SharedState:
         self.value_lock = threading.Lock()
         self.pause_lockin_reading = asyncio.Event()
         self.pause_stage_reading = asyncio.Event()
+        self.pause_multimeter_reading = asyncio.Event()
 
 
 shared_state = SharedState()

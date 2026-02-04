@@ -158,6 +158,12 @@ class SR865A:
                 "frequency": 0.0,
             }
 
+    def snap(self):
+        """Read X and Y simultaneously using SNAP command (single GPIB query)."""
+        response = self.inst.query("SNAP? 0,1")
+        x_str, y_str = response.split(",")
+        return float(x_str), float(y_str)
+
     def get_sensitivity(self):
         return int(self.inst.query("SCAL?"))
 
