@@ -8,6 +8,7 @@ import OutputPanel from '../components/OutputPanel';
 import SettingsPanel from '../components/SettingsPanel';
 import HeatmapPanel from '../components/HeatmapPanel';
 import Link from 'next/link';
+import { API_BASE, WS_BASE } from '../lib/api';
 
 export type FormData = {
   sampleId: string;
@@ -181,7 +182,7 @@ export default function CalculatePage() {
     }
 
     console.log('Creating new Lockin WebSocket');
-    const ws = new WebSocket('ws://localhost:8000/ws/lockin');
+    const ws = new WebSocket(`${WS_BASE}/ws/lockin`);
 
     ws.onopen = () => {
       console.log('Lockin WebSocket connected');
@@ -209,7 +210,7 @@ export default function CalculatePage() {
   };
   const fetchLockinSettings = async () => {
     try {
-      const response = await fetch('http://localhost:8000/lockin/settings');
+      const response = await fetch(`${API_BASE}/lockin/settings`);
       const data = await response.json();
       if (data.status === 'success') {
         setLockinSettings({
@@ -304,7 +305,7 @@ export default function CalculatePage() {
     }
 
     console.log('Creating new Multimeter WebSocket');
-    const ws = new WebSocket('ws://localhost:8000/ws/multimeter');
+    const ws = new WebSocket(`${WS_BASE}/ws/multimeter`);
 
     ws.onopen = () => {
       console.log('Multimeter WebSocket connected');
@@ -397,7 +398,7 @@ export default function CalculatePage() {
     }
 
     console.log('Creating new Stage WebSocket');
-    const ws = new WebSocket('ws://localhost:8000/ws/stage');
+    const ws = new WebSocket(`${WS_BASE}/ws/stage`);
 
     ws.onopen = () => {
       console.log('Stage WebSocket connected');
@@ -464,7 +465,7 @@ export default function CalculatePage() {
       setIsProcessing(true);
       setStatus('Processing...');
 
-      const response = await fetch('http://localhost:8000/start', {
+      const response = await fetch(`${API_BASE}/start`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -493,7 +494,7 @@ export default function CalculatePage() {
   const handleHome = async (channel_direction: string) => {
     try {
       setStatus('Processing...');
-      const response = await fetch('http://localhost:8000/home', {
+      const response = await fetch(`${API_BASE}/home`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ channel_direction }),
@@ -508,7 +509,7 @@ export default function CalculatePage() {
 
   const handleGetParams = async () => {
     try {
-      const response = await fetch('http://localhost:8000/get_movement_params');
+      const response = await fetch(`${API_BASE}/get_movement_params`);
       const data = await response.json();
       setSettings({
         channel1: {
@@ -530,7 +531,7 @@ export default function CalculatePage() {
 
   const handleSetParams = async (newSettings: Settings) => {
     try {
-      const response = await fetch('http://localhost:8000/set_movement_params', {
+      const response = await fetch(`${API_BASE}/set_movement_params`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -556,7 +557,7 @@ export default function CalculatePage() {
 
   const changeLockinSensitivity = async (increment: boolean) => {
     try {
-      const response = await fetch('http://localhost:8000/lockin/sensitivity', {
+      const response = await fetch(`${API_BASE}/lockin/sensitivity`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ increment }),
@@ -577,7 +578,7 @@ export default function CalculatePage() {
 
   const changeLockinTimeConstant = async (increment: boolean) => {
     try {
-      const response = await fetch('http://localhost:8000/lockin/time_constant', {
+      const response = await fetch(`${API_BASE}/lockin/time_constant`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ increment }),
@@ -598,7 +599,7 @@ export default function CalculatePage() {
 
   const fetchMultimeterSettings = async () => {
     try {
-      const response = await fetch('http://localhost:8000/multimeter/settings');
+      const response = await fetch(`${API_BASE}/multimeter/settings`);
       const data = await response.json();
       console.log(data);
       if (data.status === 'success') {
@@ -618,7 +619,7 @@ export default function CalculatePage() {
 
   const changeMultimeterAperture = async (nplc: number) => {
     try {
-      const response = await fetch('http://localhost:8000/multimeter/aperture', {
+      const response = await fetch(`${API_BASE}/multimeter/aperture`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ nplc }),
@@ -641,7 +642,7 @@ export default function CalculatePage() {
 
   const changeMultimeterTerminal = async (terminal: string) => {
     try {
-      const response = await fetch('http://localhost:8000/multimeter/terminal', {
+      const response = await fetch(`${API_BASE}/multimeter/terminal`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ terminal }),

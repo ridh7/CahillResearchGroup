@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { LockinData, MultimeterData, StageData } from '../app/page';
+import { API_BASE } from '../lib/api';
 
 type OutputPanelProps = {
   lockinData: LockinData;
@@ -44,7 +45,7 @@ export default function OutputPanel({
 
   const handleMove = async () => {
     try {
-      const response = await fetch('http://localhost:8000/move_and_log', {
+      const response = await fetch(`${API_BASE}/move_and_log`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

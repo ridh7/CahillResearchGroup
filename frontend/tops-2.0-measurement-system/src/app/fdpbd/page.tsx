@@ -2,7 +2,10 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import Plot from 'react-plotly.js';
+import dynamic from 'next/dynamic';
+import { API_BASE } from '../../lib/api';
+
+const Plot = dynamic(() => import('react-plotly.js'), { ssr: false });
 
 type IsotropicPlotData = {
   freq_fit: number[];
@@ -655,8 +658,8 @@ export default function FDPBDPage() {
     try {
       const endpoint =
         isotropyOption === 'isotropy'
-          ? 'http://localhost:8000/fdpbd/analyze'
-          : 'http://localhost:8000/fdpbd/analyze_anisotropy';
+          ? `${API_BASE}/fdpbd/analyze`
+          : `${API_BASE}/fdpbd/analyze_anisotropy`;
       const response = await fetch(endpoint, {
         method: 'POST',
         body: formData,

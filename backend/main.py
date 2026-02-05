@@ -1,8 +1,12 @@
 import asyncio
+import os
 from contextlib import asynccontextmanager, suppress
+from pathlib import Path
 
 from fastapi import FastAPI, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from fastapi.websockets import WebSocketDisconnect
 
 from app.core.lockin import SR865A
@@ -11,6 +15,8 @@ from app.core.shared_state import shared_state
 from app.core.stage import ThorlabsBBD302
 from app.models.state import global_state
 from app.routers import endpoints
+
+FRONTEND_DIR = Path(__file__).parent / "static"
 
 
 @asynccontextmanager
@@ -42,15 +48,34 @@ async def lifespan(app: FastAPI):  # noqa: ARG001
 
 app = FastAPI(lifespan=lifespan)
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+cors_origins = os.environ.get("CORS_ORIGINS", "").strip()
+if cors_origins:
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=cors_origins.split(","),
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
 
 app.include_router(endpoints.router)
+
+# Serve static frontend assets if the build output exists
+if FRONTEND_DIR.is_dir():
+    next_static = FRONTEND_DIR / "_next"
+    if next_static.is_dir():
+        app.mount("/_next", StaticFiles(directory=str(next_static)), name="next_static")
+
+    @app.get("/{path:path}")
+    async def serve_spa(path: str) -> FileResponse:
+        """Serve the static frontend, with SPA fallback for client-side routes."""
+        file_path = FRONTEND_DIR / path
+        if file_path.is_file():
+            return FileResponse(str(file_path))
+        page_html = FRONTEND_DIR / path / "index.html"
+        if page_html.is_file():
+            return FileResponse(str(page_html))
+        return FileResponse(str(FRONTEND_DIR / "index.html"))
 
 
 async def send_lockin_data(websocket: WebSocket):
