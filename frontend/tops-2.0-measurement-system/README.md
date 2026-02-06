@@ -1,6 +1,6 @@
-# TOPS 2.0 Measurement System
+# TOPS 2.0 Frontend
 
-A Next.js dashboard for controlling real-time laboratory experiments measuring thermal properties of materials using Time-Resolved Optical Pump-Probe Spectroscopy (TOPS).
+A Next.js dashboard for controlling real-time laboratory experiments measuring thermal properties of materials using TOPS.
 
 ## Overview
 
@@ -8,31 +8,25 @@ This application provides a web-based interface for researchers to:
 
 - Control and monitor three hardware instruments simultaneously (Lock-in Amplifier, Multimeter, Motorized Stage)
 - Perform automated 2D spatial scanning of material samples
-- Visualize real-time measurement data with live graphs and heatmaps
+- Visualize measurement data with 2D spatial heatmaps from CSV uploads
 - Analyze experimental data using physics-based models (FDPBD - Frequency-Domain Pump-Probe Buried Delay)
-
-### Who Uses This
-
-- Research scientists conducting thermal conductivity experiments
-- Laboratory technicians operating TOPS measurement equipment
-- Data analysts processing experimental results
 
 ## Tech Stack
 
-| Category            | Technology    | Version |
-| ------------------- | ------------- | ------- |
-| **Framework**       | Next.js       | 15.1.6  |
-| **UI Library**      | React         | 19.0.0  |
-| **Language**        | TypeScript    | 5       |
-| **Styling**         | Tailwind CSS  | 3.4.1   |
-| **Data Viz**        | Plotly.js     | 3.0.1   |
-|                     | Recharts      | 2.15.1  |
-| **Animation**       | Framer Motion | 12.4.2  |
-| **Data Processing** | PapaParse     | 5.5.2   |
-| **Code Quality**    | ESLint        | 9       |
-|                     | Prettier      | 3.8.1   |
-| **Git Hooks**       | Husky         | 9.1.7   |
-|                     | lint-staged   | 16.2.7  |
+| Category            | Technology    |
+| ------------------- | ------------- |
+| **Framework**       | Next.js       |
+| **UI Library**      | React         |
+| **Language**        | TypeScript    |
+| **Styling**         | Tailwind CSS  |
+| **Data Viz**        | Plotly.js     |
+|                     | Recharts      |
+| **Animation**       | Framer Motion |
+| **Data Processing** | PapaParse     |
+| **Code Quality**    | ESLint        |
+|                     | Prettier      |
+| **Git Hooks**       | Husky         |
+|                     | lint-staged   |
 
 ## Getting Started
 
@@ -121,10 +115,6 @@ src/
 │  • ws://localhost:8000/ws/multimeter → MultimeterData       │
 │  • ws://localhost:8000/ws/stage      → StageData            │
 │         ↓                                                   │
-│  Real-time data flows to RealTimeGraphs component           │
-│  • Rolling 100-point buffer for each signal                 │
-│  • Recharts renders live line charts                        │
-│         ↓                                                   │
 │  POST /move_and_log → Stage moves, logs data point          │
 │         ↓                                                   │
 │  User uploads CSV for post-processing                       │
@@ -179,15 +169,6 @@ Displays real-time status for each instrument:
 - Current readings from Lock-in (X, Y, Frequency) and Multimeter (Voltage)
 - Connect/Disconnect buttons for each WebSocket channel
 - Manual stage control (Move & Log button)
-
-### RealTimeGraphs
-
-Live visualization using Recharts:
-
-- Three separate line charts (Lock-in X, Lock-in Y, Multimeter Voltage)
-- Rolling 100-point window (prevents memory growth)
-- Relative timestamps (seconds since connection start)
-- Reset functionality to clear data without disconnecting
 
 ### HeatmapPanel
 
@@ -299,20 +280,3 @@ NEXT_PUBLIC_API_URL=http://localhost:8000
 - Run `npm run lint:fix` to auto-fix issues
 - Manually fix remaining errors shown in output
 - Use `git commit --no-verify` only in emergencies (not recommended)
-
-## Contributing
-
-### Code Review Checklist
-
-- [ ] All new components have TypeScript types
-- [ ] Complex logic includes explanatory comments
-- [ ] ESLint and Prettier pass (`npm run lint`, `npm run format:check`)
-- [ ] WebSocket connections are properly cleaned up (no memory leaks)
-- [ ] useEffect hooks have correct dependency arrays
-
-### Branch Workflow
-
-1. Create feature branch from `main`
-2. Make changes with incremental commits
-3. Run `npm run lint` and `npm run format` before pushing
-4. Create pull request for review

@@ -16,7 +16,7 @@ class SR865A:
         try:
             self.rm = pyvisa.ResourceManager()
             if resource_name is None:
-                # Auto-detect SR865A by USB PID "3769" in resource string
+                # Auto-detect SR865A by USB Product ID "3769" in resource string
                 resources = self.rm.list_resources()
                 for res in resources:
                     if "3769" in res:

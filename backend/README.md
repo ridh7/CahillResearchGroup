@@ -6,8 +6,8 @@ FastAPI backend for the TOPS 2.0 measurement system, providing real-time instrum
 
 This backend provides:
 
-- **Instrument Control**: Direct communication with hardware via GPIB/USB (PyVISA)
-- **Real-Time Streaming**: WebSocket endpoints for live data at ~200Hz
+- **Instrument Control**: Direct communication with hardware via GPIB (General Purpose Interface Bus) / USB (PyVISA)
+- **Real-Time Streaming**: WebSocket endpoints for live data
 - **Data Acquisition**: Automated 2D scanning with continuous logging
 - **Physics Analysis**: FD-PBD (Frequency-Domain Photothermal Beam Deflection) thermal property extraction
 
@@ -19,16 +19,16 @@ This backend provides:
 
 ## Tech Stack
 
-| Category            | Technology       |
-| ------------------- | ---------------- |
-| **Framework**       | FastAPI          |
-| **Language**        | Python 3.10+     |
-| **Validation**      | Pydantic         |
-| **Instrument I/O**  | PyVISA           |
-| **.NET Bridge**     | pythonnet        |
-| **Scientific**      | NumPy, SciPy, Matplotlib |
-| **Code Quality**    | Ruff (format + lint), mypy (type checking) |
-| **Git Hooks**       | Husky, lint-staged (configured in root) |
+| Category           | Technology                                 |
+| ------------------ | ------------------------------------------ |
+| **Framework**      | FastAPI                                    |
+| **Language**       | Python 3.10+                               |
+| **Validation**     | Pydantic                                   |
+| **Instrument I/O** | PyVISA                                     |
+| **.NET Bridge**    | pythonnet                                  |
+| **Scientific**     | NumPy, SciPy, Matplotlib                   |
+| **Code Quality**   | Ruff (format + lint), mypy (type checking) |
+| **Git Hooks**      | Husky, lint-staged (configured in root)    |
 
 ## Getting Started
 
@@ -36,13 +36,16 @@ This backend provides:
 
 - **Python 3.10 or higher**
 - **Hardware Instruments**:
-  - SR865A Lock-in Amplifier (serial number: USB-based, PID 3769)
+  - SR865A Lock-in Amplifier (serial number: USB-based, Product ID 3769)
   - BK Precision 5493C Multimeter (serial number: W114239033)
   - Thorlabs BBD302 Stage Controller (serial number: 103387864)
 - **Thorlabs Kinesis Software**: Required for BBD302 .NET DLLs
   - Install from [Thorlabs Kinesis](https://www.thorlabs.com/software_pages/ViewSoftwarePage.cfm?Code=Motion_Control)
   - DLLs expected at: `C:\Program Files\Thorlabs\Kinesis\`
-- **NI-VISA or Keysight IO Libraries**: For GPIB/USB instrument communication
+- **NI-VISA or Keysight IO Libraries**: Required by PyVISA as the low-level backend for GPIB/USB instrument communication (SR865A, BK5493C)
+  - May already be installed if Thorlabs Kinesis or other instrument software is present
+  - Check for existing installation at: `C:\Program Files\IVI Foundation\VISA\` or `C:\Program Files (x86)\IVI Foundation\VISA\`
+  - If not installed, download [NI-VISA](https://www.ni.com/en/support/downloads/drivers/download.ni-visa.html) from National Instruments
 
 ### Installation
 
@@ -67,7 +70,7 @@ pip install -e .
 
 ```bash
 # Start FastAPI server with auto-reload
-python -m uvicorn main:app --reload --host 0.0.0.0 --port 8000
+uvicorn main:app --reload
 ```
 
 The API will be available at:
@@ -130,7 +133,7 @@ backend/
 │                     │              │   /ws/multimeter,        │
 │  - /move            │              │   /ws/stage)             │
 │  - /start           │              │                          │
-│  - /move_and_log    │              │  Streams at ~200Hz       │
+│  - /move_and_log    │              │                          │
 │  - /fdpbd/analyze   │              └──────────┬───────────────┘
 └──────────┬──────────┘                         │
            │                                    │
@@ -169,45 +172,79 @@ backend/
 
 - **Device**: Stanford Research SR865A
 - **Communication**: PyVISA (GPIB/USB)
-- **Features**:
-  - Reads X, Y (in-phase, quadrature) components and reference frequency
-  - Configurable sensitivity (1V to 1nV full-scale)
-  - Configurable time constant (1µs to 300ks integration time)
-- **Auto-detection**: Searches for USB PID "3769"
+- **Auto-detection**: Searches for USB Product ID "3769" in VISA resource string
+
+**What it does**: A lock-in amplifier measures extremely weak AC signals buried in noise. It works by correlating the input signal with a known reference frequency — anything not at that exact frequency gets rejected. This is how the FD-PBD experiment detects tiny photothermal beam deflections.
+
+**Readings**:
+
+- **X (in-phase)**: The component of the signal in sync with the reference. Represents `amplitude × cos(phase)`.
+- **Y (quadrature)**: The component 90° out of phase with the reference. Represents `amplitude × sin(phase)`.
+- **Frequency**: The reference frequency the lock-in is locked to.
+- From X and Y you can compute: signal amplitude = `√(X² + Y²)` and phase = `arctan(Y/X)`.
+
+**Settings**:
+
+- **Sensitivity** (codes 0–27): Sets the full-scale input range — the maximum signal level the instrument expects. Think of it like a volume knob on a microphone: if your signal is very weak (nanovolts), you need high sensitivity so the instrument amplifies it enough to measure. If set too low (e.g., 1V range for a nanovolt signal), you lose resolution. If set too high (e.g., 1nV range for a millivolt signal), the instrument overloads.
+  - Code 0 = 1V full-scale (least sensitive, for large signals)
+  - Code 27 = 1nV full-scale (most sensitive, for tiny signals)
+  - Values follow a 1-2-5 sequence: 1V, 500mV, 200mV, 100mV, 50mV, ...down to 1nV
+- **Time Constant** (codes 0–23): Controls how long the lock-in averages each measurement. A longer time constant means more averaging, which reduces random noise but makes the measurement respond more slowly to changes. Choose based on how fast your signal changes.
+  - Code 0 = 1µs (fastest response, most noise)
+  - Code 23 = 300ks (slowest response, cleanest signal)
+  - Values follow a 1-3-10 sequence: 1µs, 3µs, 10µs, 30µs, 100µs, ...up to 300ks
 
 #### Multimeter (`multimeter.py`)
 
 - **Device**: BK Precision 5493C
 - **Communication**: PyVISA (GPIB/USB)
-- **Features**:
-  - DC voltage measurement (default)
-  - Configurable NPLC (0.02 to 100 power line cycles)
-    - Lower NPLC = faster, noisier (0.02 NPLC ≈ 0.33ms @ 60Hz)
-    - Higher NPLC = slower, cleaner (100 NPLC ≈ 1.67s @ 60Hz)
-  - Front/rear terminal selection
-- **Auto-detection**: Searches for serial "W114239033"
+- **Auto-detection**: Searches for serial number "W114239033" in VISA resource string
+
+**What it does**: A digital multimeter measures voltage (and optionally current, resistance, etc.). In this setup, it reads DC voltage from the position-sensitive photodetector, which converts the probe laser beam's deflection into a voltage signal.
+
+**Settings**:
+
+- **NPLC — Number of Power Line Cycles** (valid values: 0.02, 0.2, 1, 10, 100): Controls how long the multimeter integrates (averages) each reading. The time is measured in cycles of the 60 Hz AC power line (~16.67ms per cycle). Why power line cycles? The biggest noise source in sensitive voltage measurements is 60 Hz mains interference from nearby power lines and equipment. Integrating for a whole number of power line cycles cancels this interference.
+  - 0.02 NPLC ≈ 0.33ms → very fast readings, but noisy
+  - 0.2 NPLC ≈ 3.3ms → good balance for scanning (current default)
+  - 1 NPLC ≈ 16.7ms → cancels one full 60 Hz cycle of noise
+  - 100 NPLC ≈ 1.67s → very clean readings, but slow
+- **Terminal** (`"fron"` or `"rear"`): Selects which physical input jacks to read from. The multimeter has two sets of banana jack inputs — front panel and rear panel. Rear terminals (current default) are typically used when the instrument is rack-mounted or when cables are semi-permanently connected to avoid accidental disconnection.
+
+**Default initialization**: On startup, the driver resets the multimeter, configures DC voltage mode, sets 0.2 NPLC, and selects rear terminals.
 
 #### Motorized Stage (`stage.py`)
 
 - **Device**: Thorlabs BBD302 (2-channel brushless motor controller)
-- **Communication**: .NET DLLs via pythonnet
-- **Features**:
-  - 2-axis (X, Y) positioning with 1µm resolution
-  - Automatic homing on initialization (finds limit switches)
-  - Bidirectional zigzag scanning for 2D data acquisition
-- **Initialization Sequence**:
-  1. Build device list from Thorlabs SDK
-  2. Connect to controller
-  3. For each channel: StartPolling(250ms) → EnableDevice → LoadMotorConfiguration → Home(60s timeout)
-- **Auto-detection**: Searches for serial "103387864"
+- **Communication**: .NET DLLs via pythonnet (not PyVISA — uses Thorlabs' own SDK)
+- **Auto-detection**: Searches for serial number "103387864"
+
+**What it does**: Controls a motorized X-Y translation stage that physically moves the sample (or optics) to different positions. This is how the system performs 2D spatial scans — stepping through a grid of positions while recording lock-in and multimeter data at each point.
+
+**Channels**: The BBD302 has 2 independent motor channels:
+
+- **Channel 1** = X axis (horizontal movement)
+- **Channel 2** = Y axis (vertical movement)
+
+**Key concepts**:
+
+- **Homing**: On startup, each axis drives to its limit switch (a physical end-stop) to establish an absolute zero reference. Without homing, the stage doesn't know where it is.
+- **Polling**: The stage periodically reports its current position back to the software. Default polling rate is 250ms (4 updates/sec). During scans, this is increased to 1ms (1000 updates/sec) for higher spatial resolution.
+- **Positioning**: Movements are commanded in millimeters using `Decimal` type for precision. Each `MoveTo` call blocks until the stage reaches its target (with a 60s timeout).
+
+**Initialization sequence**:
+
+1. Build device list from Thorlabs SDK
+2. Connect to controller by serial number
+3. For each channel: StartPolling(250ms) → EnableDevice → LoadMotorConfiguration → Home(60s timeout)
 
 ### 2. WebSocket Streaming
 
 Three WebSocket endpoints provide real-time data streams:
 
-- **`/ws/lockin`**: Lock-in X, Y, frequency at ~200Hz (5ms interval)
-- **`/ws/multimeter`**: Multimeter voltage at ~200Hz
-- **`/ws/stage`**: Stage X, Y position at ~200Hz
+- **`/ws/lockin`**: Lock-in X, Y
+- **`/ws/multimeter`**: Multimeter voltage
+- **`/ws/stage`**: Stage X, Y position
 
 **Connection Management**:
 
@@ -228,7 +265,7 @@ Three WebSocket endpoints provide real-time data streams:
 - Unidirectional scanning with fixed pause at each point
 - Endpoint: `POST /start`
 - Closes WebSocket connections after completion
-- **Use case**: Simple grid measurements with precise timing
+- **Output**: Timestamped CSV (`Measurements_YYYYMMDD_HHMMSS.csv`) in the server's working directory
 
 #### Bidirectional Continuous Scan (`move_and_log`)
 
@@ -238,14 +275,10 @@ Three WebSocket endpoints provide real-time data streams:
      - Scan Y upward (start_y → target_y) or downward (current_y → start_y)
      - Log instrument data continuously during Y movement (not pausing)
      - Capture: first point + continuous samples + end point
-     - Reverse Y direction for next X (bidirectional = 50% faster)
+     - Reverse Y direction for next X
   3. Post-process: filter out-of-bounds and duplicate samples
 - Endpoint: `POST /move_and_log`
-- **Advantages**:
-  - ~50% faster than unidirectional (no Y-axis return moves)
-  - Higher spatial resolution (continuous sampling during motion)
-  - Better for time-sensitive experiments
-- **Output**: Timestamped CSV in `data/` directory
+- **Output**: Timestamped CSV (`Measurements_YYYYMMDD_HHMMSS.csv`) in the server's working directory
 
 **Data Synchronization**:
 
@@ -300,8 +333,8 @@ Frequency-Domain Photothermal Beam Deflection (FD-PBD) measures thermal properti
 
 Pre-commit hooks (configured in root `.lintstagedrc.json`):
 
-- **Ruff format**: Code formatter (88 char line length)
-- **Ruff check**: Linter + import sorter (pycodestyle + pyflakes + isort)
+- **Ruff format**: Code formatter
+- **Ruff check**: Linter + import sorter
 - **mypy**: Static type checker
 
 ```bash
@@ -396,12 +429,6 @@ mypy app
 - **`POST /fdpbd/analyze`**: FD-PBD thermal property extraction
 - **`POST /anisotropic_fdpbd/analyze`**: Anisotropic FD-PBD analysis
 
-### WebSocket Streams
-
-- **`/ws/lockin`**: X, Y, frequency at ~200Hz
-- **`/ws/multimeter`**: Voltage at ~200Hz
-- **`/ws/stage`**: X, Y position at ~200Hz
-
 ## Troubleshooting
 
 ### Instrument Connection Issues
@@ -441,54 +468,3 @@ mypy app
 - This is expected for pythonnet dynamic imports
 - Runtime imports work correctly even if linter shows error
 - Configure Python interpreter: `Ctrl+Shift+P` → "Python: Select Interpreter" → `backend/myenv`
-
-### Data Acquisition Issues
-
-**WebSocket disconnects during scan**:
-
-- This is intentional for `/start` endpoint (legacy mode)
-- Use `/move_and_log` if you need continuous streaming
-
-**Stage position jumps or jitters**:
-
-- Check for mechanical obstructions
-- Verify homing completed successfully on startup
-- Increase polling interval if CPU overloaded
-
-**Lock-in reads zero during scan**:
-
-- Check `shared_state.pause_lockin_reading` flag
-- Should only pause during old grid scan mode
-- Bidirectional scan uses cached values instead
-
-**GPIB timeout errors**:
-
-- Reduce WebSocket streaming rate (increase `await asyncio.sleep(0.005)`)
-- Use GPIB analyzer to check for bus conflicts
-- Ensure only one client per instrument (WebSocket limit)
-
-### Analysis Errors
-
-**FD-PBD fit does not converge**:
-
-- Check baseline correction (in-phase/out-of-phase offsets)
-- Verify frequency range matches thermal response
-- Adjust initial guess `x_guess` and bounds `lb`, `ub`
-- Increase `dec_digits` in Romberg integration (accuracy vs. speed trade-off)
-
-**Unphysical results (negative thermal conductivity)**:
-
-- Review beam radii `r_pump`, `r_probe` (must match experiment)
-- Check layer thickness `h_down` (substrate usually semi-infinite)
-- Verify material parameters (Poisson ratio, volumetric heat capacity)
-
-## Contributing
-
-1. Create feature branch from `main`
-2. Make changes with descriptive commits
-3. Pre-commit hooks will run automatically (Black + Ruff)
-4. Push and create pull request
-
-## License
-
-Internal research tool for Cahill Research Group.

@@ -1,10 +1,17 @@
-# TOPS 2.0 Measurement System
+# TOPS 2.0
 
-## Prerequisites
+A full-stack measurement system for controlling laboratory instruments, performing automated 2D spatial scans, and analyzing thermal properties of materials using FD-PBD (Frequency-Domain Photothermal Beam Deflection).
 
-- Python 3.10+
-- Node.js 18+ and npm
-- Connected instruments: Thorlabs BBD302 stage, SR865A lock-in amplifier, BK Precision 5493C multimeter
+## Overview
+
+- **Backend**: FastAPI server handling instrument communication via GPIB (General Purpose Interface Bus) / USB, WebSocket streaming, data acquisition, and physics-based analysis
+- **Frontend**: Next.js dashboard for instrument control, scan configuration, heatmap visualization, and FD-PBD analysis
+
+### Supported Instruments
+
+- **Lock-in Amplifier**: Stanford Research Systems SR865A (GPIB/USB via PyVISA)
+- **Digital Multimeter**: BK Precision 5493C (GPIB/USB via PyVISA)
+- **Motorized Stage**: Thorlabs BBD302 2-channel brushless motor controller (.NET SDK via pythonnet)
 
 ## Getting Started
 
@@ -36,7 +43,7 @@ For frontend development with live reloading:
    cd backend
    myenv\Scripts\activate
    set CORS_ORIGINS=http://localhost:3000
-   python -m uvicorn main:app --reload --host 0.0.0.0 --port 8000
+   uvicorn main:app --reload
    ```
 
 2. **Start the frontend** (terminal 2):
@@ -46,18 +53,29 @@ For frontend development with live reloading:
    npm run dev
    ```
 
-   The frontend runs at `http://localhost:3000` with hot reload. API calls are proxied to the backend at `http://localhost:8000` via environment variables in `.env.development`.
+   The frontend runs at `http://localhost:3000` with hot reload. API and WebSocket calls are proxied to the backend at `http://localhost:8000` via environment variables in `.env.development`.
 
 ## Project Structure
 
 ```
 ├── backend/           Python FastAPI backend + instrument drivers
 │   ├── main.py        Application entry point
-│   ├── app/           Core logic, models, and API routes
+│   ├── app/
+│   │   ├── core/      Instrument drivers (lockin, multimeter, stage) and analysis
+│   │   ├── models/    Pydantic models and global state
+│   │   ├── routers/   REST API endpoints
+│   │   └── utils/     File I/O helpers
 │   ├── myenv/         Python virtual environment (not committed)
 │   └── static/        Built frontend output (not committed)
 ├── frontend/          Next.js frontend
+│   └── tops-2.0-measurement-system/
+│       └── src/
+│           ├── app/           Pages (dashboard, FD-PBD analysis)
+│           ├── components/    UI components (controls, heatmaps, settings)
+│           └── lib/           API configuration
 ├── build.ps1          PowerShell build script
 ├── start.bat          Production launcher
 └── README.md
 ```
+
+See [backend/README.md](backend/README.md) and [frontend/README.md](frontend/tops-2.0-measurement-system/README.md) for detailed documentation on each layer.
