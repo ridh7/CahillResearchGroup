@@ -1,6 +1,6 @@
 # TOPS 2.0 Frontend
 
-A Next.js dashboard for controlling real-time laboratory experiments measuring thermal properties of materials using TOPS.
+A Next.js dashboard for controlling real-time laboratory experiments measuring thermal properties of materials using TOPS (Thermo-Optic Phase Spectroscopy).
 
 ## Overview
 

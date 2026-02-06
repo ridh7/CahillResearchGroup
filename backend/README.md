@@ -1,6 +1,6 @@
 # TOPS 2.0 Backend
 
-FastAPI backend for the TOPS 2.0 measurement system, providing real-time instrument control, WebSocket streaming, and physics-based data analysis.
+FastAPI backend for the TOPS (Thermo-Optic Phase Spectroscopy) 2.0 measurement system, providing real-time instrument control, WebSocket streaming, and physics-based data analysis.
 
 ## Overview
 

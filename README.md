@@ -1,4 +1,4 @@
-# TOPS 2.0
+# TOPS (Thermo-Optic Phase Spectroscopy) 2.0
 
 A full-stack measurement system for controlling laboratory instruments, performing automated 2D spatial scans, and analyzing thermal properties of materials using FD-PBD (Frequency-Domain Photothermal Beam Deflection).
 
