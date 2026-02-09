@@ -5,20 +5,13 @@ from threading import Thread
 
 import clr
 
+from app.config import settings
 from app.models.state import global_state
 from app.utils.file_utils import save_to_file
 
-from .shared_state import shared_state
-
-clr.AddReference(
-    "C:\\Program Files\\Thorlabs\\Kinesis\\Thorlabs.MotionControl.DeviceManagerCLI.dll"
-)
-clr.AddReference(
-    "C:\\Program Files\\Thorlabs\\Kinesis\\Thorlabs.MotionControl.GenericMotorCLI.dll"
-)
-clr.AddReference(
-    "C:\\Program Files\\Thorlabs\\Kinesis\\ThorLabs.MotionControl.Benchtop.BrushlessMotorCLI.dll"
-)
+clr.AddReference(settings.kinesis_device_manager_dll)
+clr.AddReference(settings.kinesis_generic_motor_dll)
+clr.AddReference(settings.kinesis_brushless_motor_dll)
 
 from System import Decimal, Math
 from Thorlabs.MotionControl.Benchtop.BrushlessMotorCLI import *
@@ -51,7 +44,7 @@ class ThorlabsBBD302:
                 # Auto-detect BBD302 by known serial number
                 devices = DeviceManagerCLI.GetDeviceList()  # type: ignore[name-defined]
                 for dev in devices:
-                    if dev == "103387864":
+                    if dev == settings.stage_serial:
                         serial_number = dev
             print(f"---Connecting to stage with serial number: {serial_number}")
             self.device = BenchtopBrushlessMotor.CreateBenchtopBrushlessMotor(  # type: ignore[name-defined]
@@ -87,6 +80,7 @@ class ThorlabsBBD302:
                 time.sleep(1)
         except Exception as e:
             print(f"---Stage initialization error: {e}")
+            raise
 
     def home_channel(self, channel_number):
         try:
@@ -103,7 +97,8 @@ class ThorlabsBBD302:
             vel_params = self.channel[channel_number].GetVelocityParams()
             return home_params, vel_params
         except Exception as e:
-            print(f"---Error: {e}")
+            print(f"---Error getting movement params: {e}")
+            raise
 
     def move_in_rectangle(
         self,
@@ -140,8 +135,8 @@ class ThorlabsBBD302:
                     f"---Current position: ({self.channel[1].DevicePosition}, {self.channel[2].DevicePosition})"
                 )
                 timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")
-                shared_state.pause_lockin_reading.set()
-                shared_state.pause_stage_reading.set()
+                global_state.pause_lockin_reading.set()
+                global_state.pause_stage_reading.set()
                 try:
                     time.sleep(0.02)
                     # Read all devices while WebSockets are paused
@@ -158,8 +153,8 @@ class ThorlabsBBD302:
                     position_x = self.channel[1].DevicePosition
                     position_y = self.channel[2].DevicePosition
                 finally:
-                    shared_state.pause_lockin_reading.clear()
-                    shared_state.pause_stage_reading.clear()
+                    global_state.pause_lockin_reading.clear()
+                    global_state.pause_stage_reading.clear()
 
                 # Build values dict after clearing pause
                 if lockin_values:
@@ -168,9 +163,7 @@ class ThorlabsBBD302:
                     values["positionX"] = position_x
                     values["positionY"] = position_y
                     values["voltage"] = multimeter_value
-                else:
-                    values = None
-                data.append(values)
+                    data.append(values)
                 time.sleep(delay)
                 # Calculate next x position using iteration count to avoid accumulation of floating point error
                 x_iteration += 1
@@ -182,16 +175,8 @@ class ThorlabsBBD302:
 
     def read_values(self):
         try:
-            x = (
-                global_state.stage.channel[1].DevicePosition
-                if global_state.stage
-                else None
-            )
-            y = (
-                global_state.stage.channel[2].DevicePosition
-                if global_state.stage
-                else None
-            )
+            x = self.channel[1].DevicePosition
+            y = self.channel[2].DevicePosition
             return {"x": f"{x}", "y": f"{y}"}
         except Exception as e:
             print(f"Error reading from stage: {e}")
@@ -222,7 +207,7 @@ class ThorlabsBBD302:
         """
         try:
             # Pause stage WebSocket to prevent VISA resource locking conflicts
-            shared_state.pause_stage_reading.set()
+            global_state.pause_stage_reading.set()
 
             # Increase polling frequency for high-resolution position tracking
             self.channel[1].StartPolling(1)
@@ -257,15 +242,15 @@ class ThorlabsBBD302:
 
                 # Capture first point before starting movement
                 timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")
-                with shared_state.value_lock:
+                with global_state.value_lock:
                     lockin_values = (
-                        shared_state.latest_lockin_values.copy()
-                        if shared_state.latest_lockin_values
+                        global_state.latest_lockin_values.copy()
+                        if global_state.latest_lockin_values
                         else {"X": 0, "Y": 0, "frequency": 0}
                     )
                     multimeter_value = (
-                        shared_state.latest_multimeter_value
-                        if shared_state.latest_multimeter_value is not None
+                        global_state.latest_multimeter_value
+                        if global_state.latest_multimeter_value is not None
                         else 0
                     )
                     stage_values = self.read_values()
@@ -296,24 +281,24 @@ class ThorlabsBBD302:
 
                     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")
 
-                    # Read latest instrument values from shared_state cache
+                    # Read latest instrument values from global_state cache
                     # (populated by WebSocket streaming threads at ~200Hz)
                     # This avoids blocking GPIB communication during continuous scan
-                    with shared_state.value_lock:
+                    with global_state.value_lock:
                         lockin_values = (
-                            shared_state.latest_lockin_values.copy()
-                            if shared_state.latest_lockin_values
+                            global_state.latest_lockin_values.copy()
+                            if global_state.latest_lockin_values
                             else {"X": 0, "Y": 0, "frequency": 0}
                         )
                         multimeter_value = (
-                            shared_state.latest_multimeter_value
-                            if shared_state.latest_multimeter_value is not None
+                            global_state.latest_multimeter_value
+                            if global_state.latest_multimeter_value is not None
                             else 0
                         )
                         # stage_values = self.read_values()
                         stage_values = (
-                            shared_state.latest_stage_values.copy()
-                            if shared_state.latest_stage_values
+                            global_state.latest_stage_values.copy()
+                            if global_state.latest_stage_values
                             else {"x": -1, "y": -1}
                         )
 
@@ -334,15 +319,15 @@ class ThorlabsBBD302:
 
                 # Capture end point after movement completes
                 timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")
-                with shared_state.value_lock:
+                with global_state.value_lock:
                     lockin_values = (
-                        shared_state.latest_lockin_values.copy()
-                        if shared_state.latest_lockin_values
+                        global_state.latest_lockin_values.copy()
+                        if global_state.latest_lockin_values
                         else {"X": 0, "Y": 0, "frequency": 0}
                     )
                     multimeter_value = (
-                        shared_state.latest_multimeter_value
-                        if shared_state.latest_multimeter_value is not None
+                        global_state.latest_multimeter_value
+                        if global_state.latest_multimeter_value is not None
                         else 0
                     )
                     stage_values = self.read_values()
@@ -436,4 +421,4 @@ class ThorlabsBBD302:
                 print(f"---Error occurred at line {line_number} in {filename}: {text}")
         finally:
             # Resume stage WebSocket streaming
-            shared_state.pause_stage_reading.clear()
+            global_state.pause_stage_reading.clear()

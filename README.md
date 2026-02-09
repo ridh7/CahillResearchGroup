@@ -42,8 +42,13 @@ For frontend development with live reloading:
    ```
    cd backend
    myenv\Scripts\activate
-   set CORS_ORIGINS=http://localhost:3000
+   set TOPS_CORS_ORIGINS=http://localhost:3000
    uvicorn main:app --reload
+   ```
+
+   Or create a `.env` file in `backend/` with:
+   ```
+   TOPS_CORS_ORIGINS=http://localhost:3000
    ```
 
 2. **Start the frontend** (terminal 2):
@@ -58,24 +63,50 @@ For frontend development with live reloading:
 ## Project Structure
 
 ```
-├── backend/           Python FastAPI backend + instrument drivers
-│   ├── main.py        Application entry point
+├── backend/               Python FastAPI backend + instrument drivers
+│   ├── main.py            Application entry point
+│   ├── .env.example       Environment variable template
 │   ├── app/
-│   │   ├── core/      Instrument drivers (lockin, multimeter, stage) and analysis
-│   │   ├── models/    Pydantic models and global state
-│   │   ├── routers/   REST API endpoints
-│   │   └── utils/     File I/O helpers
-│   ├── myenv/         Python virtual environment (not committed)
-│   └── static/        Built frontend output (not committed)
-├── frontend/          Next.js frontend
+│   │   ├── config.py      Centralized configuration (Pydantic Settings)
+│   │   ├── core/          Instrument drivers (lockin, multimeter, stage) and analysis
+│   │   ├── dependencies.py FastAPI dependency injection functions
+│   │   ├── models/        Pydantic models and global state
+│   │   ├── routers/       REST API endpoints (domain-organized)
+│   │   │   ├── stage.py      Stage control (7 endpoints)
+│   │   │   ├── lockin.py     Lock-in amplifier (3 endpoints)
+│   │   │   ├── multimeter.py Multimeter (3 endpoints)
+│   │   │   ├── analysis.py   FD-PBD analysis (2 endpoints)
+│   │   │   └── websockets.py WebSocket streaming (3 endpoints)
+│   │   └── utils/         File I/O helpers
+│   ├── myenv/             Python virtual environment (not committed)
+│   └── static/            Built frontend output (not committed)
+├── frontend/              Next.js frontend
 │   └── tops-2.0-measurement-system/
 │       └── src/
 │           ├── app/           Pages (dashboard, FD-PBD analysis)
 │           ├── components/    UI components (controls, heatmaps, settings)
 │           └── lib/           API configuration
-├── build.ps1          PowerShell build script
-├── start.bat          Production launcher
+├── build.ps1              PowerShell build script
+├── start.bat              Production launcher
 └── README.md
 ```
 
 See [backend/README.md](backend/README.md) and [frontend/README.md](frontend/tops-2.0-measurement-system/README.md) for detailed documentation on each layer.
+
+## Additional Resources
+
+### Scientific Concepts
+
+- **[Photothermal Beam Deflection Spectroscopy](https://en.wikipedia.org/wiki/Photothermal_spectroscopy)** - Overview of photothermal measurement techniques
+- **[Photothermal Deflection Theory (Jackson et al., 1981)](https://www.researchgate.net/publication/42390283_Photothermal_deflection_spectroscopy_and_detection)** - Foundational paper on PDS theory
+- **[ScienceDirect: Photothermal Deflection Spectroscopy](https://www.sciencedirect.com/topics/physics-and-astronomy/photothermal-deflection-spectroscopy)** - Comprehensive technical overview
+
+### Hardware Manuals
+
+- **[SR865A Operation Manual (PDF)](https://www.thinksrs.com/downloads/pdfs/manuals/SR865Am.pdf)** - Full manual for the Stanford Research Systems SR865A lock-in amplifier
+- **[SR865A Product Page](https://www.thinksrs.com/products/sr865a.html)** - Specifications, downloads, and application notes
+- **[BK Precision 5490C Series User Manual (PDF)](https://bkpmedia.s3.amazonaws.com/downloads/manuals/en-us/5490C_Series_manual.pdf)** - Full manual for the BK Precision 5493C multimeter
+- **[BK Precision 5493C Product Page](https://www.bkprecision.com/products/multimeters/5493CGPIB)** - Specifications and downloads
+- **[Thorlabs BBD302 Product Page](https://www.thorlabs.com/thorproduct.cfm?partnumber=BBD302)** - 2-channel brushless DC motor controller
+- **[Thorlabs BBD30x Kinesis User Manual](https://www.manualslib.com/manual/2841093/Thorlabs-Bbd301.html)** - Full manual for BBD301/BBD302/BBD303 controllers
+- **[Thorlabs Kinesis Software](https://www.thorlabs.com/software_pages/ViewSoftwarePage.cfm?Code=Motion_Control)** - Required .NET SDK for stage control

@@ -61,7 +61,7 @@ known-first-party = ["app"]
 "app/core/anisotropic_analysis.py" = ["N806", "N803"]  # Scientific variables use specific capitalization
 "app/core/fdpbd/thermal_model.py" = ["N806"]  # Scientific variables use specific capitalization
 "app/models/models.py" = ["N815"]  # Pydantic field names match API contract
-"app/routers/endpoints.py" = ["B008"]  # FastAPI uses File(...)/Form(...) as defaults by design
+"app/routers/*.py" = ["B008"]  # FastAPI uses Depends(...)/File(...)/Form(...) as defaults by design
 
 [tool.ruff.format]
 quote-style = "double"

@@ -2,6 +2,8 @@ from typing import Any, cast
 
 import pyvisa
 
+from app.config import settings
+
 
 class SR865A:
     """
@@ -16,10 +18,10 @@ class SR865A:
         try:
             self.rm = pyvisa.ResourceManager()
             if resource_name is None:
-                # Auto-detect SR865A by USB Product ID "3769" in resource string
+                # Auto-detect SR865A by USB Product ID in resource string
                 resources = self.rm.list_resources()
                 for res in resources:
-                    if "3769" in res:
+                    if settings.lockin_pid in res:
                         resource_name = res
                         break
             if resource_name is None:
@@ -33,7 +35,7 @@ class SR865A:
             # SR865A sensitivity mapping (codes 0-27 to voltage units)
             # Code determines full-scale input range for voltage measurements
             # Lower codes = higher sensitivity (1V max), higher codes = lower sensitivity (1nV max)
-            self.volatage_sensitivity_map = {
+            self.voltage_sensitivity_map = {
                 0: "V",
                 1: "mV",
                 2: "mV",
@@ -129,7 +131,8 @@ class SR865A:
                 23: "300 ks",
             }
         except Exception as e:
-            print(f"---Locking initialization error: {e}")
+            print(f"---Lock-in initialization error: {e}")
+            raise
 
     def read_values(self):
         """
@@ -144,7 +147,7 @@ class SR865A:
             y = float(self.inst.query("OUTP? 1"))
             freq = float(self.inst.query("FREQ?"))
             # sensitivity_code = int(self.inst.query("SCAL?"))
-            # unit = self.volatage_sensitivity_map[sensitivity_code]
+            # unit = self.voltage_sensitivity_map[sensitivity_code]
             return {
                 "X": x,
                 "Y": y,
@@ -174,4 +177,4 @@ class SR865A:
         if 0 <= code <= 23:
             self.inst.write(f"OFLT {code}")
         else:
-            raise ValueError("Time constant code must be between 0 and 30")
+            raise ValueError("Time constant code must be between 0 and 23")

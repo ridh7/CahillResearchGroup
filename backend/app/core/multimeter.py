@@ -2,6 +2,8 @@ from typing import Any, cast
 
 import pyvisa
 
+from app.config import settings
+
 
 class BKPrecision5493C:
     """
@@ -20,7 +22,7 @@ class BKPrecision5493C:
                 # Auto-detect by serial number in resource string
                 resources = self.rm.list_resources()
                 for res in resources:
-                    if "W114239033" in res:
+                    if settings.multimeter_serial in res:
                         resource_name = res
                         break
             if resource_name is None:
@@ -43,6 +45,7 @@ class BKPrecision5493C:
             )
         except Exception as e:
             print(f"---Multimeter initialization error: {e}")
+            raise
 
     def read_value(self):
         try:
@@ -57,7 +60,7 @@ class BKPrecision5493C:
         Modes: VOLT:DC, VOLT:AC, CURR:DC, CURR:AC, RES, FREQ, etc.
         """
         try:
-            self.inst.write(f"CONF: {mode}")
+            self.inst.write(f"CONF:{mode}")
             return True
         except Exception as e:
             print(f"Error configuring multimeter: {e}")

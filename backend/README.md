@@ -35,13 +35,13 @@ This backend provides:
 ### Prerequisites
 
 - **Python 3.10 or higher**
-- **Hardware Instruments**:
-  - SR865A Lock-in Amplifier (serial number: USB-based, Product ID 3769)
-  - BK Precision 5493C Multimeter (serial number: W114239033)
-  - Thorlabs BBD302 Stage Controller (serial number: 103387864)
+- **Hardware Instruments** (see Configuration section to customize):
+  - SR865A Lock-in Amplifier (default USB Product ID: 3769)
+  - BK Precision 5493C Multimeter (default serial: W114239033)
+  - Thorlabs BBD302 Stage Controller (default serial: 103387864)
 - **Thorlabs Kinesis Software**: Required for BBD302 .NET DLLs
   - Install from [Thorlabs Kinesis](https://www.thorlabs.com/software_pages/ViewSoftwarePage.cfm?Code=Motion_Control)
-  - DLLs expected at: `C:\Program Files\Thorlabs\Kinesis\`
+  - Default path: `C:\Program Files\Thorlabs\Kinesis\` (configurable via environment variables)
 - **NI-VISA or Keysight IO Libraries**: Required by PyVISA as the low-level backend for GPIB/USB instrument communication (SR865A, BK5493C)
   - May already be installed if Thorlabs Kinesis or other instrument software is present
   - Check for existing installation at: `C:\Program Files\IVI Foundation\VISA\` or `C:\Program Files (x86)\IVI Foundation\VISA\`
@@ -79,19 +79,67 @@ The API will be available at:
 - **Interactive Docs**: http://localhost:8000/docs
 - **OpenAPI Spec**: http://localhost:8000/openapi.json
 
+## Configuration
+
+All hardware-specific settings (device IDs, DLL paths) are centralized in [app/config.py](app/config.py) using Pydantic Settings. This eliminates hardcoded values and enables environment-based configuration.
+
+### Environment Variables
+
+Override defaults by creating a `.env` file in the `backend/` directory (use [.env.example](.env.example) as template):
+
+```bash
+# Hardware Device Identifiers
+TOPS_STAGE_SERIAL=103387864
+TOPS_MULTIMETER_SERIAL=W114239033
+TOPS_LOCKIN_PID=3769
+
+# Thorlabs Kinesis Installation Path
+TOPS_THORLABS_KINESIS_PATH=C:\Program Files\Thorlabs\Kinesis
+
+# Data Directory (for storing measurement data files)
+TOPS_DATA_DIRECTORY=./data
+
+# CORS Origins (comma-separated list of allowed origins)
+# Example for development: http://localhost:3000,http://localhost:3001
+TOPS_CORS_ORIGINS=
+```
+
+**All settings are optional** — defaults in `config.py` match the current lab hardware. Only create a `.env` file if you need to customize values (e.g., different lab setup, different serial numbers).
+
+### Configuration Files
+
+- **[app/config.py](app/config.py)** — Settings class with defaults and computed properties (e.g., DLL paths)
+- **[.env.example](.env.example)** — Template showing all available environment variables
+- **`.env`** (git-ignored) — Your local overrides (create from `.env.example` if needed)
+
+### Usage in Code
+
+```python
+from app.config import settings
+
+# Hardware IDs auto-configured
+if settings.lockin_pid in resource_string:
+    connect_to_device(resource_string)
+
+# DLL paths computed from base path
+clr.AddReference(settings.kinesis_device_manager_dll)
+```
+
 ## Architecture
 
 ### Project Structure
 
 ```
 backend/
-├── main.py                          # FastAPI app, WebSocket endpoints, lifespan
+├── main.py                          # FastAPI app, lifespan, static file serving
+├── .env.example                     # Environment variable template
 ├── app/
+│   ├── config.py                    # Centralized configuration (Pydantic Settings)
+│   │
 │   ├── core/
 │   │   ├── lockin.py                # SR865A lock-in amplifier driver
 │   │   ├── multimeter.py            # BK Precision 5493C multimeter driver
 │   │   ├── stage.py                 # Thorlabs BBD302 stage controller
-│   │   ├── shared_state.py          # Thread-safe data cache
 │   │   ├── fdpbd_analysis.py        # FD-PBD fitting pipeline
 │   │   ├── anisotropic_analysis.py  # Anisotropic thermal analysis
 │   │   └── fdpbd/
@@ -100,11 +148,17 @@ backend/
 │   │       ├── integration.py       # Romberg numerical integration
 │   │       └── data_processing.py   # Signal processing utilities
 │   │
-│   ├── routers/
-│   │   └── endpoints.py             # REST API endpoints
+│   ├── routers/                     # FastAPI routers (domain-organized)
+│   │   ├── stage.py                 # Stage control endpoints (7 endpoints)
+│   │   ├── lockin.py                # Lock-in amplifier endpoints (3 endpoints)
+│   │   ├── multimeter.py            # Multimeter endpoints (3 endpoints)
+│   │   ├── analysis.py              # FD-PBD analysis endpoints (2 endpoints)
+│   │   └── websockets.py            # WebSocket streaming endpoints (3 endpoints)
+│   │
+│   ├── dependencies.py              # FastAPI dependency injection functions
 │   │
 │   ├── models/
-│   │   ├── state.py                 # Global state (instrument instances, typed)
+│   │   ├── state.py                 # Global state (instrument instances, thread pool)
 │   │   ├── lockin.py                # Pydantic models for lock-in
 │   │   ├── multimeter.py            # Pydantic models for multimeter
 │   │   ├── stage.py                 # Pydantic models for stage
@@ -128,31 +182,27 @@ backend/
             │ HTTP POST (move, scan)             │ WebSocket
             ▼                                    ▼
 ┌─────────────────────┐              ┌──────────────────────────┐
-│  REST API Endpoints │              │  WebSocket Endpoints     │
-│  (endpoints.py)     │              │  (/ws/lockin,            │
-│                     │              │   /ws/multimeter,        │
-│  - /move            │              │   /ws/stage)             │
-│  - /start           │              │                          │
-│  - /move_and_log    │              │                          │
-│  - /fdpbd/analyze   │              └──────────┬───────────────┘
-└──────────┬──────────┘                         │
+│  REST API Routers   │              │  WebSocket Router        │
+│  (domain-organized) │              │  (websockets.py)         │
+│                     │              │                          │
+│  - stage.py         │              │  - /ws/lockin            │
+│  - lockin.py        │              │  - /ws/multimeter        │
+│  - multimeter.py    │              │  - /ws/stage             │
+│  - analysis.py      │              │                          │
+└──────────┬──────────┘              └──────────┬───────────────┘
            │                                    │
+           │ Dependency Injection               │
+           │ (dependencies.py)                  │
            ▼                                    ▼
     ┌────────────────────────────────────────────────────┐
-    │           Global State (global_state.py)           │
+    │           Global State (state.py)                  │
     │  - stage: ThorlabsBBD302                           │
     │  - lockin: SR865A                                  │
     │  - multimeter: BKPrecision5493C                    │
-    └──────────┬─────────────────────────────────────────┘
-               │
-               ▼
-    ┌────────────────────────────────────────────────────┐
-    │        Shared State (shared_state.py)              │
-    │  Thread-safe cache for latest values:              │
-    │  - latest_lockin_values                            │
-    │  - latest_multimeter_value                         │
-    │  - latest_stage_values                             │
-    │  - pause_lockin_reading (Event)                    │
+    │  - executor: ThreadPoolExecutor                    │
+    │  - ws_* WebSocket connections                      │
+    │  - latest_* cached values (thread-safe)            │
+    │  - pause_* coordination flags (threading.Event)    │
     └──────────┬─────────────────────────────────────────┘
                │
                ▼
@@ -172,7 +222,7 @@ backend/
 
 - **Device**: Stanford Research SR865A
 - **Communication**: PyVISA (GPIB/USB)
-- **Auto-detection**: Searches for USB Product ID "3769" in VISA resource string
+- **Auto-detection**: Searches for `settings.lockin_pid` (default: "3769") in VISA resource string
 
 **What it does**: A lock-in amplifier measures extremely weak AC signals buried in noise. It works by correlating the input signal with a known reference frequency — anything not at that exact frequency gets rejected. This is how the FD-PBD experiment detects tiny photothermal beam deflections.
 
@@ -198,7 +248,7 @@ backend/
 
 - **Device**: BK Precision 5493C
 - **Communication**: PyVISA (GPIB/USB)
-- **Auto-detection**: Searches for serial number "W114239033" in VISA resource string
+- **Auto-detection**: Searches for `settings.multimeter_serial` (default: "W114239033") in VISA resource string
 
 **What it does**: A digital multimeter measures voltage (and optionally current, resistance, etc.). In this setup, it reads DC voltage from the position-sensitive photodetector, which converts the probe laser beam's deflection into a voltage signal.
 
@@ -217,7 +267,8 @@ backend/
 
 - **Device**: Thorlabs BBD302 (2-channel brushless motor controller)
 - **Communication**: .NET DLLs via pythonnet (not PyVISA — uses Thorlabs' own SDK)
-- **Auto-detection**: Searches for serial number "103387864"
+- **Auto-detection**: Searches for `settings.stage_serial` (default: "103387864")
+- **DLL Loading**: Uses `settings.kinesis_*_dll` properties for DLL paths
 
 **What it does**: Controls a motorized X-Y translation stage that physically moves the sample (or optics) to different positions. This is how the system performs 2D spatial scans — stepping through a grid of positions while recording lock-in and multimeter data at each point.
 
@@ -307,8 +358,8 @@ Frequency-Domain Photothermal Beam Deflection (FD-PBD) measures thermal properti
 
 **Fitting Pipeline** (`fdpbd_analysis.py`):
 
-1. Load experimental data (frequency, in-phase, out-of-phase signals)
-2. Subtract baseline (DC offset correction)
+1. Load experimental data (in-phase, out-of-phase, frequency, sum voltage)
+2. Apply leaking correction (frequency rolloff and phase delay compensation)
 3. Nonlinear least-squares fit to extract:
    - Thermal conductivity (λ)
    - Thermo-optic coefficient (dn/dT)
@@ -319,7 +370,7 @@ Frequency-Domain Photothermal Beam Deflection (FD-PBD) measures thermal properti
 
 **Input**:
 
-- CSV file with columns: `freq`, `in`, `out`
+- Text file with columns: `in`, `out`, `freq`, `vSum`
 - Material parameters (Poisson ratio, layer properties, beam radii)
 
 **Output**:
@@ -356,12 +407,20 @@ mypy app
 1. **Create driver** in `app/core/`:
 
    ```python
+   from app.config import settings
    import pyvisa
 
    class NewInstrument:
        """Driver for XYZ Instrument."""
        def __init__(self, resource_name=None):
-           # Auto-detect, connect, initialize
+           # Auto-detect using settings
+           if resource_name is None:
+               resources = self.rm.list_resources()
+               for res in resources:
+                   if settings.new_instrument_id in res:
+                       resource_name = res
+                       break
+           # Connect, initialize
            pass
 
        def read_values(self):
@@ -369,14 +428,30 @@ mypy app
            pass
    ```
 
-2. **Add to global state** in `app/models/state.py`:
+2. **Add configuration** in `app/config.py`:
+
+   ```python
+   class Settings(BaseSettings):
+       new_instrument_id: str = "default_id"
+   ```
+
+3. **Add to global state** in `app/models/state.py`:
 
    ```python
    class GlobalState:
-       new_instrument: Optional[NewInstrument] = None
+       new_instrument: NewInstrument | None = None
    ```
 
-3. **Initialize in lifespan** (`main.py`):
+4. **Create dependency function** in `app/dependencies.py`:
+
+   ```python
+   def get_new_instrument() -> "NewInstrument":
+       if global_state.new_instrument is None:
+           raise HTTPException(status_code=503, detail="New instrument not initialized")
+       return global_state.new_instrument
+   ```
+
+5. **Initialize in lifespan** (`main.py`):
 
    ```python
    @asynccontextmanager
@@ -386,48 +461,79 @@ mypy app
        # Cleanup if needed
    ```
 
-4. **Create WebSocket endpoint** (if needed):
+6. **Create router** in `app/routers/new_instrument.py`:
 
    ```python
-   @app.websocket("/ws/new_instrument")
+   from fastapi import APIRouter, Depends
+   from app.dependencies import get_new_instrument
+
+   router = APIRouter()
+
+   @router.get("/new_instrument/settings")
+   async def get_settings(instrument: NewInstrument = Depends(get_new_instrument)):
+       # Endpoint logic
+       pass
+   ```
+
+7. **Create WebSocket endpoint** in `app/routers/websockets.py` (if needed):
+
+   ```python
+   @router.websocket("/ws/new_instrument")
    async def websocket_new_instrument(websocket: WebSocket):
        # Follow pattern from /ws/lockin
        pass
    ```
 
-5. **Add REST endpoints** in `app/routers/endpoints.py`
+8. **Register router** in `main.py`:
+
+   ```python
+   from app.routers import new_instrument
+   app.include_router(new_instrument.router, tags=["new_instrument"])
+   ```
 
 ### Adding New Analysis Methods
 
 1. Create analysis function in `app/core/`
 2. Define Pydantic models in `app/models/`
-3. Add endpoint in `app/routers/endpoints.py` with proper type annotations and None guards
+3. Add endpoint in `app/routers/analysis.py` with proper type annotations
+4. If creating a new analysis domain, create a new router file and register in `main.py`
 
 ## API Reference
 
-### Stage Control
+All endpoints are organized by domain in separate routers. Visit http://localhost:8000/docs for interactive API documentation with automatic tagging by domain.
+
+### Stage Control ([routers/stage.py](app/routers/stage.py))
 
 - **`POST /move`**: Move to absolute (X, Y) position in mm
+- **`POST /move_and_log`**: Bidirectional continuous scan with data logging
 - **`POST /start`**: Unidirectional grid scan (legacy)
-- **`POST /move_and_log`**: Bidirectional continuous scan
-- **`POST /home`**: Home specified channel
+- **`POST /home`**: Home specified channel (X, Y, or both)
+- **`GET /get_movement_params`**: Get velocity and homing parameters
+- **`POST /set_movement_params`**: Set velocity and homing parameters
+- **`GET /get_current_position`**: Get current stage position
 
-### Lock-in Control
+### Lock-in Control ([routers/lockin.py](app/routers/lockin.py))
 
-- **`POST /lockin/sensitivity`**: Set sensitivity (code 0-27)
-- **`POST /lockin/time_constant`**: Set time constant (code 0-23)
-- **`GET /lockin/settings`**: Get current settings
+- **`GET /lockin/settings`**: Get current sensitivity and time constant
+- **`POST /lockin/sensitivity`**: Increment/decrement sensitivity (codes 0-27)
+- **`POST /lockin/time_constant`**: Increment/decrement time constant (codes 0-23)
 
-### Multimeter Control
+### Multimeter Control ([routers/multimeter.py](app/routers/multimeter.py))
 
+- **`GET /multimeter/settings`**: Get current aperture (NPLC) and terminal
 - **`POST /multimeter/aperture`**: Set NPLC (0.02, 0.2, 1, 10, 100)
 - **`POST /multimeter/terminal`**: Set terminal ('fron', 'rear')
-- **`GET /multimeter/settings`**: Get current settings
 
-### Analysis
+### Analysis ([routers/analysis.py](app/routers/analysis.py))
 
 - **`POST /fdpbd/analyze`**: FD-PBD thermal property extraction
-- **`POST /anisotropic_fdpbd/analyze`**: Anisotropic FD-PBD analysis
+- **`POST /fdpbd/analyze_anisotropy`**: Anisotropic FD-PBD analysis
+
+### WebSockets ([routers/websockets.py](app/routers/websockets.py))
+
+- **`WS /ws/lockin`**: Real-time lock-in X, Y, frequency stream (~200Hz)
+- **`WS /ws/multimeter`**: Real-time multimeter voltage stream (~200Hz)
+- **`WS /ws/stage`**: Real-time stage X, Y position stream (~200Hz)
 
 ## Troubleshooting
 
@@ -437,7 +543,10 @@ mypy app
 
 - Verify USB connection
 - Install NI-VISA or Keysight IO Libraries
-- Check device serial number in driver code
+- Check device identifiers match your hardware:
+  - Lock-in: `TOPS_LOCKIN_PID` (default: "3769")
+  - Multimeter: `TOPS_MULTIMETER_SERIAL` (default: "W114239033")
+  - Override in `.env` file if your hardware differs
 - Test with PyVISA:
   ```python
   import pyvisa
@@ -449,8 +558,11 @@ mypy app
 
 - Verify USB connection
 - Install Thorlabs Kinesis software
-- Check DLL paths in `stage.py` (default: `C:\Program Files\Thorlabs\Kinesis\`)
-- Verify serial number: `103387864`
+- Check configuration:
+  - Serial number: `TOPS_STAGE_SERIAL` (default: "103387864")
+  - DLL path: `TOPS_THORLABS_KINESIS_PATH` (default: `C:\Program Files\Thorlabs\Kinesis`)
+  - Override in `.env` file if your hardware differs
+- Verify DLLs exist at configured path
 
 ### Import Errors
 
@@ -468,3 +580,37 @@ mypy app
 - This is expected for pythonnet dynamic imports
 - Runtime imports work correctly even if linter shows error
 - Configure Python interpreter: `Ctrl+Shift+P` → "Python: Select Interpreter" → `backend/myenv`
+
+## Additional Resources
+
+### Lock-in Amplifiers
+
+- **[Lock-in Amplifier Fundamentals](https://www.allaboutcircuits.com/technical-articles/basic-fundamentals-of-lock-in-amplifiers/)** - Comprehensive introduction to lock-in detection
+- **[Principles of Lock-in Detection (Zurich Instruments)](https://www.zhinst.com/europe/en/resources/principles-of-lock-in-detection)** - Detailed explanation of phase-sensitive detection
+- **[Stanford Research Systems Application Note](https://www.thinksrs.com/downloads/pdfs/applicationnotes/AboutLIAs.pdf)** - "About Lock-In Amplifiers" technical guide
+- **[Wikipedia: Lock-in Amplifier](https://en.wikipedia.org/wiki/Lock-in_amplifier)** - Overview and theory
+
+### Digital Multimeter Concepts
+
+- **[NPLC Explained (Tektronix)](https://www.tek.com/en/support/faqs/what-nplc-and-why-it-important)** - Number of Power Line Cycles fundamentals
+- **[Adjusting NPLC for High-Speed Measurements (Keysight)](https://www.keysight.com/us/en/lib/resources/training-materials/adjusting-nplc-and-aperture-to-make-high-speed-measurements.html)** - Speed vs. accuracy tradeoffs
+- **[Integration Time and Resolution](http://rfmw.em.keysight.com/bihelpfiles/BenchVue/_Latest/DMMApp/English/Content/Measurement/Integration%20Time%20and%20Resolution.htm)** - Keysight technical guide
+
+### Thermal Conductivity Measurement
+
+- **[Frequency Domain Thermoreflectance (FDTR)](https://www.nist.gov/publications/instrumentation-guide-measuring-thermal-conductivity-using-frequency-domain)** - NIST instrumentation guide
+- **[FDTR Technique Overview (JOVE)](https://www.jove.com/t/68908/the-frequency-domain-thermoreflectance-technique-for-thermal-property)** - Video and protocol
+- **[Thermal Conductivity Measurement (Wikipedia)](https://en.wikipedia.org/wiki/Thermal_conductivity_measurement)** - Overview of measurement methods
+
+### Mathematical Methods
+
+- **[Hankel Transform Tutorial](https://sci.uobasrah.edu.iq/images/Math/Hankel_Transforms_and_Their_Applications.pdf)** - Theory and applications in cylindrical coordinates
+- **[Wikipedia: Hankel Transform](https://en.wikipedia.org/wiki/Hankel_transform)** - Mathematical foundations
+- **[Transfer Matrix Method in Heat Transfer](https://www.sciencedirect.com/science/article/abs/pii/S0360544223016742)** - Novel TMM approach for thermal systems
+- **[Matrix Analysis of Heat Transfer](https://www.sciencedirect.com/science/article/abs/pii/0016003257909274)** - Classic paper on matrix methods
+
+### Optical Properties
+
+- **[Thermo-optic Coefficient (dn/dT)](https://www.nature.com/articles/s41598-022-08232-x)** - Temperature dependence in semiconductors
+- **[Position-Sensitive Detectors](https://www.rp-photonics.com/position_sensitive_detectors.html)** - Types and applications of beam deflection detectors
+- **[Thorlabs: Position-Sensing Detectors](https://www.thorlabs.com/newgrouppage9.cfm?objectgroup_ID=4400)** - Commercial detector overview
