@@ -2,6 +2,8 @@ from typing import Any, cast
 
 import pyvisa
 
+from app.config import settings
+
 
 class SR865A:
     """
@@ -16,10 +18,10 @@ class SR865A:
         try:
             self.rm = pyvisa.ResourceManager()
             if resource_name is None:
-                # Auto-detect SR865A by USB Product ID "3769" in resource string
+                # Auto-detect SR865A by USB Product ID in resource string
                 resources = self.rm.list_resources()
                 for res in resources:
-                    if "3769" in res:
+                    if settings.lockin_pid in res:
                         resource_name = res
                         break
             if resource_name is None:

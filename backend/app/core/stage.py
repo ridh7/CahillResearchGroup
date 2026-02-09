@@ -5,18 +5,13 @@ from threading import Thread
 
 import clr
 
+from app.config import settings
 from app.models.state import global_state
 from app.utils.file_utils import save_to_file
 
-clr.AddReference(
-    "C:\\Program Files\\Thorlabs\\Kinesis\\Thorlabs.MotionControl.DeviceManagerCLI.dll"
-)
-clr.AddReference(
-    "C:\\Program Files\\Thorlabs\\Kinesis\\Thorlabs.MotionControl.GenericMotorCLI.dll"
-)
-clr.AddReference(
-    "C:\\Program Files\\Thorlabs\\Kinesis\\ThorLabs.MotionControl.Benchtop.BrushlessMotorCLI.dll"
-)
+clr.AddReference(settings.kinesis_device_manager_dll)
+clr.AddReference(settings.kinesis_generic_motor_dll)
+clr.AddReference(settings.kinesis_brushless_motor_dll)
 
 from System import Decimal, Math
 from Thorlabs.MotionControl.Benchtop.BrushlessMotorCLI import *
@@ -49,7 +44,7 @@ class ThorlabsBBD302:
                 # Auto-detect BBD302 by known serial number
                 devices = DeviceManagerCLI.GetDeviceList()  # type: ignore[name-defined]
                 for dev in devices:
-                    if dev == "103387864":
+                    if dev == settings.stage_serial:
                         serial_number = dev
             print(f"---Connecting to stage with serial number: {serial_number}")
             self.device = BenchtopBrushlessMotor.CreateBenchtopBrushlessMotor(  # type: ignore[name-defined]

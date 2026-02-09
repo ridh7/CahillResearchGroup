@@ -2,6 +2,8 @@ from typing import Any, cast
 
 import pyvisa
 
+from app.config import settings
+
 
 class BKPrecision5493C:
     """
@@ -20,7 +22,7 @@ class BKPrecision5493C:
                 # Auto-detect by serial number in resource string
                 resources = self.rm.list_resources()
                 for res in resources:
-                    if "W114239033" in res:
+                    if settings.multimeter_serial in res:
                         resource_name = res
                         break
             if resource_name is None:

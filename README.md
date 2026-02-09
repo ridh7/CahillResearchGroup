@@ -42,8 +42,13 @@ For frontend development with live reloading:
    ```
    cd backend
    myenv\Scripts\activate
-   set CORS_ORIGINS=http://localhost:3000
+   set TOPS_CORS_ORIGINS=http://localhost:3000
    uvicorn main:app --reload
+   ```
+
+   Or create a `.env` file in `backend/` with:
+   ```
+   TOPS_CORS_ORIGINS=http://localhost:3000
    ```
 
 2. **Start the frontend** (terminal 2):
@@ -58,23 +63,31 @@ For frontend development with live reloading:
 ## Project Structure
 
 ```
-├── backend/           Python FastAPI backend + instrument drivers
-│   ├── main.py        Application entry point
+├── backend/               Python FastAPI backend + instrument drivers
+│   ├── main.py            Application entry point
+│   ├── .env.example       Environment variable template
 │   ├── app/
-│   │   ├── core/      Instrument drivers (lockin, multimeter, stage) and analysis
-│   │   ├── models/    Pydantic models and global state
-│   │   ├── routers/   REST API endpoints
-│   │   └── utils/     File I/O helpers
-│   ├── myenv/         Python virtual environment (not committed)
-│   └── static/        Built frontend output (not committed)
-├── frontend/          Next.js frontend
+│   │   ├── config.py      Centralized configuration (Pydantic Settings)
+│   │   ├── core/          Instrument drivers (lockin, multimeter, stage) and analysis
+│   │   ├── dependencies.py FastAPI dependency injection functions
+│   │   ├── models/        Pydantic models and global state
+│   │   ├── routers/       REST API endpoints (domain-organized)
+│   │   │   ├── stage.py      Stage control (7 endpoints)
+│   │   │   ├── lockin.py     Lock-in amplifier (3 endpoints)
+│   │   │   ├── multimeter.py Multimeter (3 endpoints)
+│   │   │   ├── analysis.py   FD-PBD analysis (2 endpoints)
+│   │   │   └── websockets.py WebSocket streaming (3 endpoints)
+│   │   └── utils/         File I/O helpers
+│   ├── myenv/             Python virtual environment (not committed)
+│   └── static/            Built frontend output (not committed)
+├── frontend/              Next.js frontend
 │   └── tops-2.0-measurement-system/
 │       └── src/
 │           ├── app/           Pages (dashboard, FD-PBD analysis)
 │           ├── components/    UI components (controls, heatmaps, settings)
 │           └── lib/           API configuration
-├── build.ps1          PowerShell build script
-├── start.bat          Production launcher
+├── build.ps1              PowerShell build script
+├── start.bat              Production launcher
 └── README.md
 ```
 
