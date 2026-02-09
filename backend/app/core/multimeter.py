@@ -57,7 +57,7 @@ class BKPrecision5493C:
         Modes: VOLT:DC, VOLT:AC, CURR:DC, CURR:AC, RES, FREQ, etc.
         """
         try:
-            self.inst.write(f"CONF: {mode}")
+            self.inst.write(f"CONF:{mode}")
             return True
         except Exception as e:
             print(f"Error configuring multimeter: {e}")
