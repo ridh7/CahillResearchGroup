@@ -2,12 +2,23 @@ import asyncio
 import json
 import os
 import tempfile
+from concurrent.futures import ThreadPoolExecutor
 
-from fastapi import APIRouter, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from System import Decimal
 
 from app.core.anisotropic_analysis import run_anisotropic_analysis
 from app.core.fdpbd_analysis import run_fdpbd_analysis
+from app.core.lockin import SR865A
+from app.core.multimeter import BKPrecision5493C
+from app.core.stage import ThorlabsBBD302
+from app.dependencies import (
+    get_executor,
+    get_lockin,
+    get_multimeter,
+    get_stage,
+    get_stage_optional,
+)
 from app.models.channel import ChannelParams, Settings
 from app.models.fdpbd import FDPBDParams, FDPBDResult
 from app.models.lockin import LockinSensitivityRequest, LockinTimeConstantRequest
@@ -23,14 +34,15 @@ router = APIRouter()
 
 
 @router.post("/move")
-async def move(params: MovementParams):
+async def move(
+    params: MovementParams,
+    stage: ThorlabsBBD302 = Depends(get_stage),
+    executor: ThreadPoolExecutor = Depends(get_executor),
+):
     """Move stage to absolute (X, Y) position in mm."""
-    if global_state.stage is None:
-        raise HTTPException(status_code=503, detail="Stage not initialized")
-    stage = global_state.stage  # Capture reference for type narrowing
     try:
         await asyncio.get_running_loop().run_in_executor(
-            global_state.executor, lambda: stage.move(params.x, params.y)
+            executor, lambda: stage.move(params.x, params.y)
         )
         return {"status": "success", "message": "Movement completed"}
     except Exception as e:
@@ -38,7 +50,11 @@ async def move(params: MovementParams):
 
 
 @router.post("/move_and_log")
-async def move_and_log(params: MoveAndLogParams):
+async def move_and_log(
+    params: MoveAndLogParams,
+    stage: ThorlabsBBD302 = Depends(get_stage),
+    executor: ThreadPoolExecutor = Depends(get_executor),
+):
     """
     Perform bidirectional zigzag scan with continuous data logging.
 
@@ -46,12 +62,9 @@ async def move_and_log(params: MoveAndLogParams):
     logging instrument data at specified sample_rate during motion.
     Saves results to timestamped CSV file in data/ directory.
     """
-    if global_state.stage is None:
-        raise HTTPException(status_code=503, detail="Stage not initialized")
-    stage = global_state.stage  # Capture reference for type narrowing
     try:
         await asyncio.get_running_loop().run_in_executor(
-            global_state.executor,
+            executor,
             lambda: stage.move_and_log(
                 params.x, params.y, params.x_step_size, params.sample_rate
             ),
@@ -62,7 +75,11 @@ async def move_and_log(params: MoveAndLogParams):
 
 
 @router.post("/start")
-async def start_movement(params: RectangleParams):
+async def start_movement(
+    params: RectangleParams,
+    stage: ThorlabsBBD302 = Depends(get_stage),
+    executor: ThreadPoolExecutor = Depends(get_executor),
+):
     """
     Perform unidirectional rectangular grid scan (legacy endpoint).
 
@@ -70,12 +87,9 @@ async def start_movement(params: RectangleParams):
     to collect measurements. Closes all WebSocket connections after completion
     to signal end of scan. Superseded by /move_and_log for faster scanning.
     """
-    if global_state.stage is None:
-        raise HTTPException(status_code=503, detail="Stage not initialized")
-    stage = global_state.stage  # Capture reference for type narrowing
     try:
         future = asyncio.get_running_loop().run_in_executor(
-            global_state.executor,
+            executor,
             lambda: stage.move_in_rectangle(
                 params.x1,
                 params.y1,
@@ -118,22 +132,23 @@ async def start_movement(params: RectangleParams):
 
 
 @router.post("/home")
-async def home(params: ChannelParams):
-    if global_state.stage is None:
-        raise HTTPException(status_code=503, detail="Stage not initialized")
-    stage = global_state.stage  # Capture reference for type narrowing
+async def home(
+    params: ChannelParams,
+    stage: ThorlabsBBD302 = Depends(get_stage),
+    executor: ThreadPoolExecutor = Depends(get_executor),
+):
     try:
         if params.channel_direction == "x":
             await asyncio.get_running_loop().run_in_executor(
-                global_state.executor, lambda: stage.home_channel(1)
+                executor, lambda: stage.home_channel(1)
             )
         elif params.channel_direction == "y":
             await asyncio.get_running_loop().run_in_executor(
-                global_state.executor, lambda: stage.home_channel(2)
+                executor, lambda: stage.home_channel(2)
             )
         else:
             await asyncio.get_running_loop().run_in_executor(
-                global_state.executor,
+                executor,
                 lambda: (
                     stage.home_channel(1),
                     stage.home_channel(2),
@@ -145,13 +160,13 @@ async def home(params: ChannelParams):
 
 
 @router.get("/get_movement_params")
-async def get_movement_params_api():
-    if global_state.stage is None:
-        raise HTTPException(status_code=503, detail="Stage not initialized")
-    stage = global_state.stage  # Capture reference for type narrowing
+async def get_movement_params_api(
+    stage: ThorlabsBBD302 = Depends(get_stage),
+    executor: ThreadPoolExecutor = Depends(get_executor),
+):
     try:
         params = await asyncio.get_running_loop().run_in_executor(
-            global_state.executor,
+            executor,
             lambda: (
                 stage.get_movement_params(1),
                 stage.get_movement_params(2),
@@ -173,13 +188,14 @@ async def get_movement_params_api():
 
 
 @router.post("/set_movement_params")
-async def set_movement_params_api(params: Settings):
-    if global_state.stage is None:
-        raise HTTPException(status_code=503, detail="Stage not initialized")
-    stage = global_state.stage  # Capture reference for type narrowing
+async def set_movement_params_api(
+    params: Settings,
+    stage: ThorlabsBBD302 = Depends(get_stage),
+    executor: ThreadPoolExecutor = Depends(get_executor),
+):
     try:
         await asyncio.get_running_loop().run_in_executor(
-            global_state.executor,
+            executor,
             lambda: (
                 stage.channel[1].SetHomingVelocity(
                     Decimal(params.channel1.homing_velocity)
@@ -204,13 +220,21 @@ async def set_movement_params_api(params: Settings):
 
 
 @router.get("/get_current_position")
-async def get_current_position():
-    if global_state.stage is None:
+async def get_current_position(
+    stage: ThorlabsBBD302 | None = Depends(get_stage_optional),
+    executor: ThreadPoolExecutor = Depends(get_executor),
+):
+    """
+    Get current stage position.
+
+    Returns error dict with NaN values instead of 503 to maintain
+    frontend compatibility (displays position even when unavailable).
+    """
+    if stage is None:
         return {"status": "error", "x": "NaN", "y": "NaN"}
-    stage = global_state.stage  # Capture reference for type narrowing
     try:
         position = await asyncio.get_running_loop().run_in_executor(
-            global_state.executor,
+            executor,
             lambda: (
                 stage.channel[1].DevicePosition,
                 stage.channel[2].DevicePosition,
@@ -222,13 +246,13 @@ async def get_current_position():
 
 
 @router.get("/lockin/settings")
-async def get_lockin_settings():
-    if global_state.lockin is None:
-        raise HTTPException(status_code=503, detail="Lock-in amplifier not initialized")
-    lockin = global_state.lockin  # Capture reference for type narrowing
+async def get_lockin_settings(
+    lockin: SR865A = Depends(get_lockin),
+    executor: ThreadPoolExecutor = Depends(get_executor),
+):
     try:
         settings = await asyncio.get_running_loop().run_in_executor(
-            global_state.executor,
+            executor,
             lambda: {
                 "sensitivity": lockin.get_sensitivity(),
                 "time_constant": lockin.get_time_constant(),
@@ -244,18 +268,19 @@ async def get_lockin_settings():
 
 
 @router.post("/lockin/sensitivity")
-async def change_lockin_sensitivity(params: LockinSensitivityRequest):
-    if global_state.lockin is None:
-        raise HTTPException(status_code=503, detail="Lock-in amplifier not initialized")
-    lockin = global_state.lockin  # Capture reference for type narrowing
+async def change_lockin_sensitivity(
+    params: LockinSensitivityRequest,
+    lockin: SR865A = Depends(get_lockin),
+    executor: ThreadPoolExecutor = Depends(get_executor),
+):
     try:
         current_sensitivity = await asyncio.get_running_loop().run_in_executor(
-            global_state.executor, lambda: lockin.get_sensitivity()
+            executor, lambda: lockin.get_sensitivity()
         )
         new_sensitivity = current_sensitivity + (1 if params.increment else -1)
         if 0 <= new_sensitivity <= 27:
             await asyncio.get_running_loop().run_in_executor(
-                global_state.executor, lambda: lockin.set_sensitivity(new_sensitivity)
+                executor, lambda: lockin.set_sensitivity(new_sensitivity)
             )
             return {"status": "success", "sensitivity": new_sensitivity}
         else:
@@ -265,18 +290,19 @@ async def change_lockin_sensitivity(params: LockinSensitivityRequest):
 
 
 @router.post("/lockin/time_constant")
-async def change_lockin_time_constant(params: LockinTimeConstantRequest):
-    if global_state.lockin is None:
-        raise HTTPException(status_code=503, detail="Lock-in amplifier not initialized")
-    lockin = global_state.lockin  # Capture reference for type narrowing
+async def change_lockin_time_constant(
+    params: LockinTimeConstantRequest,
+    lockin: SR865A = Depends(get_lockin),
+    executor: ThreadPoolExecutor = Depends(get_executor),
+):
     try:
         current_time_constant = await asyncio.get_running_loop().run_in_executor(
-            global_state.executor, lambda: lockin.get_time_constant()
+            executor, lambda: lockin.get_time_constant()
         )
         new_time_constant = current_time_constant + (1 if params.increment else -1)
         if 0 <= new_time_constant <= 23:
             await asyncio.get_running_loop().run_in_executor(
-                global_state.executor,
+                executor,
                 lambda: lockin.set_time_constant(new_time_constant),
             )
             return {"status": "success", "time_constant": new_time_constant}
@@ -287,13 +313,13 @@ async def change_lockin_time_constant(params: LockinTimeConstantRequest):
 
 
 @router.get("/multimeter/settings")
-async def get_multimeter_settings():
-    if global_state.multimeter is None:
-        raise HTTPException(status_code=503, detail="Multimeter not initialized")
-    multimeter = global_state.multimeter  # Capture reference for type narrowing
+async def get_multimeter_settings(
+    multimeter: BKPrecision5493C = Depends(get_multimeter),
+    executor: ThreadPoolExecutor = Depends(get_executor),
+):
     try:
         settings = await asyncio.get_running_loop().run_in_executor(
-            global_state.executor,
+            executor,
             lambda: {
                 "aperture": multimeter.get_aperture(),
                 "terminal": multimeter.get_terminal(),
@@ -309,13 +335,14 @@ async def get_multimeter_settings():
 
 
 @router.post("/multimeter/aperture")
-async def set_multimeter_aperture(params: MultimeterApertureRequest):
-    if global_state.multimeter is None:
-        raise HTTPException(status_code=503, detail="Multimeter not initialized")
-    multimeter = global_state.multimeter  # Capture reference for type narrowing
+async def set_multimeter_aperture(
+    params: MultimeterApertureRequest,
+    multimeter: BKPrecision5493C = Depends(get_multimeter),
+    executor: ThreadPoolExecutor = Depends(get_executor),
+):
     try:
         success = await asyncio.get_running_loop().run_in_executor(
-            global_state.executor, lambda: multimeter.set_aperture(params.nplc)
+            executor, lambda: multimeter.set_aperture(params.nplc)
         )
         if success:
             return {"status": "success", "aperture": params.nplc}
@@ -326,13 +353,14 @@ async def set_multimeter_aperture(params: MultimeterApertureRequest):
 
 
 @router.post("/multimeter/terminal")
-async def set_multimeter_terminal(params: MultimeterTerminalRequest):
-    if global_state.multimeter is None:
-        raise HTTPException(status_code=503, detail="Multimeter not initialized")
-    multimeter = global_state.multimeter  # Capture reference for type narrowing
+async def set_multimeter_terminal(
+    params: MultimeterTerminalRequest,
+    multimeter: BKPrecision5493C = Depends(get_multimeter),
+    executor: ThreadPoolExecutor = Depends(get_executor),
+):
     try:
         success = await asyncio.get_running_loop().run_in_executor(
-            global_state.executor, lambda: multimeter.set_terminal(params.terminal)
+            executor, lambda: multimeter.set_terminal(params.terminal)
         )
         if success:
             return {"status": "success", "terminal": params.terminal}
