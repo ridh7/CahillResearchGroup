@@ -36,9 +36,9 @@ class AnisotropicFDPBDParams(BaseModel):
     f_rolloff: float
     delay_1: float
     delay_2: float
-    lambda_down: list[float | None]
-    c_down: list[float | None]
-    h_down: list[float | None]
+    lambda_down: list[float]
+    c_down: list[float]
+    h_down: list[float]
     incident_pump: float
     w_rms: float
     x_offset: float
