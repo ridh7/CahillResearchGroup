@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import asyncio
 import threading
 from typing import TYPE_CHECKING
 
@@ -55,8 +54,8 @@ class GlobalState:
         self.value_lock = threading.Lock()
 
         # Synchronization flags
-        self.pause_lockin_reading = asyncio.Event()
-        self.pause_stage_reading = asyncio.Event()
+        self.pause_lockin_reading = threading.Event()
+        self.pause_stage_reading = threading.Event()
 
 
 global_state = GlobalState()
