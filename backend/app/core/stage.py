@@ -182,16 +182,8 @@ class ThorlabsBBD302:
 
     def read_values(self):
         try:
-            x = (
-                global_state.stage.channel[1].DevicePosition
-                if global_state.stage
-                else None
-            )
-            y = (
-                global_state.stage.channel[2].DevicePosition
-                if global_state.stage
-                else None
-            )
+            x = self.channel[1].DevicePosition
+            y = self.channel[2].DevicePosition
             return {"x": f"{x}", "y": f"{y}"}
         except Exception as e:
             print(f"Error reading from stage: {e}")
