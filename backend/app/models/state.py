@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import asyncio
+import threading
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -11,15 +13,50 @@ if TYPE_CHECKING:
 
 
 class GlobalState:
-    """Global state container for hardware devices and WebSocket connections."""
+    """
+    Unified application state for hardware devices, WebSocket connections, and cached data.
+
+    Merges previous GlobalState and SharedState into single state container.
+
+    Hardware instances:
+        stage, lockin, multimeter: Device driver instances
+
+    WebSocket connections:
+        ws_lockin, ws_multimeter, ws_stage: Active WebSocket connections for streaming
+
+    Cached instrument data (thread-safe):
+        latest_lockin_values: Most recent X, Y, frequency from lock-in
+        latest_multimeter_value: Most recent voltage reading
+        latest_stage_values: Most recent X, Y position
+        value_lock: Threading lock to prevent race conditions
+
+    Coordination flags:
+        pause_lockin_reading: Event flag to pause lock-in queries during scans
+            (prevents GPIB conflicts when stage scan needs exclusive access)
+        pause_stage_reading: Event flag to pause stage position queries during scans
+            (prevents VISA resource locking when scan thread needs exclusive device access)
+    """
 
     def __init__(self) -> None:
+        # Hardware devices
         self.stage: ThorlabsBBD302 | None = None
         self.lockin: SR865A | None = None
         self.multimeter: BKPrecision5493C | None = None
+
+        # WebSocket connections
         self.ws_lockin: WebSocket | None = None
         self.ws_multimeter: WebSocket | None = None
         self.ws_stage: WebSocket | None = None
+
+        # Cached instrument readings (thread-safe)
+        self.latest_lockin_values = None
+        self.latest_multimeter_value = None
+        self.latest_stage_values = None
+        self.value_lock = threading.Lock()
+
+        # Synchronization flags
+        self.pause_lockin_reading = asyncio.Event()
+        self.pause_stage_reading = asyncio.Event()
 
 
 global_state = GlobalState()

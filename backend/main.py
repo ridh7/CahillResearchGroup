@@ -11,7 +11,6 @@ from fastapi.websockets import WebSocketDisconnect
 
 from app.core.lockin import SR865A
 from app.core.multimeter import BKPrecision5493C
-from app.core.shared_state import shared_state
 from app.core.stage import ThorlabsBBD302
 from app.models.state import global_state
 from app.routers import endpoints
@@ -32,8 +31,8 @@ async def lifespan(app: FastAPI):  # noqa: ARG001
     global_state.stage = ThorlabsBBD302()
     global_state.lockin = SR865A()
     global_state.multimeter = BKPrecision5493C()
-    shared_state.pause_lockin_reading.clear()
-    shared_state.pause_stage_reading.clear()
+    global_state.pause_lockin_reading.clear()
+    global_state.pause_stage_reading.clear()
     yield
     for ws in [
         global_state.ws_lockin,
@@ -84,7 +83,7 @@ async def send_lockin_data(websocket: WebSocket):
 
     Uses pause mechanism to prevent reading during stage scan operations,
     as simultaneous GPIB queries can cause device communication conflicts.
-    Cached values in shared_state allow other operations to access latest
+    Cached values in global_state allow other operations to access latest
     data without blocking WebSocket stream.
     """
     if global_state.lockin is None:
@@ -92,12 +91,12 @@ async def send_lockin_data(websocket: WebSocket):
         return
     lockin = global_state.lockin  # Capture reference for type narrowing
     while True:
-        if shared_state.pause_lockin_reading.is_set():
+        if global_state.pause_lockin_reading.is_set():
             await asyncio.sleep(0.02)
             continue
         values = lockin.read_values()
-        with shared_state.value_lock:
-            shared_state.latest_lockin_values = values
+        with global_state.value_lock:
+            global_state.latest_lockin_values = values
         await websocket.send_json(values)
         await asyncio.sleep(0.005)
 
@@ -106,7 +105,7 @@ async def send_multimeter_data(websocket: WebSocket):
     """
     Stream multimeter voltage readings to frontend at ~200Hz (5ms interval).
 
-    Caches latest value in shared_state for synchronous access during
+    Caches latest value in global_state for synchronous access during
     stage scans, ensuring voltage measurements align with position data.
     """
     if global_state.multimeter is None:
@@ -115,8 +114,8 @@ async def send_multimeter_data(websocket: WebSocket):
     multimeter = global_state.multimeter  # Capture reference for type narrowing
     while True:
         value = multimeter.read_value()
-        with shared_state.value_lock:
-            shared_state.latest_multimeter_value = value
+        with global_state.value_lock:
+            global_state.latest_multimeter_value = value
         await websocket.send_json({"value": value})
         await asyncio.sleep(0.005)
 
@@ -136,12 +135,12 @@ async def send_stage_data(websocket: WebSocket):
         return
     stage = global_state.stage  # Capture reference for type narrowing
     while True:
-        if shared_state.pause_stage_reading.is_set():
+        if global_state.pause_stage_reading.is_set():
             await asyncio.sleep(0.02)
             continue
         values = stage.read_values()
-        with shared_state.value_lock:
-            shared_state.latest_stage_values = values
+        with global_state.value_lock:
+            global_state.latest_stage_values = values
         await websocket.send_json(values)
         await asyncio.sleep(0.005)
 
