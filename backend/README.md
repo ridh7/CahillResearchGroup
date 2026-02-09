@@ -307,8 +307,8 @@ Frequency-Domain Photothermal Beam Deflection (FD-PBD) measures thermal properti
 
 **Fitting Pipeline** (`fdpbd_analysis.py`):
 
-1. Load experimental data (frequency, in-phase, out-of-phase signals)
-2. Subtract baseline (DC offset correction)
+1. Load experimental data (in-phase, out-of-phase, frequency, sum voltage)
+2. Apply leaking correction (frequency rolloff and phase delay compensation)
 3. Nonlinear least-squares fit to extract:
    - Thermal conductivity (λ)
    - Thermo-optic coefficient (dn/dT)
@@ -319,7 +319,7 @@ Frequency-Domain Photothermal Beam Deflection (FD-PBD) measures thermal properti
 
 **Input**:
 
-- CSV file with columns: `freq`, `in`, `out`
+- Text file with columns: `in`, `out`, `freq`, `vSum`
 - Material parameters (Poisson ratio, layer properties, beam radii)
 
 **Output**:
@@ -468,3 +468,37 @@ mypy app
 - This is expected for pythonnet dynamic imports
 - Runtime imports work correctly even if linter shows error
 - Configure Python interpreter: `Ctrl+Shift+P` → "Python: Select Interpreter" → `backend/myenv`
+
+## Additional Resources
+
+### Lock-in Amplifiers
+
+- **[Lock-in Amplifier Fundamentals](https://www.allaboutcircuits.com/technical-articles/basic-fundamentals-of-lock-in-amplifiers/)** - Comprehensive introduction to lock-in detection
+- **[Principles of Lock-in Detection (Zurich Instruments)](https://www.zhinst.com/europe/en/resources/principles-of-lock-in-detection)** - Detailed explanation of phase-sensitive detection
+- **[Stanford Research Systems Application Note](https://www.thinksrs.com/downloads/pdfs/applicationnotes/AboutLIAs.pdf)** - "About Lock-In Amplifiers" technical guide
+- **[Wikipedia: Lock-in Amplifier](https://en.wikipedia.org/wiki/Lock-in_amplifier)** - Overview and theory
+
+### Digital Multimeter Concepts
+
+- **[NPLC Explained (Tektronix)](https://www.tek.com/en/support/faqs/what-nplc-and-why-it-important)** - Number of Power Line Cycles fundamentals
+- **[Adjusting NPLC for High-Speed Measurements (Keysight)](https://www.keysight.com/us/en/lib/resources/training-materials/adjusting-nplc-and-aperture-to-make-high-speed-measurements.html)** - Speed vs. accuracy tradeoffs
+- **[Integration Time and Resolution](http://rfmw.em.keysight.com/bihelpfiles/BenchVue/_Latest/DMMApp/English/Content/Measurement/Integration%20Time%20and%20Resolution.htm)** - Keysight technical guide
+
+### Thermal Conductivity Measurement
+
+- **[Frequency Domain Thermoreflectance (FDTR)](https://www.nist.gov/publications/instrumentation-guide-measuring-thermal-conductivity-using-frequency-domain)** - NIST instrumentation guide
+- **[FDTR Technique Overview (JOVE)](https://www.jove.com/t/68908/the-frequency-domain-thermoreflectance-technique-for-thermal-property)** - Video and protocol
+- **[Thermal Conductivity Measurement (Wikipedia)](https://en.wikipedia.org/wiki/Thermal_conductivity_measurement)** - Overview of measurement methods
+
+### Mathematical Methods
+
+- **[Hankel Transform Tutorial](https://sci.uobasrah.edu.iq/images/Math/Hankel_Transforms_and_Their_Applications.pdf)** - Theory and applications in cylindrical coordinates
+- **[Wikipedia: Hankel Transform](https://en.wikipedia.org/wiki/Hankel_transform)** - Mathematical foundations
+- **[Transfer Matrix Method in Heat Transfer](https://www.sciencedirect.com/science/article/abs/pii/S0360544223016742)** - Novel TMM approach for thermal systems
+- **[Matrix Analysis of Heat Transfer](https://www.sciencedirect.com/science/article/abs/pii/0016003257909274)** - Classic paper on matrix methods
+
+### Optical Properties
+
+- **[Thermo-optic Coefficient (dn/dT)](https://www.nature.com/articles/s41598-022-08232-x)** - Temperature dependence in semiconductors
+- **[Position-Sensitive Detectors](https://www.rp-photonics.com/position_sensitive_detectors.html)** - Types and applications of beam deflection detectors
+- **[Thorlabs: Position-Sensing Detectors](https://www.thorlabs.com/newgrouppage9.cfm?objectgroup_ID=4400)** - Commercial detector overview

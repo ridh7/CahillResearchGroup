@@ -280,3 +280,7 @@ NEXT_PUBLIC_API_URL=http://localhost:8000
 - Run `npm run lint:fix` to auto-fix issues
 - Manually fix remaining errors shown in output
 - Use `git commit --no-verify` only in emergencies (not recommended)
+
+## Additional Resources
+
+See the [root README](../../README.md) for scientific concept references and hardware manuals, and the [backend README](../../backend/README.md) for detailed resources on lock-in amplifiers, NPLC, thermal conductivity measurement, and the mathematical methods used in the FD-PBD analysis.
