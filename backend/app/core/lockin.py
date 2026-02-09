@@ -174,4 +174,4 @@ class SR865A:
         if 0 <= code <= 23:
             self.inst.write(f"OFLT {code}")
         else:
-            raise ValueError("Time constant code must be between 0 and 30")
+            raise ValueError("Time constant code must be between 0 and 23")
