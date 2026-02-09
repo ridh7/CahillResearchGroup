@@ -43,6 +43,7 @@ class BKPrecision5493C:
             )
         except Exception as e:
             print(f"---Multimeter initialization error: {e}")
+            raise
 
     def read_value(self):
         try:

@@ -129,7 +129,8 @@ class SR865A:
                 23: "300 ks",
             }
         except Exception as e:
-            print(f"---Locking initialization error: {e}")
+            print(f"---Lock-in initialization error: {e}")
+            raise
 
     def read_values(self):
         """

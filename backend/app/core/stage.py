@@ -87,6 +87,7 @@ class ThorlabsBBD302:
                 time.sleep(1)
         except Exception as e:
             print(f"---Stage initialization error: {e}")
+            raise
 
     def home_channel(self, channel_number):
         try:
