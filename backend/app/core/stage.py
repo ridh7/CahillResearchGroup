@@ -103,7 +103,8 @@ class ThorlabsBBD302:
             vel_params = self.channel[channel_number].GetVelocityParams()
             return home_params, vel_params
         except Exception as e:
-            print(f"---Error: {e}")
+            print(f"---Error getting movement params: {e}")
+            raise
 
     def move_in_rectangle(
         self,
