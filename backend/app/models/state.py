@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import threading
+from concurrent.futures import ThreadPoolExecutor
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -34,6 +35,9 @@ class GlobalState:
             (prevents GPIB conflicts when stage scan needs exclusive access)
         pause_stage_reading: Event flag to pause stage position queries during scans
             (prevents VISA resource locking when scan thread needs exclusive device access)
+
+    Thread pool:
+        executor: ThreadPoolExecutor for running blocking hardware operations in background threads
     """
 
     def __init__(self) -> None:
@@ -41,6 +45,9 @@ class GlobalState:
         self.stage: ThorlabsBBD302 | None = None
         self.lockin: SR865A | None = None
         self.multimeter: BKPrecision5493C | None = None
+
+        # Thread pool for blocking operations
+        self.executor: ThreadPoolExecutor | None = None
 
         # WebSocket connections
         self.ws_lockin: WebSocket | None = None

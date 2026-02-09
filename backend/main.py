@@ -1,5 +1,6 @@
 import asyncio
 import os
+from concurrent.futures import ThreadPoolExecutor
 from contextlib import asynccontextmanager, suppress
 from pathlib import Path
 
@@ -23,11 +24,12 @@ async def lifespan(app: FastAPI):  # noqa: ARG001
     """
     Application lifespan manager for instrument initialization and cleanup.
 
-    Startup: Initialize all instruments (stage, lock-in, multimeter) in sequence.
+    Startup: Initialize ThreadPoolExecutor and all instruments (stage, lock-in, multimeter).
     Order matters - stage initialization includes homing which takes ~10s.
 
-    Shutdown: Close all WebSocket connections and disconnect stage hardware.
+    Shutdown: Close WebSocket connections, disconnect hardware, and shutdown executor.
     """
+    global_state.executor = ThreadPoolExecutor()
     global_state.stage = ThorlabsBBD302()
     global_state.lockin = SR865A()
     global_state.multimeter = BKPrecision5493C()
@@ -43,6 +45,8 @@ async def lifespan(app: FastAPI):  # noqa: ARG001
             with suppress(Exception):
                 await ws.close()
     global_state.stage.device.Disconnect()
+    if global_state.executor is not None:
+        global_state.executor.shutdown(wait=True)
 
 
 app = FastAPI(lifespan=lifespan)
