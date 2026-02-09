@@ -168,9 +168,7 @@ class ThorlabsBBD302:
                     values["positionX"] = position_x
                     values["positionY"] = position_y
                     values["voltage"] = multimeter_value
-                else:
-                    values = None
-                data.append(values)
+                    data.append(values)
                 time.sleep(delay)
                 # Calculate next x position using iteration count to avoid accumulation of floating point error
                 x_iteration += 1
