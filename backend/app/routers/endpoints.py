@@ -127,11 +127,14 @@ async def start_movement(params: RectangleParams):
 @router.post("/continuous_scan")
 async def continuous_scan(params: ContinuousScanParams):
     """
-    Continuous bidirectional scan with direct parallel device reads.
+        Continuous bidirectional scan with direct parallel device reads.
 
-    Scans from current position to (x, y) with given x_step_size.
-    Reads lock-in and multimeter in parallel at maximum hardware speed.
-    Saves results to timestamped CSV file.
+        Scans from current position to (x, y) with given x_step_size.
+        Reads lock-in and multimeter in parallel at maximum hardware speed.
+        Saves results to timestamped CSV file.
+
+    curl.exe -X POST http://localhost:8000/continuous_scan -H "Content-Type: application/json" -d "@backend/scan.json"
+
     """
     print(
         f"---/continuous_scan endpoint hit: x={params.x}, y={params.y}, step={params.x_step_size}"

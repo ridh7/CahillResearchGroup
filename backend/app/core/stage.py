@@ -121,65 +121,67 @@ class ThorlabsBBD302:
     ):
         if delay is None:
             delay = 1
+
+        # Determine step sizes and sign based on scan direction
+        x_dir = 1 if x2 >= x1 else -1
+        y_dir = 1 if y2 >= y1 else -1
         if movement_mode == "steps":
             x_step_size = abs(x2 - x1) / x_steps
             y_step_size = abs(y2 - y1) / y_steps
-        greater_x, greater_y = max(x1, x2), max(y1, y2)
-        smaller_x, smaller_y = min(x1, x2), min(y1, y2)
-        data = []
-        y = smaller_y
-        y_iteration = 0
-        while (
-            y <= greater_y + y_step_size / 2
-        ):  # add tolerance because of the floating point inaccuracy in python
-            self.channel[2].MoveTo(Decimal(y), 60000)
-            x = smaller_x
-            x_iteration = 0
-            while x <= greater_x:
-                self.channel[1].MoveTo(Decimal(x), 60000)
-                print(
-                    f"---Current position: ({self.channel[1].DevicePosition}, {self.channel[2].DevicePosition})"
-                )
-                timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")
-                shared_state.pause_lockin_reading.set()
-                shared_state.pause_stage_reading.set()
-                try:
-                    time.sleep(0.02)
-                    # Read all devices while WebSockets are paused
-                    lockin_values = (
-                        global_state.lockin.read_values()
-                        if global_state.lockin
-                        else None
-                    )
-                    multimeter_value = (
-                        global_state.multimeter.read_value()
-                        if global_state.multimeter
-                        else None
-                    )
-                    position_x = self.channel[1].DevicePosition
-                    position_y = self.channel[2].DevicePosition
-                finally:
-                    shared_state.pause_lockin_reading.clear()
-                    shared_state.pause_stage_reading.clear()
 
-                # Build values dict after clearing pause
-                if lockin_values:
-                    values = lockin_values.copy()
-                    values["timestamp"] = timestamp
-                    values["positionX"] = position_x
-                    values["positionY"] = position_y
-                    values["voltage"] = multimeter_value
-                else:
-                    values = None
-                data.append(values)
-                time.sleep(delay)
-                # Calculate next x position using iteration count to avoid accumulation of floating point error
-                x_iteration += 1
-                x = smaller_x + x_iteration * x_step_size
-            # Calculate next y position using iteration count
-            y_iteration += 1
-            y = smaller_y + y_iteration * y_step_size
-        save_to_file(data)
+        num_x_steps = round(abs(x2 - x1) / x_step_size) if x_step_size else 0
+        num_y_steps = round(abs(y2 - y1) / y_step_size) if y_step_size else 0
+
+        lockin = global_state.lockin
+        multimeter = global_state.multimeter
+
+        try:
+            # Pause all WebSocket reads for the entire scan
+            shared_state.pause_lockin_reading.set()
+            shared_state.pause_stage_reading.set()
+            shared_state.pause_multimeter_reading.set()
+            time.sleep(0.05)
+
+            # Read frequency once (constant during scan)
+            freq = float(lockin.inst.query("FREQ?")) if lockin else 0.0
+
+            data = []
+            for y_i in range(num_y_steps + 1):
+                y = y1 + y_i * y_step_size * y_dir
+                self.channel[2].MoveTo(Decimal(y), 60000)
+                for x_i in range(num_x_steps + 1):
+                    x = x1 + x_i * x_step_size * x_dir
+                    self.channel[1].MoveTo(Decimal(x), 60000)
+                    time.sleep(delay)
+                    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")
+
+                    # Read directly from devices
+                    snap_x, snap_y = lockin.snap() if lockin else (0.0, 0.0)
+                    voltage = multimeter.read_value() if multimeter else 0.0
+
+                    data.append(
+                        {
+                            "timestamp": timestamp,
+                            "positionX": x,
+                            "positionY": y,
+                            "X": snap_x,
+                            "Y": snap_y,
+                            "frequency": freq,
+                            "voltage": voltage,
+                        }
+                    )
+                    print(
+                        f"---({x}, {y}) X={snap_x:.6e} Y={snap_y:.6e} V={voltage:.6f}"
+                    )
+
+            save_to_file(data)
+        except Exception as e:
+            print(f"---Error in move_in_rectangle: {e}")
+            traceback.print_exc()
+        finally:
+            shared_state.pause_lockin_reading.clear()
+            shared_state.pause_stage_reading.clear()
+            shared_state.pause_multimeter_reading.clear()
 
     def read_values(self):
         try:
@@ -479,7 +481,11 @@ class ThorlabsBBD302:
             target_x = Decimal(float(x_end))
             target_y = Decimal(float(y_end))
             x_step = Decimal(float(x_step_size))
-            print(f"---Target: ({target_x}, {target_y}), step: {x_step}")
+            x_dir = Decimal(1) if target_x >= start_x else Decimal(-1)
+            num_x_steps = int(abs(float(str(target_x - start_x))) / x_step_size + 0.5)
+            print(
+                f"---Target: ({target_x}, {target_y}), step: {x_step}, dir: {x_dir}, x_steps: {num_x_steps}"
+            )
 
             data = []
             sample_count = 0
@@ -489,7 +495,8 @@ class ThorlabsBBD302:
             executor = ThreadPoolExecutor(max_workers=2)
 
             try:
-                while current_x <= target_x + x_step / Decimal(2):
+                for x_i in range(num_x_steps + 1):
+                    current_x = start_x + Decimal(x_i) * x_step * x_dir
                     print(f"---X sweep at {current_x}, going_up={going_up}")
                     # Move X to position (blocking)
                     self.channel[1].MoveTo(current_x, 60000)
@@ -535,8 +542,7 @@ class ThorlabsBBD302:
                     )
                     prev_sample_count = sample_count
 
-                    # Step X and reverse Y direction
-                    current_x += x_step
+                    # Reverse Y direction
                     going_up = not going_up
 
             finally:
