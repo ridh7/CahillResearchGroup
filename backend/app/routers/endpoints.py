@@ -1,6 +1,7 @@
 import asyncio
 import json
 import os
+import queue
 import tempfile
 from concurrent.futures import ThreadPoolExecutor
 
@@ -9,19 +10,24 @@ from System import Decimal
 
 from app.core.anisotropic_analysis import run_anisotropic_analysis
 from app.core.fdpbd_analysis import run_fdpbd_analysis
+from app.core.shared_state import shared_state
 from app.models.channel import ChannelParams, Settings
 from app.models.fdpbd import FDPBDParams, FDPBDResult
-from app.models.lockin import LockinSensitivityRequest, LockinTimeConstantRequest
+from app.models.lockin import (
+    LockinFilterSlopeRequest,
+    LockinFrequencyRequest,
+    LockinSensitivityRequest,
+    LockinTimeConstantRequest,
+)
 from app.models.models import (
     AnisotropicFDPBDParams,
     AnisotropicFDPBDResult,
 )
 from app.models.multimeter import MultimeterApertureRequest, MultimeterTerminalRequest
 from app.models.stage import (
-    ContinuousScanParams,
-    MoveAndLogParams,
     MovementParams,
-    RectangleParams,
+    PositionValidationParams,
+    ScanParams,
 )
 from app.models.state import global_state
 
@@ -44,110 +50,126 @@ async def move(params: MovementParams):
         return {"status": "error", "message": str(e)}
 
 
-@router.post("/move_and_log")
-async def move_and_log(params: MoveAndLogParams):
-    """
-    Perform bidirectional zigzag scan with continuous data logging.
-
-    Scans from current position to (x, y) in a raster pattern,
-    logging instrument data at specified sample_rate during motion.
-    Saves results to timestamped CSV file in data/ directory.
-    """
-    if global_state.stage is None:
-        raise HTTPException(status_code=503, detail="Stage not initialized")
-    stage = global_state.stage  # Capture reference for type narrowing
-    try:
-        await asyncio.get_event_loop().run_in_executor(
-            executor,
-            lambda: stage.move_and_log(
-                params.x, params.y, params.x_step_size, params.sample_rate
-            ),
-        )
-        return {"status": "success", "message": "Movement and logging completed"}
-    except Exception as e:
-        return {"status": "error", "message": str(e)}
-
-
 @router.post("/start")
-async def start_movement(params: RectangleParams):
+async def start_movement(params: ScanParams):
     """
-    Perform unidirectional rectangular grid scan (legacy endpoint).
-
-    Scans rectangular region with uniform X/Y steps, pausing at each point
-    to collect measurements. Closes all WebSocket connections after completion
-    to signal end of scan. Superseded by /move_and_log for faster scanning.
+    Unified scan endpoint. Routes to step-and-measure or continuous scan
+    based on motion_type parameter.
     """
-    if global_state.stage is None:
-        raise HTTPException(status_code=503, detail="Stage not initialized")
-    stage = global_state.stage  # Capture reference for type narrowing
-    try:
-        future = asyncio.get_event_loop().run_in_executor(
-            executor,
-            lambda: stage.move_in_rectangle(
-                params.x1,
-                params.y1,
-                params.x2,
-                params.y2,
-                params.x_steps,
-                params.y_steps,
-                params.x_step_size,
-                params.y_step_size,
-                params.movement_mode,
-                params.delay,
-            ),
-        )
-        await future
-        for ws in [
-            global_state.ws_lockin,
-            global_state.ws_multimeter,
-            global_state.ws_stage,
-        ]:
-            if ws is not None:
-                try:
-                    await ws.close()
-                    ws = None
-                except Exception as e:
-                    print(f"Error closing {ws} websocket: {e}")
-        return {"status": "success", "message": "Movement completed"}
-    except Exception as e:
-        for ws in [
-            global_state.ws_lockin,
-            global_state.ws_multimeter,
-            global_state.ws_stage,
-        ]:
-            if ws is not None:
-                try:
-                    await ws.close()
-                    ws = None
-                except Exception as close_error:
-                    print(f"Error closing {ws} websocket: {close_error}")
-        return {"status": "error", "message": str(e)}
-
-
-@router.post("/continuous_scan")
-async def continuous_scan(params: ContinuousScanParams):
-    """
-        Continuous bidirectional scan with direct parallel device reads.
-
-        Scans from current position to (x, y) with given x_step_size.
-        Reads lock-in and multimeter in parallel at maximum hardware speed.
-        Saves results to timestamped CSV file.
-
-    curl.exe -X POST http://localhost:8000/continuous_scan -H "Content-Type: application/json" -d "@backend/scan.json"
-
-    """
-    print(
-        f"---/continuous_scan endpoint hit: x={params.x}, y={params.y}, step={params.x_step_size}"
-    )
     if global_state.stage is None:
         raise HTTPException(status_code=503, detail="Stage not initialized")
     stage = global_state.stage
+
+    # Set scan_active early so the WebSocket handler knows a scan is starting
+    # (prevents race condition where WS connects before scan thread sets it)
+    shared_state.scan_active = True
+    shared_state.scan_data_queue = queue.Queue()
+
     try:
-        await asyncio.get_event_loop().run_in_executor(
-            executor,
-            lambda: stage.continuous_scan(params.x, params.y, params.x_step_size),
+        if params.motion_type == "continuous":
+            # Continuous mode: fast axis moves continuously, slow axis steps
+            slow_step = (
+                params.x_step_size if params.fast_axis == "y" else params.y_step_size
+            )
+            if slow_step is None:
+                if params.fast_axis == "y" and params.x_steps:
+                    slow_step = abs(params.x2 - params.x1) / params.x_steps
+                elif params.fast_axis == "x" and params.y_steps:
+                    slow_step = abs(params.y2 - params.y1) / params.y_steps
+                else:
+                    shared_state.scan_active = False
+                    return {
+                        "status": "error",
+                        "message": "Slow axis step size required for continuous scan",
+                    }
+
+            fast_step = (
+                params.y_step_size if params.fast_axis == "y" else params.x_step_size
+            )
+
+            await asyncio.get_event_loop().run_in_executor(
+                executor,
+                lambda: stage.continuous_scan(
+                    params.x1,
+                    params.y1,
+                    params.x2,
+                    params.y2,
+                    slow_step,
+                    params.scan_pattern,
+                    params.record_retrace,
+                    params.fast_axis,
+                    fast_step,
+                    params.sample_id,
+                    params.comments,
+                    params.save_dir,
+                ),
+            )
+        else:
+            await asyncio.get_event_loop().run_in_executor(
+                executor,
+                lambda: stage.move_in_rectangle(
+                    params.x1,
+                    params.y1,
+                    params.x2,
+                    params.y2,
+                    params.x_steps,
+                    params.y_steps,
+                    params.x_step_size,
+                    params.y_step_size,
+                    params.movement_mode,
+                    params.delay,
+                    params.scan_pattern,
+                    params.fast_axis,
+                    params.sample_id,
+                    params.comments,
+                    params.save_dir,
+                ),
+            )
+
+        return {"status": "success", "message": "Scan completed"}
+    except Exception as e:
+        shared_state.scan_active = False
+        return {"status": "error", "message": str(e)}
+
+
+@router.get("/default-save-dir")
+async def default_save_dir():
+    """Return the backend's current working directory (the default save location)."""
+    return {"directory": os.getcwd()}
+
+
+@router.get("/choose-save-dir")
+async def choose_save_dir(initialdir: str = ""):
+    """Show a native OS folder-picker dialog and return the chosen directory."""
+
+    def _show_dialog():
+        import tkinter as tk
+        from tkinter import filedialog
+
+        root = tk.Tk()
+        root.withdraw()
+        root.wm_attributes("-topmost", True)
+        directory = filedialog.askdirectory(
+            title="Choose save folder...",
+            initialdir=initialdir or os.getcwd(),
         )
-        return {"status": "success", "message": "Continuous scan completed"}
+        root.destroy()
+        return directory or ""
+
+    directory = await asyncio.get_event_loop().run_in_executor(executor, _show_dialog)
+    return {"directory": directory}
+
+
+@router.post("/stop")
+async def stop_motion():
+    """Immediately stop all stage motion and abort any running scan."""
+    if global_state.stage is None:
+        raise HTTPException(status_code=503, detail="Stage not initialized")
+    stage = global_state.stage
+    shared_state.scan_active = False
+    try:
+        await asyncio.get_event_loop().run_in_executor(executor, lambda: stage.stop())
+        return {"status": "success", "message": "Motion stopped"}
     except Exception as e:
         return {"status": "error", "message": str(e)}
 
@@ -169,10 +191,7 @@ async def home(params: ChannelParams):
         else:
             await asyncio.get_event_loop().run_in_executor(
                 executor,
-                lambda: (
-                    stage.home_channel(1),
-                    stage.home_channel(2),
-                ),
+                lambda: stage.home_all(),
             )
         return {"status": "success", "message": "Homing completed"}
     except Exception as e:
@@ -267,12 +286,16 @@ async def get_lockin_settings():
             lambda: {
                 "sensitivity": lockin.get_sensitivity(),
                 "time_constant": lockin.get_time_constant(),
+                "frequency": lockin.get_frequency(),
+                "filter_slope": lockin.get_filter_slope(),
             },
         )
         return {
             "status": "success",
             "sensitivity": settings["sensitivity"],
             "time_constant": settings["time_constant"],
+            "frequency": settings["frequency"],
+            "filter_slope": settings["filter_slope"],
         }
     except Exception as e:
         return {"status": "error", "message": str(e)}
@@ -317,6 +340,34 @@ async def change_lockin_time_constant(params: LockinTimeConstantRequest):
             return {"status": "success", "time_constant": new_time_constant}
         else:
             return {"status": "error", "message": "Time constant out of range"}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+
+@router.post("/lockin/frequency")
+async def set_lockin_frequency(params: LockinFrequencyRequest):
+    if global_state.lockin is None:
+        raise HTTPException(status_code=503, detail="Lock-in amplifier not initialized")
+    lockin = global_state.lockin
+    try:
+        await asyncio.get_event_loop().run_in_executor(
+            executor, lambda: lockin.set_frequency(params.frequency)
+        )
+        return {"status": "success", "frequency": params.frequency}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+
+@router.post("/lockin/filter_slope")
+async def set_lockin_filter_slope(params: LockinFilterSlopeRequest):
+    if global_state.lockin is None:
+        raise HTTPException(status_code=503, detail="Lock-in amplifier not initialized")
+    lockin = global_state.lockin
+    try:
+        await asyncio.get_event_loop().run_in_executor(
+            executor, lambda: lockin.set_filter_slope(params.code)
+        )
+        return {"status": "success", "filter_slope": params.code}
     except Exception as e:
         return {"status": "error", "message": str(e)}
 
@@ -458,6 +509,32 @@ async def fdpbd_analyze_anisotropic(
         raise e
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)) from e
+
+
+@router.post("/test/position_validation")
+async def test_position_validation(params: PositionValidationParams):
+    """
+    Test endpoint: move one axis and compare kinematic position prediction
+    against actual device position reads.
+    """
+    if global_state.stage is None:
+        raise HTTPException(status_code=503, detail="Stage not initialized")
+    stage = global_state.stage
+
+    try:
+        result = await asyncio.get_event_loop().run_in_executor(
+            executor,
+            lambda: stage.validate_position(params.channel, params.start, params.end),
+        )
+        return {
+            "status": "success",
+            "data": result["records"],
+            "max_vel": result["max_vel"],
+            "accel": result["accel"],
+            "num_samples": len(result["records"]),
+        }
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
 
 
 @router.get("/")

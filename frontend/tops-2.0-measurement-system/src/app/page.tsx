@@ -6,12 +6,13 @@ import MetadataPanel from '../components/MetadataPanel';
 import DeviceControls from '../components/DeviceControls';
 import OutputPanel from '../components/OutputPanel';
 import SettingsPanel from '../components/SettingsPanel';
-import HeatmapPanel from '../components/HeatmapPanel';
+import LiveScanPanel from '../components/LiveScanPanel';
 import Link from 'next/link';
 
 export type FormData = {
   sampleId: string;
   comments: string;
+  saveDir: string;
   x1: string;
   x2: string;
   y1: string;
@@ -22,6 +23,20 @@ export type FormData = {
   yStepSize: string;
   movementMode: string;
   delay: string;
+  motionType: string;
+  scanPattern: string;
+  recordRetrace: boolean;
+  fastAxis: string;
+};
+
+export type ScanDataPoint = {
+  timestamp: string;
+  positionX: number | null;
+  positionY: number | null;
+  X: number;
+  Y: number;
+  frequency: number;
+  voltage: number;
 };
 
 export type LockinData = {
@@ -69,6 +84,7 @@ export default function CalculatePage() {
   const [formData, setFormData] = useState<FormData>({
     sampleId: '',
     comments: '',
+    saveDir: '',
     x1: '',
     x2: '',
     y1: '',
@@ -79,6 +95,10 @@ export default function CalculatePage() {
     yStepSize: '',
     movementMode: 'steps',
     delay: '',
+    motionType: 'step_and_measure',
+    scanPattern: 'bidirectional',
+    recordRetrace: false,
+    fastAxis: 'y',
   });
 
   const [lockinData, setLockinData] = useState<LockinData>({
@@ -87,8 +107,10 @@ export default function CalculatePage() {
     frequency: 0,
   });
   const [lockinSettings, setLockinSettings] = useState({
-    sensitivity: 0, // Initial sensitivity code (0-27)
-    timeConstant: 0, // Initial time constant code (0-30)
+    sensitivity: 0,
+    timeConstant: 0,
+    frequency: 0,
+    filterSlope: 0,
   });
   const [multimeterData, setMultimeterData] = useState<MultimeterData>({
     value: 0,
@@ -118,6 +140,44 @@ export default function CalculatePage() {
     channel2: { homingVelocity: '', maxVelocity: '', acceleration: '' },
   });
   const [isProcessing, setIsProcessing] = useState(false);
+  const [scanData, setScanData] = useState<ScanDataPoint[]>([]);
+  const [defaultSaveDir, setDefaultSaveDir] = useState('');
+  const [scanFormData, setScanFormData] = useState<FormData | null>(null);
+  const scanDataWsRef = useRef<WebSocket | null>(null);
+  const prevIsProcessingRef = useRef(false);
+
+  // Pre-fill x1, y1 with current stage position on mount
+  useEffect(() => {
+    fetch('http://localhost:8000/default-save-dir')
+      .then((res) => res.json())
+      .then((data) => setDefaultSaveDir(data.directory))
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    fetch('http://localhost:8000/get_current_position')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.status === 'success') {
+          setFormData((prev) => ({
+            ...prev,
+            x1: parseFloat(data.x).toFixed(4),
+            y1: parseFloat(data.y).toFixed(4),
+          }));
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  // Close device WebSockets when scan completes (isProcessing: true → false)
+  useEffect(() => {
+    if (prevIsProcessingRef.current && !isProcessing) {
+      disconnectLockin();
+      disconnectMultimeter();
+      disconnectStage();
+    }
+    prevIsProcessingRef.current = isProcessing;
+  });
 
   const settingsButtonRef = useRef<HTMLButtonElement | null>(null);
   const settingsMenuRef = useRef<HTMLDivElement | null>(null);
@@ -215,6 +275,8 @@ export default function CalculatePage() {
         setLockinSettings({
           sensitivity: data.sensitivity,
           timeConstant: data.time_constant,
+          frequency: data.frequency,
+          filterSlope: data.filter_slope,
         });
       } else {
         console.error('Failed to fetch lock-in settings:', data.message);
@@ -454,6 +516,17 @@ export default function CalculatePage() {
     });
   };
 
+  const handleBrowseSaveDir = async () => {
+    const currentDir = formData.saveDir || defaultSaveDir;
+    const res = await fetch(
+      `http://localhost:8000/choose-save-dir?initialdir=${encodeURIComponent(currentDir)}`
+    );
+    const { directory } = await res.json();
+    if (directory) {
+      setFormData((prev) => ({ ...prev, saveDir: directory }));
+    }
+  };
+
   const handleSubmit = async () => {
     try {
       setStatus('Connecting devices...');
@@ -462,7 +535,29 @@ export default function CalculatePage() {
       if (!stageConnected) await connectStage();
 
       setIsProcessing(true);
-      setStatus('Processing...');
+      setScanData([]);
+      setScanFormData({ ...formData });
+      setStatus('Scanning...');
+
+      // Connect scan data WebSocket before starting scan
+      const scanWs = new WebSocket('ws://localhost:8000/ws/scan_data');
+      scanWs.onmessage = (event) => {
+        const point = JSON.parse(event.data);
+        if (point.type === 'scan_complete') {
+          scanWs.close();
+          setIsProcessing(false);
+          setStatus('Scan completed');
+        } else {
+          setScanData((prev) => [...prev, point]);
+        }
+      };
+      scanWs.onerror = () => {
+        console.error('Scan data WebSocket error');
+      };
+      scanWs.onclose = () => {
+        scanDataWsRef.current = null;
+      };
+      scanDataWsRef.current = scanWs;
 
       const response = await fetch('http://localhost:8000/start', {
         method: 'POST',
@@ -478,15 +573,45 @@ export default function CalculatePage() {
           y_step_size: parseFloat(formData.yStepSize) || null,
           movement_mode: formData.movementMode,
           delay: parseFloat(formData.delay) || null,
+          motion_type: formData.motionType,
+          scan_pattern: formData.scanPattern,
+          record_retrace: formData.recordRetrace,
+          fast_axis: formData.fastAxis,
+          sample_id: formData.sampleId,
+          comments: formData.comments,
+          save_dir: formData.saveDir,
         }),
       });
       const data = await response.json();
-      setStatus(data.message);
-      setIsProcessing(false);
+      if (data.status === 'error') {
+        setStatus(data.message);
+        setIsProcessing(false);
+        if (scanDataWsRef.current) {
+          scanDataWsRef.current.close();
+        }
+      }
     } catch (error) {
       console.error('Error:', error);
       setIsProcessing(false);
       setStatus('Error occurred');
+      if (scanDataWsRef.current) {
+        scanDataWsRef.current.close();
+      }
+    }
+  };
+
+  const handleStop = async () => {
+    try {
+      setStatus('Stopping...');
+      await fetch('http://localhost:8000/stop', { method: 'POST' });
+      setIsProcessing(false);
+      if (scanDataWsRef.current) {
+        scanDataWsRef.current.close();
+      }
+      setStatus('Motion stopped');
+    } catch (error) {
+      console.error('Error stopping:', error);
+      setStatus('Error stopping motion');
     }
   };
 
@@ -596,6 +721,40 @@ export default function CalculatePage() {
     }
   };
 
+  const changeLockinFrequency = async (frequency: number) => {
+    try {
+      const response = await fetch('http://localhost:8000/lockin/frequency', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ frequency }),
+      });
+      const data = await response.json();
+      if (data.status === 'success') {
+        setLockinSettings((prev) => ({ ...prev, frequency: data.frequency }));
+      }
+    } catch (error) {
+      console.error('Error setting frequency:', error);
+      setStatus('Error setting frequency');
+    }
+  };
+
+  const changeLockinFilterSlope = async (code: number) => {
+    try {
+      const response = await fetch('http://localhost:8000/lockin/filter_slope', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code }),
+      });
+      const data = await response.json();
+      if (data.status === 'success') {
+        setLockinSettings((prev) => ({ ...prev, filterSlope: data.filter_slope }));
+      }
+    } catch (error) {
+      console.error('Error setting filter slope:', error);
+      setStatus('Error setting filter slope');
+    }
+  };
+
   const fetchMultimeterSettings = async () => {
     try {
       const response = await fetch('http://localhost:8000/multimeter/settings');
@@ -701,16 +860,25 @@ export default function CalculatePage() {
       <div className="flex flex-1 space-x-4 p-4">
         {/* Left Panel */}
         <div className="flex w-1/3 flex-col space-y-4">
-          <MetadataPanel formData={formData} setFormData={setFormData} />
+          <MetadataPanel
+            formData={formData}
+            setFormData={setFormData}
+            onBrowseSaveDir={handleBrowseSaveDir}
+            defaultSaveDir={defaultSaveDir}
+          />
           <DeviceControls
             formData={formData}
             setFormData={setFormData}
             handleSubmit={handleSubmit}
+            handleStop={handleStop}
             handleHome={handleHome}
             status={status}
+            isProcessing={isProcessing}
             lockinSettings={lockinSettings}
             changeLockinSensitivity={changeLockinSensitivity}
             changeLockinTimeConstant={changeLockinTimeConstant}
+            changeLockinFrequency={changeLockinFrequency}
+            changeLockinFilterSlope={changeLockinFilterSlope}
             fetchLockinSettings={fetchLockinSettings}
             lockinConnected={lockinConnected}
             multimeterSettings={multimeterSettings}
@@ -721,9 +889,13 @@ export default function CalculatePage() {
           />
         </div>
 
-        {/* Center Panel - Updated */}
+        {/* Center Panel */}
         <div className="flex w-1/2 flex-col space-y-4">
-          <HeatmapPanel setStatus={setStatus} />
+          <LiveScanPanel
+            scanData={scanData}
+            formData={scanFormData ?? formData}
+            isProcessing={isProcessing}
+          />
         </div>
 
         {/* Right Panel */}

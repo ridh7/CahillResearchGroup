@@ -1,7 +1,7 @@
 from pydantic import BaseModel
 
 
-class RectangleParams(BaseModel):
+class ScanParams(BaseModel):
     x1: float
     x2: float
     y1: float
@@ -10,8 +10,15 @@ class RectangleParams(BaseModel):
     y_steps: int | None = None
     x_step_size: float | None = None
     y_step_size: float | None = None
-    movement_mode: str
-    delay: float | None = None
+    movement_mode: str = "stepSize"  # "steps" or "stepSize"
+    motion_type: str = "step_and_measure"  # "continuous" or "step_and_measure"
+    scan_pattern: str = "bidirectional"  # "bidirectional" or "unidirectional"
+    record_retrace: bool = False  # for unidirectional: record backward sweep
+    fast_axis: str = "y"  # "x" or "y"
+    delay: float | None = None  # only used for step_and_measure
+    sample_id: str = ""
+    comments: str = ""
+    save_dir: str = ""  # directory chosen by folder picker; empty = cwd
 
 
 class MovementParams(BaseModel):
@@ -19,14 +26,7 @@ class MovementParams(BaseModel):
     y: float
 
 
-class MoveAndLogParams(BaseModel):
-    x: float
-    y: float
-    x_step_size: float
-    sample_rate: float
-
-
-class ContinuousScanParams(BaseModel):
-    x: float
-    y: float
-    x_step_size: float
+class PositionValidationParams(BaseModel):
+    channel: int = 1  # 1=X, 2=Y
+    start: float  # start position (mm)
+    end: float  # end position (mm)

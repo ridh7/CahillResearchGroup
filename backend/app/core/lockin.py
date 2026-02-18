@@ -180,4 +180,19 @@ class SR865A:
         if 0 <= code <= 23:
             self.inst.write(f"OFLT {code}")
         else:
-            raise ValueError("Time constant code must be between 0 and 30")
+            raise ValueError("Time constant code must be between 0 and 23")
+
+    def get_frequency(self):
+        return float(self.inst.query("FREQ?"))
+
+    def set_frequency(self, freq):
+        self.inst.write(f"FREQ {freq}")
+
+    def get_filter_slope(self):
+        return int(self.inst.query("OFSL?"))
+
+    def set_filter_slope(self, code):
+        if 0 <= code <= 3:
+            self.inst.write(f"OFSL {code}")
+        else:
+            raise ValueError("Filter slope code must be between 0 and 3")

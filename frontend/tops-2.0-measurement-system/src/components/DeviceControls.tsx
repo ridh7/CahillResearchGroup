@@ -5,11 +5,20 @@ type DeviceControlsProps = {
   formData: FormData;
   setFormData: React.Dispatch<React.SetStateAction<FormData>>;
   handleSubmit: () => void;
+  handleStop: () => void;
   handleHome: (direction: string) => void;
   status: string;
-  lockinSettings: { sensitivity: number; timeConstant: number };
+  isProcessing: boolean;
+  lockinSettings: {
+    sensitivity: number;
+    timeConstant: number;
+    frequency: number;
+    filterSlope: number;
+  };
   changeLockinSensitivity: (increment: boolean) => void;
   changeLockinTimeConstant: (increment: boolean) => void;
+  changeLockinFrequency: (frequency: number) => void;
+  changeLockinFilterSlope: (code: number) => void;
   fetchLockinSettings: () => void;
   lockinConnected: boolean;
   multimeterSettings: { aperture: number; terminal: string };
@@ -19,7 +28,7 @@ type DeviceControlsProps = {
   multimeterConnected: boolean;
 };
 
-const initialFormData = {
+const initialFormData: FormData = {
   sampleId: '',
   comments: '',
   x1: '',
@@ -32,17 +41,25 @@ const initialFormData = {
   yStepSize: '',
   movementMode: 'steps',
   delay: '',
+  motionType: 'step_and_measure',
+  scanPattern: 'bidirectional',
+  recordRetrace: false,
+  fastAxis: 'y',
 };
 
 export default function DeviceControls({
   formData,
   setFormData,
   handleSubmit,
+  handleStop,
   handleHome,
   status,
+  isProcessing,
   lockinSettings,
   changeLockinSensitivity,
   changeLockinTimeConstant,
+  changeLockinFrequency,
+  changeLockinFilterSlope,
   fetchLockinSettings,
   lockinConnected,
   multimeterSettings,
@@ -52,6 +69,38 @@ export default function DeviceControls({
   multimeterConnected,
 }: DeviceControlsProps) {
   const [activeTab, setActiveTab] = useState<'stage' | 'lockin' | 'multimeter'>('stage');
+  const [freqInput, setFreqInput] = useState('');
+  const [moveX, setMoveX] = useState('');
+  const [moveY, setMoveY] = useState('');
+  const [isMoving, setIsMoving] = useState(false);
+
+  const handleMoveTo = async () => {
+    const x = parseFloat(moveX);
+    const y = parseFloat(moveY);
+    if (isNaN(x) || isNaN(y) || x < 0 || x > 110 || y < 0 || y > 75) return;
+    setIsMoving(true);
+    try {
+      await fetch('http://localhost:8000/move', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ x, y }),
+      });
+    } catch (error) {
+      console.error('Move error:', error);
+    } finally {
+      setIsMoving(false);
+    }
+  };
+
+  const isMoveValid =
+    moveX !== '' &&
+    moveY !== '' &&
+    !isNaN(Number(moveX)) &&
+    !isNaN(Number(moveY)) &&
+    Number(moveX) >= 0 &&
+    Number(moveX) <= 110 &&
+    Number(moveY) >= 0 &&
+    Number(moveY) <= 75;
 
   const handleReset = () => {
     setFormData(initialFormData);
@@ -62,7 +111,16 @@ export default function DeviceControls({
     const x2Valid = formData.x2 !== '' && Number(formData.x2) >= 0 && Number(formData.x2) <= 110;
     const y1Valid = formData.y1 !== '' && Number(formData.y1) >= 0 && Number(formData.y1) <= 75;
     const y2Valid = formData.y2 !== '' && Number(formData.y2) >= 0 && Number(formData.y2) <= 75;
-    // Add delay validation (allowing empty string or non-negative number)
+    const coordsValid = x1Valid && x2Valid && y1Valid && y2Valid;
+
+    if (formData.motionType === 'continuous') {
+      // Continuous mode: needs coords + both step sizes (slow axis physical, fast axis binning)
+      const xStepValid = formData.xStepSize !== '' && Number(formData.xStepSize) > 0;
+      const yStepValid = formData.yStepSize !== '' && Number(formData.yStepSize) > 0;
+      return coordsValid && xStepValid && yStepValid;
+    }
+
+    // Step-and-measure mode
     const delayValid =
       formData.delay === '' || (Number(formData.delay) >= 0 && !isNaN(Number(formData.delay)));
 
@@ -75,13 +133,11 @@ export default function DeviceControls({
         formData.ySteps !== '' &&
         Number(formData.ySteps) > 0 &&
         Number.isInteger(Number(formData.ySteps));
-      return x1Valid && x2Valid && y1Valid && y2Valid && xStepsValid && yStepsValid && delayValid;
+      return coordsValid && xStepsValid && yStepsValid && delayValid;
     } else {
       const xStepSizeValid = formData.xStepSize !== '' && Number(formData.xStepSize) > 0;
       const yStepSizeValid = formData.yStepSize !== '' && Number(formData.yStepSize) > 0;
-      return (
-        x1Valid && x2Valid && y1Valid && y2Valid && xStepSizeValid && yStepSizeValid && delayValid
-      );
+      return coordsValid && xStepSizeValid && yStepSizeValid && delayValid;
     }
   }, [formData]);
 
@@ -121,46 +177,113 @@ export default function DeviceControls({
       </div>
 
       {activeTab === 'stage' && (
-        <div className="space-y-4">
-          <div className="mb-4 flex justify-center space-x-6">
+        <div className="space-y-3">
+          {/* Move to Position */}
+          <div className="flex items-center space-x-2">
+            <input
+              type="number"
+              placeholder="X (0-110)"
+              className={`w-24 rounded border bg-gray-700 p-2 text-sm text-white ${
+                moveX !== '' && (Number(moveX) < 0 || Number(moveX) > 110)
+                  ? 'border-red-500'
+                  : 'border-gray-600 focus:border-teal-500'
+              } focus:outline-none`}
+              value={moveX}
+              onChange={(e) => setMoveX(e.target.value)}
+            />
+            <input
+              type="number"
+              placeholder="Y (0-75)"
+              className={`w-24 rounded border bg-gray-700 p-2 text-sm text-white ${
+                moveY !== '' && (Number(moveY) < 0 || Number(moveY) > 75)
+                  ? 'border-red-500'
+                  : 'border-gray-600 focus:border-teal-500'
+              } focus:outline-none`}
+              value={moveY}
+              onChange={(e) => setMoveY(e.target.value)}
+            />
+            <button
+              onClick={handleMoveTo}
+              disabled={!isMoveValid || isMoving || isProcessing}
+              className={`flex-1 rounded py-2 text-sm text-white transition-colors ${
+                isMoveValid && !isMoving && !isProcessing
+                  ? 'bg-teal-600 hover:bg-teal-700'
+                  : 'cursor-not-allowed bg-gray-600'
+              }`}
+            >
+              {isMoving ? 'Moving...' : 'Move To'}
+            </button>
+          </div>
+
+          {/* Motion Type Toggle */}
+          <div className="flex justify-center space-x-4">
             <label className="flex items-center text-white">
               <input
                 type="radio"
-                name="movementMode"
-                value="steps"
-                checked={formData.movementMode === 'steps'}
-                onChange={() => {
-                  setFormData({
-                    ...formData,
-                    xStepSize: '',
-                    yStepSize: '',
-                    movementMode: 'steps',
-                  });
-                }}
+                name="motionType"
+                value="step_and_measure"
+                checked={formData.motionType === 'step_and_measure'}
+                onChange={() => setFormData({ ...formData, motionType: 'step_and_measure' })}
                 className="mr-2 text-teal-600 focus:ring-teal-500"
               />
-              Steps
+              Step & Measure
             </label>
             <label className="flex items-center text-white">
               <input
                 type="radio"
-                name="movementMode"
-                value="stepSize"
-                checked={formData.movementMode === 'stepSize'}
-                onChange={() => {
-                  setFormData({
-                    ...formData,
-                    xSteps: '',
-                    ySteps: '',
-                    movementMode: 'stepSize',
-                  });
-                }}
+                name="motionType"
+                value="continuous"
+                checked={formData.motionType === 'continuous'}
+                onChange={() => setFormData({ ...formData, motionType: 'continuous' })}
                 className="mr-2 text-teal-600 focus:ring-teal-500"
               />
-              Step Size
+              Continuous
             </label>
           </div>
 
+          {/* Movement Mode (steps vs stepSize) — only for step & measure */}
+          {formData.motionType === 'step_and_measure' && (
+            <div className="flex justify-center space-x-6">
+              <label className="flex items-center text-sm text-gray-300">
+                <input
+                  type="radio"
+                  name="movementMode"
+                  value="steps"
+                  checked={formData.movementMode === 'steps'}
+                  onChange={() =>
+                    setFormData({
+                      ...formData,
+                      xStepSize: '',
+                      yStepSize: '',
+                      movementMode: 'steps',
+                    })
+                  }
+                  className="mr-1.5 text-teal-600 focus:ring-teal-500"
+                />
+                Steps
+              </label>
+              <label className="flex items-center text-sm text-gray-300">
+                <input
+                  type="radio"
+                  name="movementMode"
+                  value="stepSize"
+                  checked={formData.movementMode === 'stepSize'}
+                  onChange={() =>
+                    setFormData({
+                      ...formData,
+                      xSteps: '',
+                      ySteps: '',
+                      movementMode: 'stepSize',
+                    })
+                  }
+                  className="mr-1.5 text-teal-600 focus:ring-teal-500"
+                />
+                Step Size
+              </label>
+            </div>
+          )}
+
+          {/* Coordinate Inputs */}
           <div className="grid grid-cols-2 gap-2">
             {['x1', 'y1', 'x2', 'y2'].map((key) => (
               <input
@@ -178,7 +301,7 @@ export default function DeviceControls({
                     ? 'border-red-500'
                     : 'border-gray-600 focus:border-teal-500'
                 } focus:outline-none`}
-                value={formData[key as keyof FormData]}
+                value={formData[key as keyof FormData] as string}
                 onChange={(e) => {
                   const value = e.target.value;
                   if (
@@ -187,101 +310,184 @@ export default function DeviceControls({
                     ((key === 'y1' || key === 'y2') &&
                       (value === '' || (Number(value) >= 0 && Number(value) <= 75)))
                   ) {
-                    setFormData({
-                      ...formData,
-                      [key as keyof FormData]: value,
-                    });
+                    setFormData({ ...formData, [key]: value });
                   }
                 }}
               />
             ))}
-            {formData.movementMode === 'steps' ? (
-              <>
-                <input
-                  type="number"
-                  placeholder="xSteps (int >0)"
-                  className={`rounded border bg-gray-700 p-2 text-white ${
-                    formData.xSteps === '' ||
-                    Number(formData.xSteps) <= 0 ||
-                    !Number.isInteger(Number(formData.xSteps))
-                      ? 'border-red-500'
-                      : 'border-gray-600 focus:border-teal-500'
-                  } focus:outline-none`}
-                  value={formData.xSteps}
-                  onChange={(e) => {
-                    const value = e.target.value;
-                    if (value === '' || (Number.isInteger(Number(value)) && Number(value) > 0)) {
-                      setFormData({ ...formData, xSteps: value });
-                    }
-                  }}
-                />
-                <input
-                  type="number"
-                  placeholder="ySteps (int >0)"
-                  className={`rounded border bg-gray-700 p-2 text-white ${
-                    formData.ySteps === '' ||
-                    Number(formData.ySteps) <= 0 ||
-                    !Number.isInteger(Number(formData.ySteps))
-                      ? 'border-red-500'
-                      : 'border-gray-600 focus:border-teal-500'
-                  } focus:outline-none`}
-                  value={formData.ySteps}
-                  onChange={(e) => {
-                    const value = e.target.value;
-                    if (value === '' || (Number.isInteger(Number(value)) && Number(value) > 0)) {
-                      setFormData({ ...formData, ySteps: value });
-                    }
-                  }}
-                />
-              </>
-            ) : (
-              <>
-                <input
-                  type="number"
-                  placeholder="xStepSize (>0) (mm)"
-                  className={`rounded border bg-gray-700 p-2 text-white ${
-                    formData.xStepSize === '' || Number(formData.xStepSize) <= 0
-                      ? 'border-red-500'
-                      : 'border-gray-600 focus:border-teal-500'
-                  } focus:outline-none`}
-                  value={formData.xStepSize}
-                  onChange={(e) => setFormData({ ...formData, xStepSize: e.target.value })}
-                />
-                <input
-                  type="number"
-                  placeholder="yStepSize (>0) (mm)"
-                  className={`rounded border bg-gray-700 p-2 text-white ${
-                    formData.yStepSize === '' || Number(formData.yStepSize) <= 0
-                      ? 'border-red-500'
-                      : 'border-gray-600 focus:border-teal-500'
-                  } focus:outline-none`}
-                  value={formData.yStepSize}
-                  onChange={(e) => setFormData({ ...formData, yStepSize: e.target.value })}
-                />
-              </>
-            )}
-            <input
-              placeholder="delay (>=0) (s)"
-              className={`rounded border bg-gray-700 p-2 text-white ${
-                formData.delay !== '' &&
-                (Number(formData.delay) < 0 || isNaN(Number(formData.delay)))
-                  ? 'border-red-500'
-                  : 'border-gray-600 focus:border-teal-500'
-              } focus:outline-none`}
-              value={formData.delay}
-              onChange={(e) => {
-                const value = e.target.value;
-                if (value === '' || (Number(value) >= 0 && !isNaN(Number(value)))) {
-                  setFormData({ ...formData, delay: value });
-                }
-              }}
-            />
           </div>
 
+          {/* Step Inputs — conditional on motion type and movement mode */}
+          {formData.motionType === 'continuous' ? (
+            <div className="grid grid-cols-2 gap-2">
+              <input
+                type="number"
+                placeholder={`X step size ${formData.fastAxis === 'x' ? '(fast)' : '(slow)'} (mm)`}
+                className={`rounded border bg-gray-700 p-2 text-white ${
+                  formData.xStepSize === '' || Number(formData.xStepSize) <= 0
+                    ? 'border-red-500'
+                    : 'border-gray-600 focus:border-teal-500'
+                } focus:outline-none`}
+                value={formData.xStepSize}
+                onChange={(e) => setFormData({ ...formData, xStepSize: e.target.value })}
+              />
+              <input
+                type="number"
+                placeholder={`Y step size ${formData.fastAxis === 'y' ? '(fast)' : '(slow)'} (mm)`}
+                className={`rounded border bg-gray-700 p-2 text-white ${
+                  formData.yStepSize === '' || Number(formData.yStepSize) <= 0
+                    ? 'border-red-500'
+                    : 'border-gray-600 focus:border-teal-500'
+                } focus:outline-none`}
+                value={formData.yStepSize}
+                onChange={(e) => setFormData({ ...formData, yStepSize: e.target.value })}
+              />
+            </div>
+          ) : formData.movementMode === 'steps' ? (
+            <div className="grid grid-cols-2 gap-2">
+              <input
+                type="number"
+                placeholder="xSteps (int >0)"
+                className={`rounded border bg-gray-700 p-2 text-white ${
+                  formData.xSteps === '' ||
+                  Number(formData.xSteps) <= 0 ||
+                  !Number.isInteger(Number(formData.xSteps))
+                    ? 'border-red-500'
+                    : 'border-gray-600 focus:border-teal-500'
+                } focus:outline-none`}
+                value={formData.xSteps}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  if (value === '' || (Number.isInteger(Number(value)) && Number(value) > 0)) {
+                    setFormData({ ...formData, xSteps: value });
+                  }
+                }}
+              />
+              <input
+                type="number"
+                placeholder="ySteps (int >0)"
+                className={`rounded border bg-gray-700 p-2 text-white ${
+                  formData.ySteps === '' ||
+                  Number(formData.ySteps) <= 0 ||
+                  !Number.isInteger(Number(formData.ySteps))
+                    ? 'border-red-500'
+                    : 'border-gray-600 focus:border-teal-500'
+                } focus:outline-none`}
+                value={formData.ySteps}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  if (value === '' || (Number.isInteger(Number(value)) && Number(value) > 0)) {
+                    setFormData({ ...formData, ySteps: value });
+                  }
+                }}
+              />
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-2">
+              <input
+                type="number"
+                placeholder="xStepSize (>0) (mm)"
+                className={`rounded border bg-gray-700 p-2 text-white ${
+                  formData.xStepSize === '' || Number(formData.xStepSize) <= 0
+                    ? 'border-red-500'
+                    : 'border-gray-600 focus:border-teal-500'
+                } focus:outline-none`}
+                value={formData.xStepSize}
+                onChange={(e) => setFormData({ ...formData, xStepSize: e.target.value })}
+              />
+              <input
+                type="number"
+                placeholder="yStepSize (>0) (mm)"
+                className={`rounded border bg-gray-700 p-2 text-white ${
+                  formData.yStepSize === '' || Number(formData.yStepSize) <= 0
+                    ? 'border-red-500'
+                    : 'border-gray-600 focus:border-teal-500'
+                } focus:outline-none`}
+                value={formData.yStepSize}
+                onChange={(e) => setFormData({ ...formData, yStepSize: e.target.value })}
+              />
+            </div>
+          )}
+
+          {/* Fast Axis + Scan Pattern + Delay Row */}
+          <div className="grid grid-cols-2 gap-2">
+            {/* Fast Axis Dropdown */}
+            <div className="flex items-center space-x-2">
+              <label className="text-sm text-gray-300">Fast axis:</label>
+              <select
+                value={formData.fastAxis}
+                onChange={(e) => setFormData({ ...formData, fastAxis: e.target.value })}
+                className="rounded border border-gray-600 bg-gray-700 p-1.5 text-sm text-white focus:border-teal-500 focus:outline-none"
+              >
+                <option value="x">X</option>
+                <option value="y">Y</option>
+              </select>
+            </div>
+            {/* Delay — only for step & measure */}
+            {formData.motionType === 'step_and_measure' && (
+              <input
+                placeholder="delay (>=0) (s)"
+                className={`rounded border bg-gray-700 p-2 text-white ${
+                  formData.delay !== '' &&
+                  (Number(formData.delay) < 0 || isNaN(Number(formData.delay)))
+                    ? 'border-red-500'
+                    : 'border-gray-600 focus:border-teal-500'
+                } focus:outline-none`}
+                value={formData.delay}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  if (value === '' || (Number(value) >= 0 && !isNaN(Number(value)))) {
+                    setFormData({ ...formData, delay: value });
+                  }
+                }}
+              />
+            )}
+          </div>
+
+          {/* Scan Pattern */}
+          <div className="flex items-center justify-center space-x-4">
+            <label className="flex items-center text-sm text-gray-300">
+              <input
+                type="radio"
+                name="scanPattern"
+                value="bidirectional"
+                checked={formData.scanPattern === 'bidirectional'}
+                onChange={() =>
+                  setFormData({ ...formData, scanPattern: 'bidirectional', recordRetrace: false })
+                }
+                className="mr-1.5 text-teal-600 focus:ring-teal-500"
+              />
+              Bidirectional
+            </label>
+            <label className="flex items-center text-sm text-gray-300">
+              <input
+                type="radio"
+                name="scanPattern"
+                value="unidirectional"
+                checked={formData.scanPattern === 'unidirectional'}
+                onChange={() => setFormData({ ...formData, scanPattern: 'unidirectional' })}
+                className="mr-1.5 text-teal-600 focus:ring-teal-500"
+              />
+              Unidirectional
+            </label>
+            {formData.scanPattern === 'unidirectional' && (
+              <label className="flex items-center text-sm text-gray-300">
+                <input
+                  type="checkbox"
+                  checked={formData.recordRetrace}
+                  onChange={(e) => setFormData({ ...formData, recordRetrace: e.target.checked })}
+                  className="mr-1.5 rounded text-teal-600 focus:ring-teal-500"
+                />
+                Record retrace
+              </label>
+            )}
+          </div>
+
+          {/* Action Buttons */}
           <div className="flex space-x-2">
             <button
               onClick={handleSubmit}
-              disabled={!isFormValid}
+              disabled={!isFormValid || isProcessing}
               className={`flex-1 rounded py-2 text-white transition-colors ${
                 isFormValid ? 'bg-teal-600 hover:bg-teal-700' : 'cursor-not-allowed bg-gray-600'
               }`}
@@ -307,12 +513,23 @@ export default function DeviceControls({
               Home Y
             </button>
           </div>
-          <button
-            onClick={handleReset}
-            className="w-full rounded bg-red-600 py-2 text-white transition-colors hover:bg-red-700"
-          >
-            Reset Values
-          </button>
+          <div className="flex space-x-2">
+            <button
+              onClick={handleReset}
+              className="flex-1 rounded bg-red-600 py-2 text-white transition-colors hover:bg-red-700"
+            >
+              Reset Values
+            </button>
+            <button
+              onClick={handleStop}
+              disabled={!isProcessing}
+              className={`flex-1 rounded py-2 text-white transition-colors ${
+                isProcessing ? 'bg-red-700 hover:bg-red-800' : 'cursor-not-allowed bg-gray-600'
+              }`}
+            >
+              Stop
+            </button>
+          </div>
           {status && <div className="mt-2 text-center text-white">{status}</div>}
         </div>
       )}
@@ -452,6 +669,64 @@ export default function DeviceControls({
                 />
               </svg>
             </button>
+          </div>
+
+          {/* Frequency Control */}
+          <div className="flex items-center space-x-2">
+            <label className="w-24 text-white">Frequency</label>
+            <input
+              type="number"
+              placeholder={lockinSettings.frequency.toString()}
+              className="w-28 rounded border border-gray-600 bg-gray-700 p-2 text-center text-sm text-white focus:border-teal-500 focus:outline-none"
+              value={freqInput}
+              onChange={(e) => setFreqInput(e.target.value)}
+              disabled={lockinConnected}
+            />
+            <span className="text-sm text-gray-400">Hz</span>
+            <button
+              onClick={() => {
+                const freq = parseFloat(freqInput);
+                if (!isNaN(freq) && freq > 0) {
+                  changeLockinFrequency(freq);
+                  setFreqInput('');
+                }
+              }}
+              disabled={
+                lockinConnected ||
+                freqInput === '' ||
+                isNaN(Number(freqInput)) ||
+                Number(freqInput) <= 0
+              }
+              className="rounded bg-teal-600 px-3 py-2 text-sm text-white hover:bg-teal-700 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Set
+            </button>
+          </div>
+
+          {/* Filter Slope Control */}
+          <div className="flex items-center space-x-2">
+            <label className="w-24 text-white">Filter Slope</label>
+            <div className="flex space-x-2">
+              {[
+                { code: 0, label: '6 dB/oct' },
+                { code: 1, label: '12 dB/oct' },
+                { code: 2, label: '18 dB/oct' },
+                { code: 3, label: '24 dB/oct' },
+              ].map((opt) => (
+                <button
+                  key={opt.code}
+                  onClick={() => changeLockinFilterSlope(opt.code)}
+                  disabled={lockinConnected}
+                  className={`rounded px-2 py-1.5 text-xs text-white transition-colors ${
+                    lockinSettings.filterSlope === opt.code
+                      ? 'bg-teal-600'
+                      : 'bg-gray-700 hover:bg-gray-600'
+                  } disabled:cursor-not-allowed disabled:opacity-50`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       )}

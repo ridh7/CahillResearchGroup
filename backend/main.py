@@ -1,4 +1,5 @@
 import asyncio
+import queue
 from contextlib import asynccontextmanager, suppress
 
 from fastapi import FastAPI, WebSocket
@@ -19,7 +20,6 @@ async def lifespan(app: FastAPI):  # noqa: ARG001
     Application lifespan manager for instrument initialization and cleanup.
 
     Startup: Initialize all instruments (stage, lock-in, multimeter) in sequence.
-    Order matters - stage initialization includes homing which takes ~10s.
 
     Shutdown: Close all WebSocket connections and disconnect stage hardware.
     """
@@ -206,5 +206,42 @@ async def websocket_stage_endpoint(websocket: WebSocket):
         task.cancel()
         if global_state.ws_stage == websocket:
             global_state.ws_stage = None
+        with suppress(Exception):
+            await websocket.close()
+
+
+@app.websocket("/ws/scan_data")
+async def websocket_scan_data_endpoint(websocket: WebSocket):
+    """Stream scan measurement points to frontend in real-time.
+
+    Reads from shared_state.scan_data_queue (populated by scan threads)
+    and forwards each point to the frontend for live visualization.
+    Sends {"type": "scan_complete"} when the scan finishes.
+    """
+    await websocket.accept()
+    try:
+        # Wait for scan to become active (frontend opens WS before POSTing /start)
+        for _ in range(500):  # up to 5 seconds
+            if shared_state.scan_active:
+                break
+            await asyncio.sleep(0.01)
+
+        if not shared_state.scan_active:
+            await websocket.send_json({"type": "scan_complete"})
+            return
+
+        while True:
+            try:
+                point = shared_state.scan_data_queue.get_nowait()
+                await websocket.send_json(point)
+            except queue.Empty:
+                if not shared_state.scan_active:
+                    await websocket.send_json({"type": "scan_complete"})
+                    break
+                await asyncio.sleep(0.01)
+    except WebSocketDisconnect:
+        pass
+    except Exception as e:
+        print(f"Scan data websocket error: {e}")
         with suppress(Exception):
             await websocket.close()

@@ -6,6 +6,7 @@ Prevents GPIB communication conflicts by caching latest values and using pause f
 """
 
 import asyncio
+import queue
 import threading
 
 
@@ -32,6 +33,8 @@ class SharedState:
         self.pause_lockin_reading = asyncio.Event()
         self.pause_stage_reading = asyncio.Event()
         self.pause_multimeter_reading = asyncio.Event()
+        self.scan_data_queue = queue.Queue()
+        self.scan_active = False
 
 
 shared_state = SharedState()
