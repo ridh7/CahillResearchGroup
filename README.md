@@ -72,11 +72,11 @@ For frontend development with live reloading:
 │   │   ├── dependencies.py FastAPI dependency injection functions
 │   │   ├── models/        Pydantic models and global state
 │   │   ├── routers/       REST API endpoints (domain-organized)
-│   │   │   ├── stage.py      Stage control (7 endpoints)
-│   │   │   ├── lockin.py     Lock-in amplifier (3 endpoints)
+│   │   │   ├── stage.py      Stage control (10 endpoints)
+│   │   │   ├── lockin.py     Lock-in amplifier (5 endpoints)
 │   │   │   ├── multimeter.py Multimeter (3 endpoints)
 │   │   │   ├── analysis.py   FD-PBD analysis (2 endpoints)
-│   │   │   └── websockets.py WebSocket streaming (3 endpoints)
+│   │   │   └── websockets.py WebSocket streaming (4 endpoints)
 │   │   └── utils/         File I/O helpers
 │   ├── myenv/             Python virtual environment (not committed)
 │   └── static/            Built frontend output (not committed)

@@ -149,11 +149,11 @@ backend/
 │   │       └── data_processing.py   # Signal processing utilities
 │   │
 │   ├── routers/                     # FastAPI routers (domain-organized)
-│   │   ├── stage.py                 # Stage control endpoints (7 endpoints)
-│   │   ├── lockin.py                # Lock-in amplifier endpoints (3 endpoints)
+│   │   ├── stage.py                 # Stage control endpoints (10 endpoints)
+│   │   ├── lockin.py                # Lock-in amplifier endpoints (5 endpoints)
 │   │   ├── multimeter.py            # Multimeter endpoints (3 endpoints)
 │   │   ├── analysis.py              # FD-PBD analysis endpoints (2 endpoints)
-│   │   └── websockets.py            # WebSocket streaming endpoints (3 endpoints)
+│   │   └── websockets.py            # WebSocket streaming endpoints (4 endpoints)
 │   │
 │   ├── dependencies.py              # FastAPI dependency injection functions
 │   │
@@ -188,7 +188,7 @@ backend/
 │  - stage.py         │              │  - /ws/lockin            │
 │  - lockin.py        │              │  - /ws/multimeter        │
 │  - multimeter.py    │              │  - /ws/stage             │
-│  - analysis.py      │              │                          │
+│  - analysis.py      │              │  - /ws/scan_data         │
 └──────────┬──────────┘              └──────────┬───────────────┘
            │                                    │
            │ Dependency Injection               │
@@ -203,6 +203,7 @@ backend/
     │  - ws_* WebSocket connections                      │
     │  - latest_* cached values (thread-safe)            │
     │  - pause_* coordination flags (threading.Event)    │
+    │  - scan_active, scan_generation, scan_data_queue   │
     └──────────┬─────────────────────────────────────────┘
                │
                ▼
@@ -291,52 +292,52 @@ backend/
 
 ### 2. WebSocket Streaming
 
-Three WebSocket endpoints provide real-time data streams:
+Four WebSocket endpoints provide real-time data streams:
 
-- **`/ws/lockin`**: Lock-in X, Y
+- **`/ws/lockin`**: Lock-in X, Y, frequency
 - **`/ws/multimeter`**: Multimeter voltage
 - **`/ws/stage`**: Stage X, Y position
+- **`/ws/scan_data`**: Live scan measurement points (queue-based, sends `{"type": "scan_complete"}` when done)
 
 **Connection Management**:
 
 - Only one client allowed per instrument (prevents bandwidth conflicts)
 - Previous connection automatically closed when new client connects
-- Data cached in `shared_state` for synchronous access during scans
+- Data cached in `global_state` for synchronous access during scans
 
-**GPIB Conflict Prevention**:
+**VISA/GPIB Conflict Prevention**:
 
-- Lock-in reading paused during stage scans using `shared_state.pause_lockin_reading` Event flag
-- Prevents simultaneous GPIB queries which can cause communication errors
-- Cached values in `shared_state` used during pause
+- Lock-in, multimeter, and stage readings paused during scans using `global_state.pause_*_reading` Event flags
+- Prevents simultaneous GPIB/VISA queries which can cause communication errors
+- Cached values in `global_state` used during pause
 
 ### 3. Data Acquisition Modes
 
-#### Legacy Grid Scan (`move_in_rectangle`)
+Both scan modes are launched via `POST /start` which fires a daemon thread and returns immediately. Scan progress is streamed to the frontend via `/ws/scan_data`. The `scan_generation` counter prevents zombie scans when stopping and restarting rapidly.
 
-- Unidirectional scanning with fixed pause at each point
-- Endpoint: `POST /start`
-- Closes WebSocket connections after completion
-- **Output**: Timestamped CSV (`Measurements_YYYYMMDD_HHMMSS.csv`) in the server's working directory
+#### Step-and-Measure (`move_in_rectangle`)
 
-#### Bidirectional Continuous Scan (`move_and_log`)
+- Stage moves to each grid point, pauses, reads instruments, then moves to the next point
+- Supports both steps and step-size input modes
+- Bidirectional or unidirectional scan patterns
+- Configurable delay between measurements
+- **Output**: Timestamped CSV (`{sample_id}_tops2_YYYYMMDD_HHMMSS.csv`)
 
-- **Algorithm**:
-  1. Increase stage polling to 1ms for high-resolution position tracking
-  2. For each X step:
-     - Scan Y upward (start_y → target_y) or downward (current_y → start_y)
-     - Log instrument data continuously during Y movement (not pausing)
-     - Capture: first point + continuous samples + end point
-     - Reverse Y direction for next X
-  3. Post-process: filter out-of-bounds and duplicate samples
-- Endpoint: `POST /move_and_log`
-- **Output**: Timestamped CSV (`Measurements_YYYYMMDD_HHMMSS.csv`) in the server's working directory
+#### Continuous Scan (`continuous_scan`)
 
-**Data Synchronization**:
+- Fast axis moves continuously while slow axis steps between sweeps
+- Lock-in and multimeter are read in parallel via `ThreadPoolExecutor`
+- Position gating: bin-based (`round((pos - grid_origin) / step_size)`) ensures one reading per grid cell
+- Supports bidirectional and unidirectional patterns (with optional retrace recording)
+- Configurable fast axis (X or Y)
+- **Output**: Timestamped CSV (`{sample_id}_tops2_YYYYMMDD_HHMMSS.csv`)
 
-- Stage movement runs in separate thread
-- Main thread polls position and logs data at specified `sample_rate`
-- Instrument values read from `shared_state` cache (populated by WebSocket streams)
-- Thread-safe access via `shared_state.value_lock`
+**Scan Abort Mechanism**:
+
+- `POST /stop` sets `scan_active = False` and calls `stage.stop()` on both channels
+- `scan_generation` counter: each new scan increments the counter; old scan threads detect the mismatch via an `aborted()` closure and exit immediately
+- `_safe_move_to()` retries `MoveTo` on `DeviceMovingException` with abort callback for fast exit
+- Move threads use `join(timeout=2.0)` to cap wait time after SDK `Stop(0)` call
 
 ### 4. FD-PBD Analysis
 
@@ -505,18 +506,22 @@ All endpoints are organized by domain in separate routers. Visit http://localhos
 ### Stage Control ([routers/stage.py](app/routers/stage.py))
 
 - **`POST /move`**: Move to absolute (X, Y) position in mm
-- **`POST /move_and_log`**: Bidirectional continuous scan with data logging
-- **`POST /start`**: Unidirectional grid scan (legacy)
+- **`POST /start`**: Unified scan endpoint — routes to step-and-measure or continuous scan based on `motion_type`. Runs in daemon thread, returns immediately.
+- **`POST /stop`**: Immediately stop all stage motion and abort any running scan
 - **`POST /home`**: Home specified channel (X, Y, or both)
 - **`GET /get_movement_params`**: Get velocity and homing parameters
 - **`POST /set_movement_params`**: Set velocity and homing parameters
 - **`GET /get_current_position`**: Get current stage position
+- **`GET /default-save-dir`**: Get backend's current working directory
+- **`GET /choose-save-dir`**: Show native OS folder-picker dialog
 
 ### Lock-in Control ([routers/lockin.py](app/routers/lockin.py))
 
-- **`GET /lockin/settings`**: Get current sensitivity and time constant
+- **`GET /lockin/settings`**: Get current sensitivity, time constant, frequency, and filter slope
 - **`POST /lockin/sensitivity`**: Increment/decrement sensitivity (codes 0-27)
 - **`POST /lockin/time_constant`**: Increment/decrement time constant (codes 0-23)
+- **`POST /lockin/frequency`**: Set reference frequency
+- **`POST /lockin/filter_slope`**: Set output filter slope
 
 ### Multimeter Control ([routers/multimeter.py](app/routers/multimeter.py))
 
@@ -531,9 +536,10 @@ All endpoints are organized by domain in separate routers. Visit http://localhos
 
 ### WebSockets ([routers/websockets.py](app/routers/websockets.py))
 
-- **`WS /ws/lockin`**: Real-time lock-in X, Y, frequency stream (~200Hz)
-- **`WS /ws/multimeter`**: Real-time multimeter voltage stream (~200Hz)
-- **`WS /ws/stage`**: Real-time stage X, Y position stream (~200Hz)
+- **`WS /ws/lockin`**: Real-time lock-in X, Y, frequency stream
+- **`WS /ws/multimeter`**: Real-time multimeter voltage stream
+- **`WS /ws/stage`**: Real-time stage X, Y position stream
+- **`WS /ws/scan_data`**: Live scan data points (queue-based, completes with `{"type": "scan_complete"}`)
 
 ## Troubleshooting
 

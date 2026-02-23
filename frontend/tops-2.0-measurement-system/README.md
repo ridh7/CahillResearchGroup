@@ -79,8 +79,9 @@ src/
 │       └── page.tsx            # Analysis page (physics-based fitting)
 │
 ├── components/
-│   ├── MetadataPanel.tsx       # Sample ID and comments input
+│   ├── MetadataPanel.tsx       # Sample ID, comments, save directory
 │   ├── DeviceControls.tsx      # Tabbed controls (Stage/Lock-in/Multimeter)
+│   ├── LiveScanPanel.tsx       # Real-time scan heatmap during acquisition
 │   ├── OutputPanel.tsx         # Device status displays and manual controls
 │   ├── RealTimeGraphs.tsx      # Live line charts (Recharts)
 │   ├── GraphsPanel.tsx         # Wrapper for RealTimeGraphs
@@ -108,14 +109,15 @@ src/
 │                                                             │
 │  User configures experiment parameters                      │
 │         ↓                                                   │
-│  POST /start → Backend initializes measurement              │
-│         ↓                                                   │
-│  WebSocket connections established (3 channels):            │
+│  WebSocket connections established (3 instrument channels): │
 │  • ws://localhost:8000/ws/lockin    → LockinData            │
 │  • ws://localhost:8000/ws/multimeter → MultimeterData       │
 │  • ws://localhost:8000/ws/stage      → StageData            │
 │         ↓                                                   │
-│  POST /move_and_log → Stage moves, logs data point          │
+│  POST /start → Backend launches scan in daemon thread       │
+│  • /ws/scan_data streams live measurements                  │
+│  • LiveScanPanel renders real-time heatmap                  │
+│  • POST /stop aborts scan + halts stage motion              │
 │         ↓                                                   │
 │  User uploads CSV for post-processing                       │
 │  • PapaParse extracts data                                  │
@@ -155,9 +157,9 @@ Simple input form for sample identification and experiment comments. Data is inc
 
 Tabbed interface for configuring three instruments:
 
-- **Stage Tab**: Scan bounds (X/Y min/max), step sizes, delay parameters
-- **Lock-in Tab**: Sensitivity, time constant, frequency settings
-- **Multimeter Tab**: Aperture time, measurement mode selection
+- **Stage Tab**: Motion type (step-and-measure / continuous), scan bounds (X/Y min/max), steps or step sizes, fast axis selection, scan pattern (bidirectional / unidirectional), move-to-position controls, stop button
+- **Lock-in Tab**: Sensitivity, time constant, frequency, filter slope settings
+- **Multimeter Tab**: Aperture time (NPLC), terminal selection
 
 Includes detailed tooltips explaining units and valid ranges.
 
@@ -168,7 +170,6 @@ Displays real-time status for each instrument:
 - Connection indicators (green = connected, red = disconnected)
 - Current readings from Lock-in (X, Y, Frequency) and Multimeter (Voltage)
 - Connect/Disconnect buttons for each WebSocket channel
-- Manual stage control (Move & Log button)
 
 ### HeatmapPanel
 
