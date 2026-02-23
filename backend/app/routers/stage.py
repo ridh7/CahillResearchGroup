@@ -1,6 +1,10 @@
 """Stage control endpoints for Thorlabs motorized stage."""
 
 import asyncio
+import os
+import queue
+import threading
+import traceback
 from concurrent.futures import ThreadPoolExecutor
 
 from fastapi import APIRouter, Depends
@@ -9,7 +13,7 @@ from System import Decimal
 from app.core.stage import ThorlabsBBD302
 from app.dependencies import get_executor, get_stage, get_stage_optional
 from app.models.channel import ChannelParams, Settings
-from app.models.stage import MoveAndLogParams, MovementParams, RectangleParams
+from app.models.stage import MovementParams, ScanParams
 from app.models.state import global_state
 
 router = APIRouter()
@@ -31,86 +35,146 @@ async def move(
         return {"status": "error", "message": str(e)}
 
 
-@router.post("/move_and_log")
-async def move_and_log(
-    params: MoveAndLogParams,
-    stage: ThorlabsBBD302 = Depends(get_stage),
-    executor: ThreadPoolExecutor = Depends(get_executor),
-):
-    """
-    Perform bidirectional zigzag scan with continuous data logging.
-
-    Scans from current position to (x, y) in a raster pattern,
-    logging instrument data at specified sample_rate during motion.
-    Saves results to timestamped CSV file in data/ directory.
-    """
-    try:
-        await asyncio.get_running_loop().run_in_executor(
-            executor,
-            lambda: stage.move_and_log(
-                params.x, params.y, params.x_step_size, params.sample_rate
-            ),
-        )
-        return {"status": "success", "message": "Movement and logging completed"}
-    except Exception as e:
-        return {"status": "error", "message": str(e)}
-
-
 @router.post("/start")
 async def start_movement(
-    params: RectangleParams,
+    params: ScanParams,
+    stage: ThorlabsBBD302 = Depends(get_stage),
+):
+    """
+    Unified scan endpoint. Routes to step-and-measure or continuous scan
+    based on motion_type parameter.
+
+    Returns immediately with {"status": "started"} — scan runs in a daemon
+    thread so uvicorn can reload/shutdown without waiting for the scan to finish.
+    Scan completion is signalled via the /ws/scan_data WebSocket.
+    """
+    # Resolve step sizes before launching the thread so we can return errors
+    # synchronously without the thread needing to communicate them back.
+    slow_step: float | None = None
+    fast_step: float | None = None
+    if params.motion_type == "continuous":
+        slow_step = (
+            params.x_step_size if params.fast_axis == "y" else params.y_step_size
+        )
+        if slow_step is None:
+            if params.fast_axis == "y" and params.x_steps:
+                slow_step = abs(params.x2 - params.x1) / params.x_steps
+            elif params.fast_axis == "x" and params.y_steps:
+                slow_step = abs(params.y2 - params.y1) / params.y_steps
+            else:
+                return {
+                    "status": "error",
+                    "message": "Slow axis step size required for continuous scan",
+                }
+        fast_step = (
+            params.y_step_size if params.fast_axis == "y" else params.x_step_size
+        )
+        if fast_step is None:
+            if params.fast_axis == "y" and params.y_steps:
+                fast_step = abs(params.y2 - params.y1) / params.y_steps
+            elif params.fast_axis == "x" and params.x_steps:
+                fast_step = abs(params.x2 - params.x1) / params.x_steps
+
+    # Increment the scan generation so any still-running previous scan thread
+    # sees the mismatch and exits immediately (without waiting for scan_active).
+    global_state.scan_generation += 1
+    my_generation = global_state.scan_generation
+
+    # Set scan_active early so the WebSocket handler knows a scan is starting
+    # (prevents race condition where WS connects before scan thread sets it)
+    global_state.scan_active = True
+    global_state.scan_data_queue = queue.Queue()
+
+    def _run_scan() -> None:
+        try:
+            if params.motion_type == "continuous":
+                stage.continuous_scan(
+                    params.x1,
+                    params.y1,
+                    params.x2,
+                    params.y2,
+                    slow_step,
+                    params.scan_pattern,
+                    params.record_retrace,
+                    params.fast_axis,
+                    fast_step,
+                    params.sample_id,
+                    params.comments,
+                    params.save_dir,
+                    scan_generation=my_generation,
+                )
+            else:
+                stage.move_in_rectangle(
+                    params.x1,
+                    params.y1,
+                    params.x2,
+                    params.y2,
+                    params.x_steps,
+                    params.y_steps,
+                    params.x_step_size,
+                    params.y_step_size,
+                    params.movement_mode,
+                    params.delay,
+                    params.scan_pattern,
+                    params.fast_axis,
+                    params.sample_id,
+                    params.comments,
+                    params.save_dir,
+                )
+        except Exception as e:
+            print(f"---Scan thread error: {e}")
+            traceback.print_exc()
+            global_state.scan_active = False
+
+    # Daemon thread: killed automatically when the process exits (e.g. on hot-reload),
+    # so uvicorn can restart without being blocked by a long-running scan.
+    threading.Thread(target=_run_scan, daemon=True, name="scan-thread").start()
+    return {"status": "started"}
+
+
+@router.post("/stop")
+async def stop_motion(
     stage: ThorlabsBBD302 = Depends(get_stage),
     executor: ThreadPoolExecutor = Depends(get_executor),
 ):
-    """
-    Perform unidirectional rectangular grid scan (legacy endpoint).
-
-    Scans rectangular region with uniform X/Y steps, pausing at each point
-    to collect measurements. Closes all WebSocket connections after completion
-    to signal end of scan. Superseded by /move_and_log for faster scanning.
-    """
+    """Immediately stop all stage motion and abort any running scan."""
+    global_state.scan_active = False
     try:
-        future = asyncio.get_running_loop().run_in_executor(
-            executor,
-            lambda: stage.move_in_rectangle(
-                params.x1,
-                params.y1,
-                params.x2,
-                params.y2,
-                params.x_steps,
-                params.y_steps,
-                params.x_step_size,
-                params.y_step_size,
-                params.movement_mode,
-                params.delay,
-            ),
-        )
-        await future
-        for ws in [
-            global_state.ws_lockin,
-            global_state.ws_multimeter,
-            global_state.ws_stage,
-        ]:
-            if ws is not None:
-                try:
-                    await ws.close()
-                    ws = None
-                except Exception as e:
-                    print(f"Error closing {ws} websocket: {e}")
-        return {"status": "success", "message": "Movement completed"}
+        await asyncio.get_running_loop().run_in_executor(executor, lambda: stage.stop())
+        return {"status": "success", "message": "Motion stopped"}
     except Exception as e:
-        for ws in [
-            global_state.ws_lockin,
-            global_state.ws_multimeter,
-            global_state.ws_stage,
-        ]:
-            if ws is not None:
-                try:
-                    await ws.close()
-                    ws = None
-                except Exception as close_error:
-                    print(f"Error closing {ws} websocket: {close_error}")
         return {"status": "error", "message": str(e)}
+
+
+@router.get("/default-save-dir")
+async def default_save_dir():
+    """Return the backend's current working directory (the default save location)."""
+    return {"directory": os.getcwd()}
+
+
+@router.get("/choose-save-dir")
+async def choose_save_dir(
+    initialdir: str = "",
+    executor: ThreadPoolExecutor = Depends(get_executor),
+):
+    """Show a native OS folder-picker dialog and return the chosen directory."""
+
+    def _show_dialog():
+        import tkinter as tk
+        from tkinter import filedialog
+
+        root = tk.Tk()
+        root.withdraw()
+        root.wm_attributes("-topmost", True)
+        directory = filedialog.askdirectory(
+            title="Choose save folder...",
+            initialdir=initialdir or os.getcwd(),
+        )
+        root.destroy()
+        return directory or ""
+
+    directory = await asyncio.get_running_loop().run_in_executor(executor, _show_dialog)
+    return {"directory": directory}
 
 
 @router.post("/home")
@@ -131,10 +195,7 @@ async def home(
         else:
             await asyncio.get_running_loop().run_in_executor(
                 executor,
-                lambda: (
-                    stage.home_channel(1),
-                    stage.home_channel(2),
-                ),
+                lambda: stage.home_all(),
             )
         return {"status": "success", "message": "Homing completed"}
     except Exception as e:

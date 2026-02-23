@@ -1,6 +1,7 @@
 """WebSocket endpoints for real-time hardware data streaming."""
 
 import asyncio
+import queue
 from contextlib import suppress
 
 from fastapi import APIRouter, WebSocket
@@ -47,6 +48,9 @@ async def send_multimeter_data(websocket: WebSocket):
         return
     multimeter = global_state.multimeter  # Capture reference for type narrowing
     while True:
+        if global_state.pause_multimeter_reading.is_set():
+            await asyncio.sleep(0.02)
+            continue
         value = multimeter.read_value()
         with global_state.value_lock:
             global_state.latest_multimeter_value = value
@@ -160,5 +164,42 @@ async def websocket_stage_endpoint(websocket: WebSocket):
         task.cancel()
         if global_state.ws_stage == websocket:
             global_state.ws_stage = None
+        with suppress(Exception):
+            await websocket.close()
+
+
+@router.websocket("/ws/scan_data")
+async def websocket_scan_data_endpoint(websocket: WebSocket):
+    """Stream scan measurement points to frontend in real-time.
+
+    Reads from global_state.scan_data_queue (populated by scan threads)
+    and forwards each point to the frontend for live visualization.
+    Sends {"type": "scan_complete"} when the scan finishes.
+    """
+    await websocket.accept()
+    try:
+        # Wait for scan to become active (frontend opens WS before POSTing /start)
+        for _ in range(500):  # up to 5 seconds
+            if global_state.scan_active:
+                break
+            await asyncio.sleep(0.01)
+
+        if not global_state.scan_active:
+            await websocket.send_json({"type": "scan_complete"})
+            return
+
+        while True:
+            try:
+                point = global_state.scan_data_queue.get_nowait()
+                await websocket.send_json(point)
+            except queue.Empty:
+                if not global_state.scan_active:
+                    await websocket.send_json({"type": "scan_complete"})
+                    break
+                await asyncio.sleep(0.01)
+    except WebSocketDisconnect:
+        pass
+    except Exception as e:
+        print(f"Scan data websocket error: {e}")
         with suppress(Exception):
             await websocket.close()

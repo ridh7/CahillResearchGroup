@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import queue
 import threading
 from concurrent.futures import ThreadPoolExecutor
 from typing import TYPE_CHECKING
@@ -63,6 +64,14 @@ class GlobalState:
         # Synchronization flags
         self.pause_lockin_reading = threading.Event()
         self.pause_stage_reading = threading.Event()
+        self.pause_multimeter_reading = threading.Event()
+
+        # Scan coordination
+        self.scan_data_queue: queue.Queue = queue.Queue()
+        self.scan_active = False
+        self.scan_generation = (
+            0  # incremented each new scan; old threads abort on mismatch
+        )
 
 
 global_state = GlobalState()

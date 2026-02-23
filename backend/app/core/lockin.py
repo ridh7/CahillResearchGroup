@@ -161,6 +161,12 @@ class SR865A:
                 "frequency": 0.0,
             }
 
+    def snap(self):
+        """Read X and Y simultaneously using SNAP command (single GPIB query)."""
+        response = self.inst.query("SNAP? 0,1")
+        x_str, y_str = response.split(",")
+        return float(x_str), float(y_str)
+
     def get_sensitivity(self):
         return int(self.inst.query("SCAL?"))
 
@@ -178,3 +184,18 @@ class SR865A:
             self.inst.write(f"OFLT {code}")
         else:
             raise ValueError("Time constant code must be between 0 and 23")
+
+    def get_frequency(self):
+        return float(self.inst.query("FREQ?"))
+
+    def set_frequency(self, freq):
+        self.inst.write(f"FREQ {freq}")
+
+    def get_filter_slope(self):
+        return int(self.inst.query("OFSL?"))
+
+    def set_filter_slope(self, code):
+        if 0 <= code <= 3:
+            self.inst.write(f"OFSL {code}")
+        else:
+            raise ValueError("Filter slope code must be between 0 and 3")

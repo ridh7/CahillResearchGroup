@@ -1,4 +1,3 @@
-import os
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import asynccontextmanager, suppress
 from pathlib import Path
@@ -8,6 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
+from app.config import settings as app_settings
 from app.core.lockin import SR865A
 from app.core.multimeter import BKPrecision5493C
 from app.core.stage import ThorlabsBBD302
@@ -33,6 +33,7 @@ async def lifespan(app: FastAPI):  # noqa: ARG001
     global_state.multimeter = BKPrecision5493C()
     global_state.pause_lockin_reading.clear()
     global_state.pause_stage_reading.clear()
+    global_state.pause_multimeter_reading.clear()
     yield
     for ws in [
         global_state.ws_lockin,
@@ -49,11 +50,10 @@ async def lifespan(app: FastAPI):  # noqa: ARG001
 
 app = FastAPI(lifespan=lifespan)
 
-cors_origins = os.environ.get("CORS_ORIGINS", "").strip()
-if cors_origins:
+if app_settings.cors_origins:
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=cors_origins.split(","),
+        allow_origins=app_settings.cors_origins.split(","),
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],

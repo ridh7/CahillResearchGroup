@@ -1,6 +1,4 @@
-import { useState } from 'react';
 import { LockinData, MultimeterData, StageData } from '../app/page';
-import { API_BASE } from '../lib/api';
 
 type OutputPanelProps = {
   lockinData: LockinData;
@@ -39,49 +37,6 @@ export default function OutputPanel({
   resetStage,
   isProcessing,
 }: OutputPanelProps) {
-  const [moveX, setMoveX] = useState('');
-  const [moveY, setMoveY] = useState('');
-  const [xStepSize, setXStepSize] = useState('');
-
-  const handleMove = async () => {
-    try {
-      const response = await fetch(`${API_BASE}/move_and_log`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          x: parseFloat(moveX),
-          y: parseFloat(moveY),
-          x_step_size: parseFloat(xStepSize),
-          sample_rate: 0.02,
-        }),
-      });
-      const data = await response.json();
-      if (data.status === 'success') {
-        console.log('Move and logging successful:', data.message);
-        setMoveX('');
-        setMoveY('');
-        setXStepSize('');
-      } else {
-        console.error('Move and loggin failed:', data.message);
-      }
-    } catch (error) {
-      console.error('Error during move and loggin:', error);
-    }
-  };
-
-  const isMoveValid =
-    moveX !== '' &&
-    moveY !== '' &&
-    xStepSize !== '' &&
-    !isNaN(parseFloat(moveX)) &&
-    !isNaN(parseFloat(moveY)) &&
-    !isNaN(parseFloat(xStepSize)) &&
-    parseFloat(moveX) >= 0 &&
-    parseFloat(moveX) <= 110 &&
-    parseFloat(moveY) >= 0 &&
-    parseFloat(moveY) <= 75 &&
-    parseFloat(xStepSize) > 0;
-
   return (
     <div className="w-1/5 space-y-6 rounded-lg bg-gray-800 p-4 shadow-lg">
       {/* Lock-in Amplifier */}
@@ -224,65 +179,6 @@ export default function OutputPanel({
           <span className="text-gray-400">Y:</span>
           <span className="text-white">{stageData.y} mm</span>
         </div>
-        <div className="mt-4 grid grid-cols-1 gap-2">
-          <input
-            type="number"
-            placeholder="X (0-110) (mm)"
-            className={`rounded border bg-gray-700 p-2 text-white ${
-              moveX === '' || parseFloat(moveX) < 0 || parseFloat(moveX) > 110
-                ? 'border-red-500'
-                : 'border-gray-600 focus:border-teal-500'
-            } focus:outline-none`}
-            value={moveX}
-            onChange={(e) => {
-              const value = e.target.value;
-              if (value === '' || (parseFloat(value) >= 0 && parseFloat(value) <= 110)) {
-                setMoveX(value);
-              }
-            }}
-          />
-          <input
-            type="number"
-            placeholder="Y (0-75) (mm)"
-            className={`rounded border bg-gray-700 p-2 text-white ${
-              moveY === '' || parseFloat(moveY) < 0 || parseFloat(moveY) > 75
-                ? 'border-red-500'
-                : 'border-gray-600 focus:border-teal-500'
-            } focus:outline-none`}
-            value={moveY}
-            onChange={(e) => {
-              const value = e.target.value;
-              if (value === '' || (parseFloat(value) >= 0 && parseFloat(value) <= 75)) {
-                setMoveY(value);
-              }
-            }}
-          />
-          <input
-            type="number"
-            placeholder="X Step Size (mm)"
-            className={`rounded border bg-gray-700 p-2 text-white ${
-              moveX === '' || parseFloat(xStepSize) <= 0
-                ? 'border-red-500'
-                : 'border-gray-600 focus:border-teal-500'
-            } focus:outline-none`}
-            value={xStepSize}
-            onChange={(e) => {
-              const value = e.target.value;
-              if (value === '' || parseFloat(value) > 0) {
-                setXStepSize(value);
-              }
-            }}
-          />
-        </div>
-        <button
-          onClick={handleMove}
-          disabled={!isMoveValid}
-          className={`mt-4 w-full rounded py-2 text-white transition-colors ${
-            isMoveValid ? 'bg-teal-600 hover:bg-teal-700' : 'cursor-not-allowed bg-gray-600'
-          }`}
-        >
-          Move & Log
-        </button>
       </div>
     </div>
   );

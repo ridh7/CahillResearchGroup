@@ -7,7 +7,12 @@ from fastapi import APIRouter, Depends
 
 from app.core.lockin import SR865A
 from app.dependencies import get_executor, get_lockin
-from app.models.lockin import LockinSensitivityRequest, LockinTimeConstantRequest
+from app.models.lockin import (
+    LockinFilterSlopeRequest,
+    LockinFrequencyRequest,
+    LockinSensitivityRequest,
+    LockinTimeConstantRequest,
+)
 
 router = APIRouter()
 
@@ -23,12 +28,16 @@ async def get_lockin_settings(
             lambda: {
                 "sensitivity": lockin.get_sensitivity(),
                 "time_constant": lockin.get_time_constant(),
+                "frequency": lockin.get_frequency(),
+                "filter_slope": lockin.get_filter_slope(),
             },
         )
         return {
             "status": "success",
             "sensitivity": settings["sensitivity"],
             "time_constant": settings["time_constant"],
+            "frequency": settings["frequency"],
+            "filter_slope": settings["filter_slope"],
         }
     except Exception as e:
         return {"status": "error", "message": str(e)}
@@ -75,5 +84,35 @@ async def change_lockin_time_constant(
             return {"status": "success", "time_constant": new_time_constant}
         else:
             return {"status": "error", "message": "Time constant out of range"}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+
+@router.post("/lockin/frequency")
+async def set_lockin_frequency(
+    params: LockinFrequencyRequest,
+    lockin: SR865A = Depends(get_lockin),
+    executor: ThreadPoolExecutor = Depends(get_executor),
+):
+    try:
+        await asyncio.get_running_loop().run_in_executor(
+            executor, lambda: lockin.set_frequency(params.frequency)
+        )
+        return {"status": "success", "frequency": params.frequency}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+
+@router.post("/lockin/filter_slope")
+async def set_lockin_filter_slope(
+    params: LockinFilterSlopeRequest,
+    lockin: SR865A = Depends(get_lockin),
+    executor: ThreadPoolExecutor = Depends(get_executor),
+):
+    try:
+        await asyncio.get_running_loop().run_in_executor(
+            executor, lambda: lockin.set_filter_slope(params.code)
+        )
+        return {"status": "success", "filter_slope": params.code}
     except Exception as e:
         return {"status": "error", "message": str(e)}
