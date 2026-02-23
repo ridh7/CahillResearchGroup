@@ -153,7 +153,7 @@ backend/
 │   │   ├── lockin.py                # Lock-in amplifier endpoints (5 endpoints)
 │   │   ├── multimeter.py            # Multimeter endpoints (3 endpoints)
 │   │   ├── analysis.py              # FD-PBD analysis endpoints (2 endpoints)
-│   │   └── websockets.py            # WebSocket streaming endpoints (4 endpoints)
+│   │   └── sse.py                   # SSE streaming endpoints (4 endpoints)
 │   │
 │   ├── dependencies.py              # FastAPI dependency injection functions
 │   │
@@ -179,16 +179,16 @@ backend/
 ┌──────────────────────────────────────────────────────────────┐
 │                        Frontend (Next.js)                    │
 └───────────┬────────────────────────────────────┬─────────────┘
-            │ HTTP POST (move, scan)             │ WebSocket
+            │ HTTP POST (move, scan)             │ SSE (GET)
             ▼                                    ▼
 ┌─────────────────────┐              ┌──────────────────────────┐
-│  REST API Routers   │              │  WebSocket Router        │
-│  (domain-organized) │              │  (websockets.py)         │
+│  REST API Routers   │              │  SSE Router              │
+│  (domain-organized) │              │  (sse.py)                │
 │                     │              │                          │
-│  - stage.py         │              │  - /ws/lockin            │
-│  - lockin.py        │              │  - /ws/multimeter        │
-│  - multimeter.py    │              │  - /ws/stage             │
-│  - analysis.py      │              │  - /ws/scan_data         │
+│  - stage.py         │              │  - /sse/lockin           │
+│  - lockin.py        │              │  - /sse/multimeter       │
+│  - multimeter.py    │              │  - /sse/stage            │
+│  - analysis.py      │              │  - /sse/scan_data        │
 └──────────┬──────────┘              └──────────┬───────────────┘
            │                                    │
            │ Dependency Injection               │
@@ -200,8 +200,7 @@ backend/
     │  - lockin: SR865A                                  │
     │  - multimeter: BKPrecision5493C                    │
     │  - executor: ThreadPoolExecutor                    │
-    │  - ws_* WebSocket connections                      │
-    │  - latest_* cached values (thread-safe)            │
+    │  - latest_* cached values (thread-safe)              │
     │  - pause_* coordination flags (threading.Event)    │
     │  - scan_active, scan_generation, scan_data_queue   │
     └──────────┬─────────────────────────────────────────┘
@@ -290,19 +289,19 @@ backend/
 2. Connect to controller by serial number
 3. For each channel: StartPolling(250ms) → EnableDevice → LoadMotorConfiguration → Home(60s timeout)
 
-### 2. WebSocket Streaming
+### 2. SSE (Server-Sent Events) Streaming
 
-Four WebSocket endpoints provide real-time data streams:
+Four SSE endpoints provide real-time data streams via `StreamingResponse`:
 
-- **`/ws/lockin`**: Lock-in X, Y, frequency
-- **`/ws/multimeter`**: Multimeter voltage
-- **`/ws/stage`**: Stage X, Y position
-- **`/ws/scan_data`**: Live scan measurement points (queue-based, sends `{"type": "scan_complete"}` when done)
+- **`GET /sse/lockin`**: Lock-in X, Y, frequency
+- **`GET /sse/multimeter`**: Multimeter voltage
+- **`GET /sse/stage`**: Stage X, Y position
+- **`GET /sse/scan_data`**: Live scan measurement points (queue-based, sends `{"type": "scan_complete"}` when done)
 
 **Connection Management**:
 
-- Only one client allowed per instrument (prevents bandwidth conflicts)
-- Previous connection automatically closed when new client connects
+- Only one client allowed per device (cancellation tokens enforce single-stream)
+- New connection sets the previous cancellation token, causing the old generator to exit
 - Data cached in `global_state` for synchronous access during scans
 
 **VISA/GPIB Conflict Prevention**:
@@ -313,7 +312,7 @@ Four WebSocket endpoints provide real-time data streams:
 
 ### 3. Data Acquisition Modes
 
-Both scan modes are launched via `POST /start` which fires a daemon thread and returns immediately. Scan progress is streamed to the frontend via `/ws/scan_data`. The `scan_generation` counter prevents zombie scans when stopping and restarting rapidly.
+Both scan modes are launched via `POST /start` which fires a daemon thread and returns immediately. Scan progress is streamed to the frontend via `/sse/scan_data`. The `scan_generation` counter prevents zombie scans when stopping and restarting rapidly.
 
 #### Step-and-Measure (`move_in_rectangle`)
 
@@ -476,7 +475,7 @@ mypy app
        pass
    ```
 
-7. **Create WebSocket endpoint** in `app/routers/websockets.py` (if needed):
+7. **Create SSE endpoint** in `app/routers/sse.py` (if needed):
 
    ```python
    @router.websocket("/ws/new_instrument")
@@ -534,12 +533,12 @@ All endpoints are organized by domain in separate routers. Visit http://localhos
 - **`POST /fdpbd/analyze`**: FD-PBD thermal property extraction
 - **`POST /fdpbd/analyze_anisotropy`**: Anisotropic FD-PBD analysis
 
-### WebSockets ([routers/websockets.py](app/routers/websockets.py))
+### SSE Streams ([routers/sse.py](app/routers/sse.py))
 
-- **`WS /ws/lockin`**: Real-time lock-in X, Y, frequency stream
-- **`WS /ws/multimeter`**: Real-time multimeter voltage stream
-- **`WS /ws/stage`**: Real-time stage X, Y position stream
-- **`WS /ws/scan_data`**: Live scan data points (queue-based, completes with `{"type": "scan_complete"}`)
+- **`GET /sse/lockin`**: Real-time lock-in X, Y, frequency stream
+- **`GET /sse/multimeter`**: Real-time multimeter voltage stream
+- **`GET /sse/stage`**: Real-time stage X, Y position stream
+- **`GET /sse/scan_data`**: Live scan data points (queue-based, completes with `{"type": "scan_complete"}`)
 
 ## Troubleshooting
 

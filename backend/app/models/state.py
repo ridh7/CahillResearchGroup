@@ -6,8 +6,6 @@ from concurrent.futures import ThreadPoolExecutor
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from fastapi import WebSocket
-
     from app.core.lockin import SR865A
     from app.core.multimeter import BKPrecision5493C
     from app.core.stage import ThorlabsBBD302
@@ -15,15 +13,10 @@ if TYPE_CHECKING:
 
 class GlobalState:
     """
-    Unified application state for hardware devices, WebSocket connections, and cached data.
-
-    Merges previous GlobalState and SharedState into single state container.
+    Unified application state for hardware devices and cached data.
 
     Hardware instances:
         stage, lockin, multimeter: Device driver instances
-
-    WebSocket connections:
-        ws_lockin, ws_multimeter, ws_stage: Active WebSocket connections for streaming
 
     Cached instrument data (thread-safe):
         latest_lockin_values: Most recent X, Y, frequency from lock-in
@@ -49,11 +42,6 @@ class GlobalState:
 
         # Thread pool for blocking operations
         self.executor: ThreadPoolExecutor | None = None
-
-        # WebSocket connections
-        self.ws_lockin: WebSocket | None = None
-        self.ws_multimeter: WebSocket | None = None
-        self.ws_stage: WebSocket | None = None
 
         # Cached instrument readings (thread-safe)
         self.latest_lockin_values = None
