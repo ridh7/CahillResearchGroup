@@ -1,5 +1,5 @@
 from concurrent.futures import ThreadPoolExecutor
-from contextlib import asynccontextmanager, suppress
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI
@@ -12,7 +12,7 @@ from app.core.lockin import SR865A
 from app.core.multimeter import BKPrecision5493C
 from app.core.stage import ThorlabsBBD302
 from app.models.state import global_state
-from app.routers import analysis, lockin, multimeter, stage, websockets
+from app.routers import analysis, lockin, multimeter, sse, stage
 
 FRONTEND_DIR = Path(__file__).parent / "static"
 
@@ -25,7 +25,7 @@ async def lifespan(app: FastAPI):  # noqa: ARG001
     Startup: Initialize ThreadPoolExecutor and all instruments (stage, lock-in, multimeter).
     Order matters - stage initialization includes homing which takes ~10s.
 
-    Shutdown: Close WebSocket connections, disconnect hardware, and shutdown executor.
+    Shutdown: Disconnect hardware and shutdown executor.
     """
     global_state.executor = ThreadPoolExecutor()
     global_state.stage = ThorlabsBBD302()
@@ -35,14 +35,6 @@ async def lifespan(app: FastAPI):  # noqa: ARG001
     global_state.pause_stage_reading.clear()
     global_state.pause_multimeter_reading.clear()
     yield
-    for ws in [
-        global_state.ws_lockin,
-        global_state.ws_multimeter,
-        global_state.ws_stage,
-    ]:
-        if ws is not None:
-            with suppress(Exception):
-                await ws.close()
     global_state.stage.device.Disconnect()
     if global_state.executor is not None:
         global_state.executor.shutdown(wait=True)
@@ -63,7 +55,7 @@ app.include_router(stage.router, tags=["stage"])
 app.include_router(lockin.router, tags=["lockin"])
 app.include_router(multimeter.router, tags=["multimeter"])
 app.include_router(analysis.router, tags=["analysis"])
-app.include_router(websockets.router, tags=["websockets"])
+app.include_router(sse.router, tags=["sse"])
 
 # Serve static frontend assets if the build output exists
 if FRONTEND_DIR.is_dir():

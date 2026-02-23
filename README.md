@@ -4,7 +4,7 @@ A full-stack measurement system for controlling laboratory instruments, performi
 
 ## Overview
 
-- **Backend**: FastAPI server handling instrument communication via GPIB (General Purpose Interface Bus) / USB, WebSocket streaming, data acquisition, and physics-based analysis
+- **Backend**: FastAPI server handling instrument communication via GPIB (General Purpose Interface Bus) / USB, SSE streaming, data acquisition, and physics-based analysis
 - **Frontend**: Next.js dashboard for instrument control, scan configuration, heatmap visualization, and FD-PBD analysis
 
 ### Supported Instruments
@@ -58,7 +58,7 @@ For frontend development with live reloading:
    npm run dev
    ```
 
-   The frontend runs at `http://localhost:3000` with hot reload. API and WebSocket calls are proxied to the backend at `http://localhost:8000` via environment variables in `.env.development`.
+   The frontend runs at `http://localhost:3000` with hot reload. API calls are proxied to the backend at `http://localhost:8000` via environment variables in `.env.development`.
 
 ## Project Structure
 
@@ -76,7 +76,7 @@ For frontend development with live reloading:
 │   │   │   ├── lockin.py     Lock-in amplifier (5 endpoints)
 │   │   │   ├── multimeter.py Multimeter (3 endpoints)
 │   │   │   ├── analysis.py   FD-PBD analysis (2 endpoints)
-│   │   │   └── websockets.py WebSocket streaming (4 endpoints)
+│   │   │   └── sse.py          SSE streaming (4 endpoints)
 │   │   └── utils/         File I/O helpers
 │   ├── myenv/             Python virtual environment (not committed)
 │   └── static/            Built frontend output (not committed)

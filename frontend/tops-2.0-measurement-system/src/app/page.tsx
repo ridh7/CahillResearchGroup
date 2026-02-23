@@ -8,7 +8,7 @@ import OutputPanel from '../components/OutputPanel';
 import SettingsPanel from '../components/SettingsPanel';
 import LiveScanPanel from '../components/LiveScanPanel';
 import Link from 'next/link';
-import { API_BASE, WS_BASE } from '../lib/api';
+import { API_BASE } from '../lib/api';
 
 export type FormData = {
   sampleId: string;
@@ -131,9 +131,9 @@ export default function CalculatePage() {
   const [, setResetMultimeterTrigger] = useState(false);
   const [, setLockinStartTime] = useState<number | null>(null);
   const [, setMultimeterStartTime] = useState<number | null>(null);
-  const [lockinWs, setLockinWs] = useState<WebSocket | null>(null);
-  const [multimeterWs, setMultimeterWs] = useState<WebSocket | null>(null);
-  const [stageWs, setStageWs] = useState<WebSocket | null>(null);
+  const [lockinEs, setLockinEs] = useState<EventSource | null>(null);
+  const [multimeterEs, setMultimeterEs] = useState<EventSource | null>(null);
+  const [stageEs, setStageEs] = useState<EventSource | null>(null);
   const [status, setStatus] = useState<string>('');
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [settings, setSettings] = useState<Settings>({
@@ -144,19 +144,19 @@ export default function CalculatePage() {
   const [scanData, setScanData] = useState<ScanDataPoint[]>([]);
   const [defaultSaveDir, setDefaultSaveDir] = useState('');
   const [scanFormData, setScanFormData] = useState<FormData | null>(null);
-  const scanDataWsRef = useRef<WebSocket | null>(null);
+  const scanDataEsRef = useRef<EventSource | null>(null);
   const prevIsProcessingRef = useRef(false);
 
   // Pre-fill x1, y1 with current stage position on mount
   useEffect(() => {
-    fetch('http://localhost:8000/default-save-dir')
+    fetch(`${API_BASE}/default-save-dir`)
       .then((res) => res.json())
       .then((data) => setDefaultSaveDir(data.directory))
       .catch(() => {});
   }, []);
 
   useEffect(() => {
-    fetch('http://localhost:8000/get_current_position')
+    fetch(`${API_BASE}/get_current_position`)
       .then((res) => res.json())
       .then((data) => {
         if (data.status === 'success') {
@@ -170,7 +170,7 @@ export default function CalculatePage() {
       .catch(() => {});
   }, []);
 
-  // Close device WebSockets when scan completes (isProcessing: true → false)
+  // Close device streams when scan completes (isProcessing: true → false)
   useEffect(() => {
     if (prevIsProcessingRef.current && !isProcessing) {
       disconnectLockin();
@@ -200,73 +200,29 @@ export default function CalculatePage() {
     },
   };
 
-  /**
-   * WebSocket State Machine for Lock-in Amplifier Connection
-   *
-   * Handles four possible WebSocket states to prevent race conditions
-   * when users rapidly toggle connect/disconnect:
-   *
-   * - OPEN: Connection already established, reuse it
-   * - CLOSING/CLOSED: Stale connection, clean up and create new one
-   * - CONNECTING: Connection in progress, attach handlers and wait
-   *   (prevents duplicate connection attempts)
-   * - null/undefined: No connection exists, create new one
-   */
   const connectLockin = () => {
-    if (lockinWs) {
-      switch (lockinWs.readyState) {
-        case WebSocket.OPEN:
-          console.log('Lockin WebSocket already open, reusing it');
-          setLockinConnected(true);
-          setLockinStartTime(Date.now());
-          return;
-        case WebSocket.CLOSING:
-        case WebSocket.CLOSED:
-          console.log('Cleaning up stale Lockin WebSocket');
-          lockinWs.close();
-          setLockinWs(null);
-          break;
-        case WebSocket.CONNECTING:
-          // Don't create a new connection - attach handlers to existing one
-          // This prevents duplicate connections when button is clicked rapidly
-          console.log('Lockin WebSocket already connecting, waiting...');
-          lockinWs.onopen = () => {
-            setLockinConnected(true);
-            setLockinStartTime(Date.now());
-          };
-          lockinWs.onerror = () => {
-            console.error('Lockin connection failed');
-          };
-          return;
-      }
-    }
-
-    console.log('Creating new Lockin WebSocket');
-    const ws = new WebSocket(`${WS_BASE}/ws/lockin`);
-
-    ws.onopen = () => {
-      console.log('Lockin WebSocket connected');
+    if (lockinEs) lockinEs.close();
+    const es = new EventSource(`${API_BASE}/sse/lockin`);
+    es.onopen = () => {
       setLockinConnected(true);
       setLockinStartTime(Date.now());
     };
-
-    ws.onmessage = (event) => {
-      setLockinData(JSON.parse(event.data));
+    es.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+      if (data.error) {
+        es.close();
+        setLockinConnected(false);
+        setLockinEs(null);
+        return;
+      }
+      setLockinData(data);
     };
-
-    ws.onerror = () => {
-      console.error('Lockin WebSocket error');
+    es.onerror = () => {
+      es.close();
       setLockinConnected(false);
-      setLockinWs(null);
+      setLockinEs(null);
     };
-
-    ws.onclose = () => {
-      console.log('Lockin WebSocket closed');
-      setLockinConnected(false);
-      setLockinWs(null);
-    };
-
-    setLockinWs(ws);
+    setLockinEs(es);
   };
   const fetchLockinSettings = async () => {
     try {
@@ -289,40 +245,11 @@ export default function CalculatePage() {
     }
   };
 
-  /**
-   * Gracefully disconnect Lock-in WebSocket
-   *
-   * Checks state before closing to avoid errors:
-   * - CLOSED: Already disconnected, just cleanup state
-   * - CLOSING: Already in progress, attach onclose handler to finish cleanup
-   * - Otherwise: Initiate close and cleanup when complete
-   */
   const disconnectLockin = () => {
-    console.log('Disconnecting lockin, current state: ', lockinWs?.readyState);
-    if (!lockinWs || lockinWs.readyState === WebSocket.CLOSED) {
-      console.log('Lockin already closed');
-      setLockinWs(null);
-      setLockinConnected(false);
-      setLockinStartTime(null);
-      return;
-    }
-    if (lockinWs.readyState === WebSocket.CLOSING) {
-      console.log('Lockin already closing');
-      lockinWs.onclose = () => {
-        console.log('Lockin closed');
-        setLockinWs(null);
-        setLockinConnected(false);
-        setLockinStartTime(null);
-      };
-      return;
-    }
-    lockinWs.onclose = () => {
-      console.log('Lockin closed');
-      setLockinWs(null);
-      setLockinConnected(false);
-      setLockinStartTime(null);
-    };
-    lockinWs?.close();
+    if (lockinEs) lockinEs.close();
+    setLockinEs(null);
+    setLockinConnected(false);
+    setLockinStartTime(null);
   };
 
   const resetLockin = () => {
@@ -340,86 +267,35 @@ export default function CalculatePage() {
   };
 
   const connectMultimeter = () => {
-    if (multimeterWs) {
-      switch (multimeterWs.readyState) {
-        case WebSocket.OPEN:
-          console.log('Multimeter WebSocket already open, reusing it');
-          setMultimeterConnected(true);
-          setMultimeterStartTime(Date.now());
-          return;
-        case WebSocket.CLOSING:
-        case WebSocket.CLOSED:
-          console.log('Cleaning up stale Multimeter WebSocket');
-          multimeterWs.close();
-          setMultimeterWs(null);
-          break;
-        case WebSocket.CONNECTING:
-          console.log('Multimeter WebSocket already connecting, waiting...');
-          multimeterWs.onopen = () => {
-            setMultimeterConnected(true);
-            setMultimeterStartTime(Date.now());
-          };
-          multimeterWs.onerror = () => {
-            console.error('Multimeter connection failed');
-          };
-          return;
-      }
-    }
-
-    console.log('Creating new Multimeter WebSocket');
-    const ws = new WebSocket(`${WS_BASE}/ws/multimeter`);
-
-    ws.onopen = () => {
-      console.log('Multimeter WebSocket connected');
+    if (multimeterEs) multimeterEs.close();
+    const es = new EventSource(`${API_BASE}/sse/multimeter`);
+    es.onopen = () => {
       setMultimeterConnected(true);
       setMultimeterStartTime(Date.now());
     };
-
-    ws.onmessage = (event) => {
-      setMultimeterData(JSON.parse(event.data));
+    es.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+      if (data.error) {
+        es.close();
+        setMultimeterConnected(false);
+        setMultimeterEs(null);
+        return;
+      }
+      setMultimeterData(data);
     };
-
-    ws.onerror = () => {
-      console.error('Multimeter WebSocket error');
+    es.onerror = () => {
+      es.close();
       setMultimeterConnected(false);
-      setMultimeterWs(null);
+      setMultimeterEs(null);
     };
-
-    ws.onclose = () => {
-      console.log('Multimeter WebSocket closed');
-      setMultimeterConnected(false);
-      setMultimeterWs(null);
-    };
-
-    setMultimeterWs(ws);
+    setMultimeterEs(es);
   };
 
   const disconnectMultimeter = () => {
-    console.log('Disconnecting multimeter, current state: ', multimeterWs?.readyState);
-    if (!multimeterWs || multimeterWs.readyState === WebSocket.CLOSED) {
-      console.log('Multimeter already closed');
-      setMultimeterWs(null);
-      setMultimeterConnected(false);
-      setMultimeterStartTime(null);
-      return;
-    }
-    if (multimeterWs.readyState === WebSocket.CLOSING) {
-      console.log('Multimeter already closing');
-      multimeterWs.onclose = () => {
-        console.log('Multimeter closed');
-        setMultimeterWs(null);
-        setMultimeterConnected(false);
-        setMultimeterStartTime(null);
-      };
-      return;
-    }
-    multimeterWs.onclose = () => {
-      console.log('Multimeter closed');
-      setMultimeterWs(null);
-      setMultimeterConnected(false);
-      setMultimeterStartTime(null);
-    };
-    multimeterWs?.close();
+    if (multimeterEs) multimeterEs.close();
+    setMultimeterEs(null);
+    setMultimeterConnected(false);
+    setMultimeterStartTime(null);
   };
 
   const resetMultimeter = () => {
@@ -435,79 +311,33 @@ export default function CalculatePage() {
   };
 
   const connectStage = () => {
-    if (stageWs) {
-      switch (stageWs.readyState) {
-        case WebSocket.OPEN:
-          console.log('Stage WebSocket already open, reusing it');
-          setStageConnected(true);
-          return;
-        case WebSocket.CLOSING:
-        case WebSocket.CLOSED:
-          console.log('Cleaning up stale Stage WebSocket');
-          stageWs.close();
-          setStageWs(null);
-          break;
-        case WebSocket.CONNECTING:
-          console.log('Stage WebSocket already connecting, waiting...');
-          stageWs.onopen = () => {
-            setStageConnected(true);
-          };
-          stageWs.onerror = () => {
-            console.error('Stage connection failed');
-          };
-          return;
-      }
-    }
-
-    console.log('Creating new Stage WebSocket');
-    const ws = new WebSocket(`${WS_BASE}/ws/stage`);
-
-    ws.onopen = () => {
-      console.log('Stage WebSocket connected');
+    if (stageEs) stageEs.close();
+    const es = new EventSource(`${API_BASE}/sse/stage`);
+    es.onopen = () => {
       setStageConnected(true);
     };
-
-    ws.onmessage = (event) => {
-      setStageData(JSON.parse(event.data));
+    es.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+      if (data.error) {
+        es.close();
+        setStageConnected(false);
+        setStageEs(null);
+        return;
+      }
+      setStageData(data);
     };
-
-    ws.onerror = () => {
-      console.error('Stage WebSocket error');
+    es.onerror = () => {
+      es.close();
       setStageConnected(false);
-      setStageWs(null);
+      setStageEs(null);
     };
-
-    ws.onclose = () => {
-      console.log('Stage WebSocket closed');
-      setStageConnected(false);
-      setStageWs(null);
-    };
-
-    setStageWs(ws);
+    setStageEs(es);
   };
 
   const disconnectStage = () => {
-    console.log('Disconnecting stage, current state: ', stageWs?.readyState);
-    if (!stageWs || stageWs.readyState === WebSocket.CLOSED) {
-      setStageWs(null);
-      setStageConnected(false);
-      return;
-    }
-    if (stageWs.readyState === WebSocket.CLOSING) {
-      console.log('Stage already closing');
-      stageWs.onclose = () => {
-        console.log('Stage closed');
-        setStageWs(null);
-        setStageConnected(false);
-      };
-      return;
-    }
-    stageWs.onclose = () => {
-      console.log('Stage closed');
-      setStageWs(null);
-      setStageConnected(false);
-    };
-    stageWs?.close();
+    if (stageEs) stageEs.close();
+    setStageEs(null);
+    setStageConnected(false);
   };
 
   const resetStage = () => {
@@ -520,7 +350,7 @@ export default function CalculatePage() {
   const handleBrowseSaveDir = async () => {
     const currentDir = formData.saveDir || defaultSaveDir;
     const res = await fetch(
-      `http://localhost:8000/choose-save-dir?initialdir=${encodeURIComponent(currentDir)}`
+      `${API_BASE}/choose-save-dir?initialdir=${encodeURIComponent(currentDir)}`
     );
     const { directory } = await res.json();
     if (directory) {
@@ -540,25 +370,22 @@ export default function CalculatePage() {
       setScanFormData({ ...formData });
       setStatus('Scanning...');
 
-      // Connect scan data WebSocket before starting scan
-      const scanWs = new WebSocket('ws://localhost:8000/ws/scan_data');
-      scanWs.onmessage = (event) => {
+      // Connect scan data SSE before starting scan
+      const scanEs = new EventSource(`${API_BASE}/sse/scan_data`);
+      scanEs.onmessage = (event) => {
         const point = JSON.parse(event.data);
         if (point.type === 'scan_complete') {
-          scanWs.close();
+          scanEs.close();
           setIsProcessing(false);
           setStatus('Scan completed');
         } else {
           setScanData((prev) => [...prev, point]);
         }
       };
-      scanWs.onerror = () => {
-        console.error('Scan data WebSocket error');
+      scanEs.onerror = () => {
+        scanEs.close();
       };
-      scanWs.onclose = () => {
-        scanDataWsRef.current = null;
-      };
-      scanDataWsRef.current = scanWs;
+      scanDataEsRef.current = scanEs;
 
       const response = await fetch(`${API_BASE}/start`, {
         method: 'POST',
@@ -587,16 +414,16 @@ export default function CalculatePage() {
       if (data.status === 'error') {
         setStatus(data.message);
         setIsProcessing(false);
-        if (scanDataWsRef.current) {
-          scanDataWsRef.current.close();
+        if (scanDataEsRef.current) {
+          scanDataEsRef.current.close();
         }
       }
     } catch (error) {
       console.error('Error:', error);
       setIsProcessing(false);
       setStatus('Error occurred');
-      if (scanDataWsRef.current) {
-        scanDataWsRef.current.close();
+      if (scanDataEsRef.current) {
+        scanDataEsRef.current.close();
       }
     }
   };
@@ -604,10 +431,10 @@ export default function CalculatePage() {
   const handleStop = async () => {
     try {
       setStatus('Stopping...');
-      await fetch('http://localhost:8000/stop', { method: 'POST' });
+      await fetch(`${API_BASE}/stop`, { method: 'POST' });
       setIsProcessing(false);
-      if (scanDataWsRef.current) {
-        scanDataWsRef.current.close();
+      if (scanDataEsRef.current) {
+        scanDataEsRef.current.close();
       }
       setStatus('Motion stopped');
     } catch (error) {
@@ -724,7 +551,7 @@ export default function CalculatePage() {
 
   const changeLockinFrequency = async (frequency: number) => {
     try {
-      const response = await fetch('http://localhost:8000/lockin/frequency', {
+      const response = await fetch(`${API_BASE}/lockin/frequency`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ frequency }),
@@ -741,7 +568,7 @@ export default function CalculatePage() {
 
   const changeLockinFilterSlope = async (code: number) => {
     try {
-      const response = await fetch('http://localhost:8000/lockin/filter_slope', {
+      const response = await fetch(`${API_BASE}/lockin/filter_slope`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ code }),

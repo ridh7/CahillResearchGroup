@@ -109,13 +109,13 @@ src/
 │                                                             │
 │  User configures experiment parameters                      │
 │         ↓                                                   │
-│  WebSocket connections established (3 instrument channels): │
-│  • ws://localhost:8000/ws/lockin    → LockinData            │
-│  • ws://localhost:8000/ws/multimeter → MultimeterData       │
-│  • ws://localhost:8000/ws/stage      → StageData            │
+│  SSE connections established (3 instrument channels):       │
+│  • /sse/lockin    → LockinData                              │
+│  • /sse/multimeter → MultimeterData                         │
+│  • /sse/stage      → StageData                              │
 │         ↓                                                   │
 │  POST /start → Backend launches scan in daemon thread       │
-│  • /ws/scan_data streams live measurements                  │
+│  • /sse/scan_data streams live measurements                 │
 │  • LiveScanPanel renders real-time heatmap                  │
 │  • POST /stop aborts scan + halts stage motion              │
 │         ↓                                                   │
@@ -169,7 +169,7 @@ Displays real-time status for each instrument:
 
 - Connection indicators (green = connected, red = disconnected)
 - Current readings from Lock-in (X, Y, Frequency) and Multimeter (Voltage)
-- Connect/Disconnect buttons for each WebSocket channel
+- Connect/Disconnect buttons for each SSE stream
 
 ### HeatmapPanel
 
@@ -223,24 +223,18 @@ Animated modal (Framer Motion) for configuring stage motor parameters:
 - **Tailwind Class Order**: Automatically sorted by prettier-plugin-tailwindcss
 - **Comments**: Minimal - only for complex logic (see inline comments in code)
 
-## WebSocket Integration
+## SSE (Server-Sent Events) Integration
 
 ### Connection Lifecycle
 
-Each WebSocket follows a state machine to handle rapid connect/disconnect:
+Each device stream uses the browser's `EventSource` API:
 
-**States**:
+- **Connect**: `new EventSource(url)` opens an HTTP GET connection
+- **Data**: `onmessage` receives JSON data frames
+- **Disconnect**: `eventSource.close()` (synchronous, always safe)
+- **Error**: `onerror` fires on connection loss; we close and clean up
 
-- `CONNECTING` - Connection in progress (attach handlers, wait)
-- `OPEN` - Connected (reuse existing connection)
-- `CLOSING` - Disconnect initiated (wait for completion)
-- `CLOSED` - Disconnected (cleanup and allow reconnect)
-
-**Prevents**:
-
-- Duplicate connections when user clicks rapidly
-- Memory leaks from unclosed connections
-- Race conditions during state transitions
+Single-connection enforcement is handled server-side via cancellation tokens — new connections automatically terminate previous streams.
 
 ### Environment Variables
 
@@ -252,9 +246,9 @@ NEXT_PUBLIC_API_URL=http://localhost:8000
 
 ## Troubleshooting
 
-### WebSocket Connection Errors
+### SSE Connection Errors
 
-**Issue**: "WebSocket failed to connect"
+**Issue**: Device stream fails to connect
 
 **Solutions**:
 
