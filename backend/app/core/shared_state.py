@@ -35,6 +35,9 @@ class SharedState:
         self.pause_multimeter_reading = asyncio.Event()
         self.scan_data_queue = queue.Queue()
         self.scan_active = False
+        self.scan_generation = (
+            0  # incremented each time a new scan starts; old threads abort on mismatch
+        )
 
 
 shared_state = SharedState()

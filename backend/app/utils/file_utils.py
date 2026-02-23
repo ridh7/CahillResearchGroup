@@ -5,7 +5,7 @@ from datetime import datetime
 def save_to_file(data, sample_id="", comments="", scan_params=None, save_dir=""):
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     base_name = (
-        f"{sample_id}_{timestamp}.csv" if sample_id else f"Measurements_{timestamp}.csv"
+        f"{sample_id}_tops2_{timestamp}.csv" if sample_id else f"tops2_{timestamp}.csv"
     )
     filename = os.path.join(save_dir, base_name) if save_dir else base_name
 

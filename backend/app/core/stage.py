@@ -87,13 +87,49 @@ class ThorlabsBBD302:
             print(f"---Stage initialization error: {e}")
 
     def stop(self):
-        """Immediately stop all channels."""
+        """Immediately stop all channels and wait for deceleration to complete."""
         for ch_num in range(1, self.channel_count + 1):
             try:
                 self.channel[ch_num].Stop(0)
             except Exception as e:
                 print(f"---Stop error on channel {ch_num}: {e}")
+        time.sleep(0.5)  # let stages decelerate before next MoveTo is safe
         print("---All channels stopped")
+
+    def _safe_move_to(
+        self, channel, position, timeout, max_retries=10, retry_wait=0.5, aborted=None
+    ):
+        """
+        Call channel.MoveTo, retrying if DeviceMovingException is raised.
+
+        After a Stop(), the stage may still be decelerating. Retrying avoids
+        crashing the scan when a new MoveTo is issued before motion fully ceases.
+
+        aborted: optional callable that returns True if the scan should stop
+                 (checked before each retry so the old scan exits quickly)
+        """
+        for attempt in range(max_retries):
+            if aborted is not None and aborted():
+                return  # scan was superseded or stopped during retries
+            try:
+                channel.MoveTo(position, timeout)
+                return
+            except Exception as e:
+                if (
+                    "DeviceMovingException" in type(e).__name__
+                    or "already moving" in str(e).lower()
+                ):
+                    print(
+                        f"---Stage still moving, retrying in {retry_wait}s "
+                        f"(attempt {attempt + 1}/{max_retries})"
+                    )
+                    time.sleep(retry_wait)
+                else:
+                    raise
+        # Final attempt — propagate if still failing
+        if aborted is not None and aborted():
+            return
+        channel.MoveTo(position, timeout)
 
     def home_channel(self, channel_number):
         try:
@@ -394,6 +430,7 @@ class ThorlabsBBD302:
         sample_id="",
         comments="",
         save_dir="",
+        scan_generation: int = 0,
     ):
         """
         Continuous scan with parallel device reads.
@@ -429,13 +466,18 @@ class ThorlabsBBD302:
             abs(float(str(slow_end - slow_start))) / slow_axis_step_size + 0.5
         )
 
+        # Capture this scan's generation at entry so we can detect if a newer
+        # scan has started (which would set scan_generation to a higher value).
+        my_generation = scan_generation
+
+        def aborted() -> bool:
+            return shared_state.scan_generation != my_generation
+
         try:
-            shared_state.scan_active = True
-            shared_state.scan_data_queue = __import__("queue").Queue()
             shared_state.pause_lockin_reading.set()
             shared_state.pause_stage_reading.set()
             shared_state.pause_multimeter_reading.set()
-            time.sleep(0.05)
+            time.sleep(0.5)  # wait for any in-flight WebSocket VISA queries to complete
             print("---WebSocket reads paused")
 
             freq = float(lockin.inst.query("FREQ?"))
@@ -458,24 +500,30 @@ class ThorlabsBBD302:
 
             try:
                 for slow_i in range(num_slow_steps + 1):
-                    if not shared_state.scan_active:
+                    if aborted():
                         print("---Scan aborted by user")
                         break
                     current_slow = slow_start + Decimal(slow_i) * slow_step * slow_dir
                     print(f"---Slow axis at {current_slow}, forward={going_forward}")
-                    slow_ch.MoveTo(current_slow, 60000)
+                    self._safe_move_to(slow_ch, current_slow, 60000, aborted=aborted)
+                    if aborted():
+                        break
 
                     # Determine fast axis target for this sweep
                     if scan_pattern == "bidirectional":
                         fast_target = fast_end if going_forward else fast_start
                         # Pre-position to the correct start of the first sweep
                         if slow_i == 0:
-                            fast_ch.MoveTo(fast_start, 60000)
+                            self._safe_move_to(
+                                fast_ch, fast_start, 60000, aborted=aborted
+                            )
                     else:
                         # Unidirectional: always sweep same direction
                         fast_target = fast_end
                         # Ensure fast axis is at start before each forward sweep
-                        fast_ch.MoveTo(fast_start, 60000)
+                        self._safe_move_to(fast_ch, fast_start, 60000, aborted=aborted)
+                    if aborted():
+                        break
 
                     # Compute valid position bounds for this sweep
                     ft_start_f = float(str(fast_start))
@@ -487,7 +535,7 @@ class ThorlabsBBD302:
 
                     # Start fast axis movement in background
                     move_thread = Thread(
-                        target=fast_ch.MoveTo, args=(fast_target, 600000)
+                        target=fast_ch.MoveTo, args=(fast_target, 600000), daemon=True
                     )
                     move_thread.start()
 
@@ -497,9 +545,12 @@ class ThorlabsBBD302:
                     # Tight read loop — parallel reads via executor
                     sweep_start_time = time.time()
                     while move_thread.is_alive():
-                        if not shared_state.scan_active:
+                        if aborted():
                             fast_ch.Stop(0)
-                            move_thread.join()
+                            move_thread.join(
+                                timeout=2.0
+                            )  # SDK keeps blocking until MoveTimeoutException; don't wait 600s
+                            time.sleep(0.5)  # let stage decelerate
                             break
                         # Read actual fast axis position from device
                         fast_pos = float(str(fast_ch.DevicePosition))
@@ -545,7 +596,9 @@ class ThorlabsBBD302:
                         if fast_axis_step_size is not None:
                             last_recorded_bin = current_bin
 
-                    move_thread.join()
+                    move_thread.join(
+                        timeout=2.0
+                    )  # no-op for completed move; caps wait if thread is still stopping
                     sweep_time = time.time() - sweep_start_time
                     sweep_samples = sample_count - prev_sample_count
                     sweep_rate = sweep_samples / sweep_time if sweep_time > 0 else 0
@@ -566,13 +619,17 @@ class ThorlabsBBD302:
                                 retrace_thread = Thread(
                                     target=fast_ch.MoveTo,
                                     args=(fast_start, 600000),
+                                    daemon=True,
                                 )
                                 retrace_thread.start()
                                 r_last_recorded_bin = None
                                 while retrace_thread.is_alive():
-                                    if not shared_state.scan_active:
+                                    if aborted():
                                         fast_ch.Stop(0)
-                                        retrace_thread.join()
+                                        retrace_thread.join(
+                                            timeout=2.0
+                                        )  # same as move_thread: SDK won't return until MoveTimeoutException
+                                        time.sleep(0.5)  # let stage decelerate
                                         break
                                     r_fast_pos = float(str(fast_ch.DevicePosition))
                                     if r_fast_pos < pos_lo or r_fast_pos > pos_hi:
@@ -620,7 +677,7 @@ class ThorlabsBBD302:
                                         r_last_recorded_bin = r_bin
                                     shared_state.scan_data_queue.put(pt)
                                     sample_count += 1
-                                retrace_thread.join()
+                                retrace_thread.join(timeout=2.0)
                             else:
                                 # Fast retrace: max velocity, no recording
                                 fast_ch.SetVelocityParams(
@@ -660,9 +717,13 @@ class ThorlabsBBD302:
                     scan_params=scan_info,
                     save_dir=save_dir,
                 )
-            shared_state.scan_active = False
+            # Only deactivate scan if we're still the current generation —
+            # a new scan may have already started and reset scan_active to True.
+            if not aborted():
+                shared_state.scan_active = False
             self.channel[1].StartPolling(250)
             self.channel[2].StartPolling(250)
-            shared_state.pause_lockin_reading.clear()
-            shared_state.pause_stage_reading.clear()
-            shared_state.pause_multimeter_reading.clear()
+            if not aborted():
+                shared_state.pause_lockin_reading.clear()
+                shared_state.pause_stage_reading.clear()
+                shared_state.pause_multimeter_reading.clear()

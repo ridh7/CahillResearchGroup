@@ -3,6 +3,8 @@ import json
 import os
 import queue
 import tempfile
+import threading
+import traceback
 from concurrent.futures import ThreadPoolExecutor
 
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
@@ -26,7 +28,6 @@ from app.models.models import (
 from app.models.multimeter import MultimeterApertureRequest, MultimeterTerminalRequest
 from app.models.stage import (
     MovementParams,
-    PositionValidationParams,
     ScanParams,
 )
 from app.models.state import global_state
@@ -55,41 +56,51 @@ async def start_movement(params: ScanParams):
     """
     Unified scan endpoint. Routes to step-and-measure or continuous scan
     based on motion_type parameter.
+
+    Returns immediately with {"status": "started"} — scan runs in a daemon
+    thread so uvicorn can reload/shutdown without waiting for the scan to finish.
+    Scan completion is signalled via the /ws/scan_data WebSocket.
     """
     if global_state.stage is None:
         raise HTTPException(status_code=503, detail="Stage not initialized")
     stage = global_state.stage
+
+    # Resolve step sizes before launching the thread so we can return errors
+    # synchronously without the thread needing to communicate them back.
+    slow_step: float | None = None
+    fast_step: float | None = None
+    if params.motion_type == "continuous":
+        slow_step = (
+            params.x_step_size if params.fast_axis == "y" else params.y_step_size
+        )
+        if slow_step is None:
+            if params.fast_axis == "y" and params.x_steps:
+                slow_step = abs(params.x2 - params.x1) / params.x_steps
+            elif params.fast_axis == "x" and params.y_steps:
+                slow_step = abs(params.y2 - params.y1) / params.y_steps
+            else:
+                return {
+                    "status": "error",
+                    "message": "Slow axis step size required for continuous scan",
+                }
+        fast_step = (
+            params.y_step_size if params.fast_axis == "y" else params.x_step_size
+        )
+
+    # Increment the scan generation so any still-running previous scan thread
+    # sees the mismatch and exits immediately (without waiting for scan_active).
+    shared_state.scan_generation += 1
+    my_generation = shared_state.scan_generation
 
     # Set scan_active early so the WebSocket handler knows a scan is starting
     # (prevents race condition where WS connects before scan thread sets it)
     shared_state.scan_active = True
     shared_state.scan_data_queue = queue.Queue()
 
-    try:
-        if params.motion_type == "continuous":
-            # Continuous mode: fast axis moves continuously, slow axis steps
-            slow_step = (
-                params.x_step_size if params.fast_axis == "y" else params.y_step_size
-            )
-            if slow_step is None:
-                if params.fast_axis == "y" and params.x_steps:
-                    slow_step = abs(params.x2 - params.x1) / params.x_steps
-                elif params.fast_axis == "x" and params.y_steps:
-                    slow_step = abs(params.y2 - params.y1) / params.y_steps
-                else:
-                    shared_state.scan_active = False
-                    return {
-                        "status": "error",
-                        "message": "Slow axis step size required for continuous scan",
-                    }
-
-            fast_step = (
-                params.y_step_size if params.fast_axis == "y" else params.x_step_size
-            )
-
-            await asyncio.get_event_loop().run_in_executor(
-                executor,
-                lambda: stage.continuous_scan(
+    def _run_scan() -> None:
+        try:
+            if params.motion_type == "continuous":
+                stage.continuous_scan(
                     params.x1,
                     params.y1,
                     params.x2,
@@ -102,12 +113,10 @@ async def start_movement(params: ScanParams):
                     params.sample_id,
                     params.comments,
                     params.save_dir,
-                ),
-            )
-        else:
-            await asyncio.get_event_loop().run_in_executor(
-                executor,
-                lambda: stage.move_in_rectangle(
+                    scan_generation=my_generation,
+                )
+            else:
+                stage.move_in_rectangle(
                     params.x1,
                     params.y1,
                     params.x2,
@@ -123,13 +132,16 @@ async def start_movement(params: ScanParams):
                     params.sample_id,
                     params.comments,
                     params.save_dir,
-                ),
-            )
+                )
+        except Exception as e:
+            print(f"---Scan thread error: {e}")
+            traceback.print_exc()
+            shared_state.scan_active = False
 
-        return {"status": "success", "message": "Scan completed"}
-    except Exception as e:
-        shared_state.scan_active = False
-        return {"status": "error", "message": str(e)}
+    # Daemon thread: killed automatically when the process exits (e.g. on hot-reload),
+    # so uvicorn can restart without being blocked by a long-running scan.
+    threading.Thread(target=_run_scan, daemon=True, name="scan-thread").start()
+    return {"status": "started"}
 
 
 @router.get("/default-save-dir")
@@ -509,32 +521,6 @@ async def fdpbd_analyze_anisotropic(
         raise e
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)) from e
-
-
-@router.post("/test/position_validation")
-async def test_position_validation(params: PositionValidationParams):
-    """
-    Test endpoint: move one axis and compare kinematic position prediction
-    against actual device position reads.
-    """
-    if global_state.stage is None:
-        raise HTTPException(status_code=503, detail="Stage not initialized")
-    stage = global_state.stage
-
-    try:
-        result = await asyncio.get_event_loop().run_in_executor(
-            executor,
-            lambda: stage.validate_position(params.channel, params.start, params.end),
-        )
-        return {
-            "status": "success",
-            "data": result["records"],
-            "max_vel": result["max_vel"],
-            "accel": result["accel"],
-            "num_samples": len(result["records"]),
-        }
-    except Exception as e:
-        return {"status": "error", "message": str(e)}
 
 
 @router.get("/")
