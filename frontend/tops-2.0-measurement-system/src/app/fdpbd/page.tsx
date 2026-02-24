@@ -28,6 +28,17 @@ type AnisotropicPlotData = {
   ratio_exp: number[];
 };
 
+type TransverseIsotropicPlotData = {
+  model_freqs: number[];
+  in_model: number[];
+  out_model: number[];
+  ratio_model: number[];
+  exp_freqs: number[];
+  in_exp: number[];
+  out_exp: number[];
+  ratio_exp: number[];
+};
+
 type FDPBDResult = {
   lambda_measure: number;
   alpha_t_fitted: number;
@@ -42,6 +53,10 @@ type AnisotropicFDPBDResult = {
   alpha_t_fitted: number | null;
   t_ss_heat: number | null;
   plot_data: AnisotropicPlotData;
+};
+
+type TransverseIsotropicResult = {
+  plot_data: TransverseIsotropicPlotData;
 };
 
 type FDPBDParams = {
@@ -83,6 +98,10 @@ type FDPBDParams = {
   C44_0_sample: string;
   alphaT_perp: string;
   alphaT_para: string;
+  // Transverse anisotropy specific (unique fields not shared with other modes)
+  v_sum_fixed: string;
+  c_probe: string;
+  g_int: string;
 };
 
 export default function FDPBDPage() {
@@ -125,6 +144,10 @@ export default function FDPBDPage() {
     C44_0_sample: '1.20',
     alphaT_perp: '70e-6',
     alphaT_para: '60e-6',
+    // Transverse anisotropy defaults (from main_3.py)
+    v_sum_fixed: '0.18',
+    c_probe: '0.65',
+    g_int: '100e6',
   });
   const fieldUnits: Record<string, string> = {
     f_rolloff: 'Hz',
@@ -132,16 +155,16 @@ export default function FDPBDPage() {
     delay_2: 's',
     lambda_down: 'W/m-K',
     eta_down: '',
-    c_down: 'J/cm³-K',
-    h_down: 'µm',
+    c_down: 'J/cm\u00B3-K',
+    h_down: '\u00B5m',
     niu: '',
     alpha_t: '1/K',
     lambda_up: 'W/m-K',
     eta_up: '',
-    c_up: 'J/m³-K',
+    c_up: 'J/m\u00B3-K',
     h_up: 'm',
-    w_rms: 'µm',
-    x_offset: 'µm',
+    w_rms: '\u00B5m',
+    x_offset: '\u00B5m',
     incident_pump: 'mW',
     incident_probe: 'mW',
     n_al: '',
@@ -149,7 +172,7 @@ export default function FDPBDPage() {
     lens_transmittance: '',
     detector_factor: 'V/rad',
     phi: 'degrees',
-    rho: 'g/m³',
+    rho: 'g/m\u00B3',
     alphaT: '1/K',
     C11_0: 'GPa',
     C12_0: 'GPa',
@@ -157,7 +180,7 @@ export default function FDPBDPage() {
     lambda_down_x_sample: 'W/m-K',
     lambda_down_y_sample: 'W/m-K',
     lambda_down_z_sample: 'W/m-K',
-    rho_sample: 'g/m³',
+    rho_sample: 'g/m\u00B3',
     C11_0_sample: 'GPa',
     C12_0_sample: 'GPa',
     C13_0_sample: 'GPa',
@@ -165,15 +188,22 @@ export default function FDPBDPage() {
     C44_0_sample: 'GPa',
     alphaT_perp: '1/K',
     alphaT_para: '1/K',
+    v_sum_fixed: 'V',
+    c_probe: '',
+    g_int: 'W/m\u00B2-K',
   };
   const [file, setFile] = useState<File | null>(null);
-  const [result, setResult] = useState<FDPBDResult | AnisotropicFDPBDResult | null>(null);
+  const [result, setResult] = useState<
+    FDPBDResult | AnisotropicFDPBDResult | TransverseIsotropicResult | null
+  >(null);
   const [status, setStatus] = useState<string>('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [lensOption, setLensOption] = useState<'5x' | '10x' | '20x' | 'custom'>('5x');
   const [transducerOption, setTransducerOption] = useState<'Al' | 'custom'>('Al');
   const [mediumOption, setMediumOption] = useState<'air' | 'custom'>('air');
-  const [isotropyOption, setIsotropyOption] = useState<'isotropy' | 'anisotropy'>('isotropy');
+  const [isotropyOption, setIsotropyOption] = useState<
+    'isotropy' | 'anisotropy' | 'transverse_anisotropy'
+  >('isotropy');
   const [laserOption, setLaserOption] = useState<'TOPS 1' | 'TOPS 2' | 'custom'>('TOPS 1');
 
   const isValidDecimal = (value: string | string[]) => {
@@ -183,25 +213,49 @@ export default function FDPBDPage() {
     return value !== '' && !isNaN(parseFloat(value));
   };
 
-  /**
-   * Conditional Form Validation Based on Isotropy Mode
-   *
-   * Required fields differ between isotropy and anisotropy models:
-   *
-   * Isotropy mode:
-   * - Requires: eta_down[0,1,2], niu, alpha_t, eta_up, h_up
-   * - Simpler physics model with fewer parameters
-   *
-   * Anisotropy mode:
-   * - Requires: phi, rho, alphaT, C11/C12/C44 (elastic constants),
-   *   lambda_down (x,y,z), sample properties (rho, C11/C12/C13/C33/C44),
-   *   alphaT (perpendicular & parallel)
-   * - More complex model accounting for directional material properties
-   *
-   * Uses spread operator (...) to conditionally include field groups
-   * based on selected physics model
-   */
   const isFormValid = () => {
+    if (isotropyOption === 'transverse_anisotropy') {
+      const fields = [
+        params.f_rolloff,
+        params.delay_1,
+        params.delay_2,
+        params.incident_pump,
+        params.v_sum_fixed,
+        params.w_rms,
+        params.x_offset,
+        params.lens_transmittance,
+        params.detector_factor,
+        params.c_probe,
+        params.n_al,
+        params.k_al,
+        params.g_int,
+        // Transducer (Layer 1)
+        params.lambda_down[0],
+        params.c_down[0],
+        params.h_down[0],
+        params.rho,
+        params.alphaT,
+        params.C11_0,
+        params.C12_0,
+        params.C44_0,
+        // Sample (Layer 2)
+        params.lambda_down_x_sample,
+        params.lambda_down_z_sample,
+        params.c_down[2],
+        params.rho_sample,
+        params.alphaT_perp,
+        params.alphaT_para,
+        params.C11_0_sample,
+        params.C12_0_sample,
+        params.C13_0_sample,
+        params.C33_0_sample,
+        params.C44_0_sample,
+        // Medium (Layer 3)
+        params.lambda_up,
+        params.c_up,
+      ];
+      return fields.every((field) => isValidDecimal(field)) && file !== null;
+    }
     const fields = [
       params.f_rolloff,
       params.delay_1,
@@ -270,16 +324,6 @@ export default function FDPBDPage() {
       return { ...prev, [field]: value };
     });
 
-    /**
-     * Automatic Preset Detection for Lens Configuration
-     *
-     * When user manually edits any lens-related parameter (w_rms, x_offset, etc.),
-     * this checks if the new combination of values matches any known preset (5x, 10x, 20x).
-     *
-     * If no match found, automatically switch to "custom" to indicate user has
-     * deviated from standard configurations. This prevents confusion where the UI
-     * shows "10x" but values don't actually match the 10x preset.
-     */
     if (['w_rms', 'x_offset', 'lens_transmittance', 'detector_factor', 'phi'].includes(field)) {
       const lensValues = {
         '5x': {
@@ -370,9 +414,9 @@ export default function FDPBDPage() {
       if (
         !(
           updatedParams.lambda_up === airValues.lambda_up &&
-          (isotropyOption === 'anisotropy' || updatedParams.eta_up === airValues.eta_up) &&
+          (isotropyOption !== 'isotropy' || updatedParams.eta_up === airValues.eta_up) &&
           updatedParams.c_up === airValues.c_up &&
-          (isotropyOption === 'anisotropy' || updatedParams.h_up === airValues.h_up)
+          (isotropyOption !== 'isotropy' || updatedParams.h_up === airValues.h_up)
         )
       ) {
         setMediumOption('custom');
@@ -467,11 +511,11 @@ export default function FDPBDPage() {
         h_down: ['0.07', prev.h_down[1], prev.h_down[2]],
         n_al: '2.9',
         k_al: '8.2',
-        rho: isotropyOption === 'anisotropy' ? '2.70' : prev.rho,
-        alphaT: isotropyOption === 'anisotropy' ? '23.1e-6' : prev.alphaT,
-        C11_0: isotropyOption === 'anisotropy' ? '107.4' : prev.C11_0,
-        C12_0: isotropyOption === 'anisotropy' ? '60.5' : prev.C12_0,
-        C44_0: isotropyOption === 'anisotropy' ? '28.3' : prev.C44_0,
+        rho: isotropyOption !== 'isotropy' ? '2.70' : prev.rho,
+        alphaT: isotropyOption !== 'isotropy' ? '23.1e-6' : prev.alphaT,
+        C11_0: isotropyOption !== 'isotropy' ? '107.4' : prev.C11_0,
+        C12_0: isotropyOption !== 'isotropy' ? '60.5' : prev.C12_0,
+        C44_0: isotropyOption !== 'isotropy' ? '28.3' : prev.C44_0,
       }));
     }
   };
@@ -489,13 +533,45 @@ export default function FDPBDPage() {
     }
   };
 
-  const handleIsotropyOptionChange = (option: 'isotropy' | 'anisotropy') => {
+  const handleIsotropyOptionChange = (
+    option: 'isotropy' | 'anisotropy' | 'transverse_anisotropy'
+  ) => {
     setIsotropyOption(option);
     if (option === 'isotropy') {
       setParams((prev) => ({
         ...prev,
         eta_down: ['1.0', '1.0', '1.0'],
       }));
+    }
+    if (option === 'transverse_anisotropy') {
+      // Set transverse-specific defaults and appropriate shared field defaults
+      setParams((prev) => ({
+        ...prev,
+        // Transverse-only fields
+        v_sum_fixed: prev.v_sum_fixed || '0.18',
+        c_probe: prev.c_probe || '0.65',
+        g_int: prev.g_int || '100e6',
+        // Set transducer defaults for transverse mode
+        rho: '2.70',
+        alphaT: '23.1e-6',
+        C11_0: '107.4',
+        C12_0: '60.5',
+        C44_0: '28.3',
+        // Set sample layer defaults for transverse mode
+        lambda_down_x_sample: '0.64',
+        lambda_down_z_sample: '0.21',
+        c_down: [prev.c_down[0], prev.c_down[1], '1.56'],
+        rho_sample: '1430',
+        C11_0_sample: '8.9',
+        C12_0_sample: '5.4',
+        C13_0_sample: '5.4',
+        C33_0_sample: '5.6',
+        C44_0_sample: '2.1',
+        alphaT_perp: '28e-6',
+        alphaT_para: '120e-6',
+      }));
+      setTransducerOption('Al');
+      setMediumOption('air');
     }
   };
 
@@ -569,6 +645,9 @@ export default function FDPBDPage() {
       C44_0_sample: '',
       alphaT_perp: '',
       alphaT_para: '',
+      v_sum_fixed: '',
+      c_probe: '',
+      g_int: '',
     });
     setFile(null);
     setLensOption('custom');
@@ -600,6 +679,70 @@ export default function FDPBDPage() {
 
     const formData = new FormData();
     formData.append('file', file);
+
+    if (isotropyOption === 'transverse_anisotropy') {
+      // Transverse anisotropy mode: map shared fields to backend param names with unit conversions
+      const transverseParams = {
+        f_rolloff: parseFloat(params.f_rolloff),
+        delay_1: parseFloat(params.delay_1),
+        delay_2: parseFloat(params.delay_2),
+        incident_pump: parseFloat(params.incident_pump) * 1e-3, // mW -> W
+        v_sum_fixed: parseFloat(params.v_sum_fixed),
+        w_rms: parseFloat(params.w_rms) * 1e-6, // µm -> m
+        r_0: parseFloat(params.x_offset) * 1e-6, // µm -> m (x_offset -> r_0)
+        lens_transmittance: parseFloat(params.lens_transmittance),
+        detector_gain: parseFloat(params.detector_factor), // detector_factor -> detector_gain
+        c_probe: parseFloat(params.c_probe),
+        n_al: parseFloat(params.n_al),
+        k_al: parseFloat(params.k_al),
+        g_int: parseFloat(params.g_int),
+        // Layer 1 (Transducer / Al film) from shared fields
+        layer1_thickness: parseFloat(params.h_down[0]) * 1e-6, // µm -> m
+        layer1_sigma: parseFloat(params.lambda_down[0]), // W/m-K
+        layer1_capac: parseFloat(params.c_down[0]) * 1e6, // J/cm³-K -> J/m³-K
+        layer1_rho: parseFloat(params.rho) * 1e3, // g/m³ -> kg/m³
+        layer1_alphaT: parseFloat(params.alphaT), // 1/K
+        layer1_C11_0: parseFloat(params.C11_0) * 1e9, // GPa -> Pa
+        layer1_C12_0: parseFloat(params.C12_0) * 1e9, // GPa -> Pa
+        layer1_C44_0: parseFloat(params.C44_0) * 1e9, // GPa -> Pa
+        // Layer 2 (Sample / bulk) from shared fields
+        layer2_sigma_r: parseFloat(params.lambda_down_x_sample), // W/m-K (in-plane)
+        layer2_sigma_z: parseFloat(params.lambda_down_z_sample), // W/m-K (through-plane)
+        layer2_capac: parseFloat(params.c_down[2]) * 1e6, // J/cm³-K -> J/m³-K
+        layer2_rho: parseFloat(params.rho_sample), // kg/m³ (transverse uses kg/m³ directly)
+        layer2_alphaT_perp: parseFloat(params.alphaT_perp), // 1/K
+        layer2_alphaT_para: parseFloat(params.alphaT_para), // 1/K
+        layer2_C11_0: parseFloat(params.C11_0_sample) * 1e9, // GPa -> Pa
+        layer2_C12_0: parseFloat(params.C12_0_sample) * 1e9, // GPa -> Pa
+        layer2_C13_0: parseFloat(params.C13_0_sample) * 1e9, // GPa -> Pa
+        layer2_C33_0: parseFloat(params.C33_0_sample) * 1e9, // GPa -> Pa
+        layer2_C44_0: parseFloat(params.C44_0_sample) * 1e9, // GPa -> Pa
+        // Layer 3 (Air / medium) from shared fields
+        layer3_sigma: parseFloat(params.lambda_up), // W/m-K
+        layer3_capac: parseFloat(params.c_up), // J/m³-K
+      };
+      formData.append('params', JSON.stringify(transverseParams));
+
+      try {
+        const response = await fetch(`${API_BASE}/fdpbd/analyze_transverse`, {
+          method: 'POST',
+          body: formData,
+        });
+        const data = await response.json();
+        if (response.ok) {
+          setResult(data);
+          setStatus('Analysis completed');
+        } else {
+          setStatus(`Error: ${data.detail || 'Unknown error'}`);
+        }
+      } catch (error) {
+        console.error('Error:', error);
+        setStatus('Error occurred during analysis');
+      } finally {
+        setIsProcessing(false);
+      }
+      return;
+    }
 
     const modifiedParams = {
       ...params,
@@ -707,469 +850,775 @@ export default function FDPBDPage() {
               />
             </div>
 
-            {/* Experimental Inputs */}
-            <div className="mb-6">
-              <h3 className="text-md mb-2 font-semibold text-white">Experimental Inputs</h3>
-              {/* Isotropy */}
-              <div className="mb-4 rounded-lg bg-gray-700 p-4">
-                <h4 className="mb-2 text-sm font-semibold text-white">Isotropy</h4>
-                <div className="mb-2 flex space-x-4">
-                  {['isotropy', 'anisotropy'].map((opt) => (
-                    <label key={opt} className="flex items-center text-white">
-                      <input
-                        type="radio"
-                        name="isotropy"
-                        value={opt}
-                        checked={isotropyOption === opt}
-                        onChange={() =>
-                          handleIsotropyOptionChange(opt as 'isotropy' | 'anisotropy')
-                        }
-                        className="mr-2"
-                        disabled={isProcessing}
-                      />
-                      {opt}
-                    </label>
-                  ))}
-                </div>
-              </div>
-              {/* Lens Magnification */}
-              <div className="mb-4 rounded-lg bg-gray-700 p-4">
-                <h4 className="mb-2 text-sm font-semibold text-white">Lens Magnification</h4>
-                <div className="mb-2 flex space-x-4">
-                  {['5x', '10x', '20x', 'custom'].map((opt) => (
-                    <label key={opt} className="flex items-center text-white">
-                      <input
-                        type="radio"
-                        name="lens"
-                        value={opt}
-                        checked={lensOption === opt}
-                        onChange={() =>
-                          handleLensOptionChange(opt as '5x' | '10x' | '20x' | 'custom')
-                        }
-                        className="mr-2"
-                        disabled={isProcessing}
-                      />
-                      {opt}
-                    </label>
-                  ))}
-                </div>
+            {/* Isotropy Radio - always visible */}
+            <div className="mb-4 rounded-lg bg-gray-700 p-4">
+              <h4 className="mb-2 text-sm font-semibold text-white">Analysis Mode</h4>
+              <div className="mb-2 flex flex-wrap gap-4">
                 {[
-                  { field: 'w_rms', label: `W RMS [${fieldUnits.w_rms}]` },
-                  {
-                    field: 'x_offset',
-                    label: `X Offset [${fieldUnits.x_offset}]`,
-                  },
-                  {
-                    field: 'lens_transmittance',
-                    label: `Lens Transmittance ${
-                      fieldUnits.lens_transmittance ? `[${fieldUnits.lens_transmittance}]` : ''
-                    }`,
-                  },
-                  {
-                    field: 'detector_factor',
-                    label: `Detector Factor [${fieldUnits.detector_factor}]`,
-                  },
-                  ...(isotropyOption === 'anisotropy'
-                    ? [{ field: 'phi', label: `Phi [${fieldUnits.phi}]` }]
-                    : []),
-                ].map((param) => (
-                  <div key={param.field} className="mb-2 flex flex-col">
-                    <label className="mb-1 text-sm text-white">{param.label}</label>
+                  { value: 'isotropy', label: 'Isotropy' },
+                  { value: 'anisotropy', label: 'Anisotropy' },
+                  { value: 'transverse_anisotropy', label: 'Transverse Anisotropy' },
+                ].map((opt) => (
+                  <label key={opt.value} className="flex items-center text-white">
                     <input
-                      type="number"
-                      step="any"
-                      value={params[param.field as keyof FDPBDParams]}
-                      onChange={(e) => handleInputChange(e, param.field as keyof FDPBDParams)}
-                      className={`rounded border-2 bg-gray-800 p-2 text-white focus:outline-none ${
-                        isValidDecimal(params[param.field as keyof FDPBDParams])
-                          ? 'border-gray-600 focus:border-teal-500'
-                          : 'border-red-500'
-                      }`}
+                      type="radio"
+                      name="isotropy"
+                      value={opt.value}
+                      checked={isotropyOption === opt.value}
+                      onChange={() =>
+                        handleIsotropyOptionChange(
+                          opt.value as 'isotropy' | 'anisotropy' | 'transverse_anisotropy'
+                        )
+                      }
+                      className="mr-2"
                       disabled={isProcessing}
-                      required
                     />
-                  </div>
-                ))}
-              </div>
-              {/* Laser */}
-              <div className="rounded-lg bg-gray-700 p-4">
-                <h4 className="mb-2 text-sm font-semibold text-white">Laser</h4>
-                <div className="mb-2 flex space-x-4">
-                  {['TOPS 1', 'TOPS 2', 'custom'].map((opt) => (
-                    <label key={opt} className="flex items-center text-white">
-                      <input
-                        type="radio"
-                        name="laser"
-                        value={opt}
-                        checked={laserOption === opt}
-                        onChange={() =>
-                          handleLaserOptionChange(opt as 'TOPS 1' | 'TOPS 2' | 'custom')
-                        }
-                        className="mr-2"
-                        disabled={isProcessing}
-                      />
-                      {opt}
-                    </label>
-                  ))}
-                </div>
-                {[
-                  {
-                    field: 'f_rolloff',
-                    label: `f Rolloff [${fieldUnits.f_rolloff}]`,
-                  },
-                  {
-                    field: 'delay_1',
-                    label: `Delay 1 [${fieldUnits.delay_1}]`,
-                  },
-                  {
-                    field: 'delay_2',
-                    label: `Delay 2 [${fieldUnits.delay_2}]`,
-                  },
-                  {
-                    field: 'incident_pump',
-                    label: `Incident Pump [${fieldUnits.incident_pump}]`,
-                  },
-                  {
-                    field: 'incident_probe',
-                    label: `Incident Probe [${fieldUnits.incident_probe}]`,
-                  },
-                ].map((param) => (
-                  <div key={param.field} className="mb-2 flex flex-col">
-                    <label className="mb-1 text-sm text-white">{param.label}</label>
-                    <input
-                      type="number"
-                      step="any"
-                      value={params[param.field as keyof FDPBDParams]}
-                      onChange={(e) => handleInputChange(e, param.field as keyof FDPBDParams)}
-                      className={`rounded border-2 bg-gray-800 p-2 text-white focus:outline-none ${
-                        isValidDecimal(params[param.field as keyof FDPBDParams])
-                          ? 'border-gray-600 focus:border-teal-500'
-                          : 'border-red-500'
-                      }`}
-                      disabled={isProcessing}
-                      required
-                    />
-                  </div>
+                    {opt.label}
+                  </label>
                 ))}
               </div>
             </div>
 
-            {/* Sample Inputs */}
-            <div className="mb-6">
-              <h3 className="text-md mb-2 font-semibold text-white">Sample Inputs</h3>
-              {/* Medium */}
-              <div className="mb-4 rounded-lg bg-gray-700 p-4">
-                <h4 className="mb-2 text-sm font-semibold text-white">Medium</h4>
-                <div className="mb-2 flex space-x-4">
-                  {['air', 'custom'].map((opt) => (
-                    <label key={opt} className="flex items-center text-white">
-                      <input
-                        type="radio"
-                        name="medium"
-                        value={opt}
-                        checked={mediumOption === opt}
-                        onChange={() => handleMediumOptionChange(opt as 'air' | 'custom')}
-                        className="mr-2"
-                        disabled={isProcessing}
-                      />
-                      {opt}
-                    </label>
-                  ))}
-                </div>
-                {[
-                  {
-                    field: 'lambda_up',
-                    label: `Lambda Up [${fieldUnits.lambda_up}]`,
-                  },
-                  { field: 'c_up', label: `C Up [${fieldUnits.c_up}]` },
-                  ...(isotropyOption === 'isotropy'
-                    ? [
-                        {
-                          field: 'eta_up',
-                          label: `Eta Up ${fieldUnits.eta_up ? `[${fieldUnits.eta_up}]` : ''}`,
-                        },
-                        { field: 'h_up', label: `H Up [${fieldUnits.h_up}]` },
-                      ]
-                    : []),
-                ].map((param) => (
-                  <div key={param.field} className="mb-2 flex flex-col">
-                    <label className="mb-1 text-sm text-white">{param.label}</label>
-                    <input
-                      type="number"
-                      step="any"
-                      value={params[param.field as keyof FDPBDParams]}
-                      onChange={(e) => handleInputChange(e, param.field as keyof FDPBDParams)}
-                      className={`rounded border-2 bg-gray-800 p-2 text-white focus:outline-none ${
-                        isValidDecimal(params[param.field as keyof FDPBDParams])
-                          ? 'border-gray-600 focus:border-teal-500'
-                          : 'border-red-500'
-                      }`}
-                      disabled={isProcessing}
-                      required
-                    />
-                  </div>
-                ))}
-              </div>
-              {/* Transducer Layer */}
-              <div className="mb-4 rounded-lg bg-gray-700 p-4">
-                <h4 className="mb-2 text-sm font-semibold text-white">Transducer Layer</h4>
-                <div className="mb-2 flex space-x-4">
-                  {['Al', 'custom'].map((opt) => (
-                    <label key={opt} className="flex items-center text-white">
-                      <input
-                        type="radio"
-                        name="transducer"
-                        value={opt}
-                        checked={transducerOption === opt}
-                        onChange={() => handleTransducerOptionChange(opt as 'Al' | 'custom')}
-                        className="mr-2"
-                        disabled={isProcessing}
-                      />
-                      {opt}
-                    </label>
-                  ))}
-                </div>
-                {[
-                  {
-                    field: 'lambda_down',
-                    index: 0,
-                    label: `Lambda Down [${fieldUnits.lambda_down}]`,
-                  },
-                  {
-                    field: 'c_down',
-                    index: 0,
-                    label: `C Down [${fieldUnits.c_down}]`,
-                  },
-                  {
-                    field: 'h_down',
-                    index: 0,
-                    label: `h Down [${fieldUnits.h_down}]`,
-                  },
-                  ...(isotropyOption === 'isotropy'
-                    ? [
-                        {
-                          field: 'eta_down',
-                          index: 0,
-                          label: `Eta Down ${
-                            fieldUnits.eta_down ? `[${fieldUnits.eta_down}]` : ''
-                          }`,
-                        },
-                      ]
-                    : []),
-                  {
-                    field: 'n_al',
-                    label: `Refractive Index (n) ${fieldUnits.n_al ? `[${fieldUnits.n_al}]` : ''}`,
-                  },
-                  {
-                    field: 'k_al',
-                    label: `Imaginary Index (k) ${fieldUnits.k_al ? `[${fieldUnits.k_al}]` : ''}`,
-                  },
-                  ...(isotropyOption === 'anisotropy'
-                    ? [
-                        { field: 'rho', label: `Rho [${fieldUnits.rho}]` },
-                        {
-                          field: 'alphaT',
-                          label: `Alpha T [${fieldUnits.alphaT}]`,
-                        },
-                        { field: 'C11_0', label: `C11 [${fieldUnits.C11_0}]` },
-                        { field: 'C12_0', label: `C12 [${fieldUnits.C12_0}]` },
-                        { field: 'C44_0', label: `C44 [${fieldUnits.C44_0}]` },
-                      ]
-                    : []),
-                ].map((param) => (
-                  <div key={`${param.field}${param.index ?? ''}`} className="mb-2 flex flex-col">
-                    <label className="mb-1 text-sm text-white">{param.label}</label>
-                    <input
-                      type="number"
-                      step="any"
-                      value={
-                        param.index !== undefined
-                          ? params[param.field as keyof FDPBDParams][param.index]
-                          : params[param.field as keyof FDPBDParams]
-                      }
-                      onChange={(e) =>
-                        handleInputChange(e, param.field as keyof FDPBDParams, param.index)
-                      }
-                      className={`rounded border-2 bg-gray-800 p-2 text-white focus:outline-none ${
-                        isValidDecimal(
-                          param.index !== undefined
-                            ? params[param.field as keyof FDPBDParams][param.index]
-                            : params[param.field as keyof FDPBDParams]
-                        )
-                          ? 'border-gray-600 focus:border-teal-500'
-                          : 'border-red-500'
-                      }`}
-                      disabled={isProcessing}
-                      required
-                    />
-                  </div>
-                ))}
-              </div>
-              {/* Interface Layer */}
-              {isotropyOption === 'isotropy' && (
-                <div className="mb-4 rounded-lg bg-gray-700 p-4">
-                  <h4 className="mb-2 text-sm font-semibold text-white">Interface Layer</h4>
-                  {[
-                    {
-                      field: 'lambda_down',
-                      index: 1,
-                      label: `Lambda Down [${fieldUnits.lambda_down}]`,
-                    },
-                    {
-                      field: 'c_down',
-                      index: 1,
-                      label: `C Down [${fieldUnits.c_down}]`,
-                    },
-                    {
-                      field: 'h_down',
-                      index: 1,
-                      label: `h Down [${fieldUnits.h_down}]`,
-                    },
-                    {
-                      field: 'eta_down',
-                      index: 1,
-                      label: `Eta Down ${fieldUnits.eta_down ? `[${fieldUnits.eta_down}]` : ''}`,
-                    },
-                  ].map((param) => (
-                    <div key={`${param.field}${param.index}`} className="mb-2 flex flex-col">
-                      <label className="mb-1 text-sm text-white">{param.label}</label>
-                      <input
-                        type="number"
-                        step="any"
-                        value={params[param.field as keyof FDPBDParams][param.index]}
-                        onChange={(e) =>
-                          handleInputChange(e, param.field as keyof FDPBDParams, param.index)
-                        }
-                        className={`rounded border-2 bg-gray-800 p-2 text-white focus:outline-none ${
-                          isValidDecimal(params[param.field as keyof FDPBDParams][param.index])
-                            ? 'border-gray-600 focus:border-teal-500'
-                            : 'border-red-500'
-                        }`}
-                        disabled={isProcessing}
-                        required
-                      />
+            {/* Isotropy/Anisotropy form fields */}
+            {isotropyOption !== 'transverse_anisotropy' && (
+              <>
+                {/* Experimental Inputs */}
+                <div className="mb-6">
+                  <h3 className="text-md mb-2 font-semibold text-white">Experimental Inputs</h3>
+                  {/* Lens Magnification */}
+                  <div className="mb-4 rounded-lg bg-gray-700 p-4">
+                    <h4 className="mb-2 text-sm font-semibold text-white">Lens Magnification</h4>
+                    <div className="mb-2 flex space-x-4">
+                      {['5x', '10x', '20x', 'custom'].map((opt) => (
+                        <label key={opt} className="flex items-center text-white">
+                          <input
+                            type="radio"
+                            name="lens"
+                            value={opt}
+                            checked={lensOption === opt}
+                            onChange={() =>
+                              handleLensOptionChange(opt as '5x' | '10x' | '20x' | 'custom')
+                            }
+                            className="mr-2"
+                            disabled={isProcessing}
+                          />
+                          {opt}
+                        </label>
+                      ))}
                     </div>
-                  ))}
+                    {[
+                      { field: 'w_rms', label: `W RMS [${fieldUnits.w_rms}]` },
+                      {
+                        field: 'x_offset',
+                        label: `X Offset [${fieldUnits.x_offset}]`,
+                      },
+                      {
+                        field: 'lens_transmittance',
+                        label: `Lens Transmittance ${
+                          fieldUnits.lens_transmittance ? `[${fieldUnits.lens_transmittance}]` : ''
+                        }`,
+                      },
+                      {
+                        field: 'detector_factor',
+                        label: `Detector Factor [${fieldUnits.detector_factor}]`,
+                      },
+                      ...(isotropyOption === 'anisotropy'
+                        ? [{ field: 'phi', label: `Phi [${fieldUnits.phi}]` }]
+                        : []),
+                    ].map((param) => (
+                      <div key={param.field} className="mb-2 flex flex-col">
+                        <label className="mb-1 text-sm text-white">{param.label}</label>
+                        <input
+                          type="number"
+                          step="any"
+                          value={params[param.field as keyof FDPBDParams]}
+                          onChange={(e) => handleInputChange(e, param.field as keyof FDPBDParams)}
+                          className={`rounded border-2 bg-gray-800 p-2 text-white focus:outline-none ${
+                            isValidDecimal(params[param.field as keyof FDPBDParams])
+                              ? 'border-gray-600 focus:border-teal-500'
+                              : 'border-red-500'
+                          }`}
+                          disabled={isProcessing}
+                          required
+                        />
+                      </div>
+                    ))}
+                  </div>
+                  {/* Laser */}
+                  <div className="rounded-lg bg-gray-700 p-4">
+                    <h4 className="mb-2 text-sm font-semibold text-white">Laser</h4>
+                    <div className="mb-2 flex space-x-4">
+                      {['TOPS 1', 'TOPS 2', 'custom'].map((opt) => (
+                        <label key={opt} className="flex items-center text-white">
+                          <input
+                            type="radio"
+                            name="laser"
+                            value={opt}
+                            checked={laserOption === opt}
+                            onChange={() =>
+                              handleLaserOptionChange(opt as 'TOPS 1' | 'TOPS 2' | 'custom')
+                            }
+                            className="mr-2"
+                            disabled={isProcessing}
+                          />
+                          {opt}
+                        </label>
+                      ))}
+                    </div>
+                    {[
+                      {
+                        field: 'f_rolloff',
+                        label: `f Rolloff [${fieldUnits.f_rolloff}]`,
+                      },
+                      {
+                        field: 'delay_1',
+                        label: `Delay 1 [${fieldUnits.delay_1}]`,
+                      },
+                      {
+                        field: 'delay_2',
+                        label: `Delay 2 [${fieldUnits.delay_2}]`,
+                      },
+                      {
+                        field: 'incident_pump',
+                        label: `Incident Pump [${fieldUnits.incident_pump}]`,
+                      },
+                      {
+                        field: 'incident_probe',
+                        label: `Incident Probe [${fieldUnits.incident_probe}]`,
+                      },
+                    ].map((param) => (
+                      <div key={param.field} className="mb-2 flex flex-col">
+                        <label className="mb-1 text-sm text-white">{param.label}</label>
+                        <input
+                          type="number"
+                          step="any"
+                          value={params[param.field as keyof FDPBDParams]}
+                          onChange={(e) => handleInputChange(e, param.field as keyof FDPBDParams)}
+                          className={`rounded border-2 bg-gray-800 p-2 text-white focus:outline-none ${
+                            isValidDecimal(params[param.field as keyof FDPBDParams])
+                              ? 'border-gray-600 focus:border-teal-500'
+                              : 'border-red-500'
+                          }`}
+                          disabled={isProcessing}
+                          required
+                        />
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              )}
-              {/* Sample Layer */}
-              <div className="mb-4 rounded-lg bg-gray-700 p-4">
-                <h4 className="mb-2 text-sm font-semibold text-white">Sample Layer</h4>
-                {[
-                  ...(isotropyOption === 'isotropy'
-                    ? [
+
+                {/* Sample Inputs */}
+                <div className="mb-6">
+                  <h3 className="text-md mb-2 font-semibold text-white">Sample Inputs</h3>
+                  {/* Medium */}
+                  <div className="mb-4 rounded-lg bg-gray-700 p-4">
+                    <h4 className="mb-2 text-sm font-semibold text-white">Medium</h4>
+                    <div className="mb-2 flex space-x-4">
+                      {['air', 'custom'].map((opt) => (
+                        <label key={opt} className="flex items-center text-white">
+                          <input
+                            type="radio"
+                            name="medium"
+                            value={opt}
+                            checked={mediumOption === opt}
+                            onChange={() => handleMediumOptionChange(opt as 'air' | 'custom')}
+                            className="mr-2"
+                            disabled={isProcessing}
+                          />
+                          {opt}
+                        </label>
+                      ))}
+                    </div>
+                    {[
+                      {
+                        field: 'lambda_up',
+                        label: `Lambda Up [${fieldUnits.lambda_up}]`,
+                      },
+                      { field: 'c_up', label: `C Up [${fieldUnits.c_up}]` },
+                      ...(isotropyOption === 'isotropy'
+                        ? [
+                            {
+                              field: 'eta_up',
+                              label: `Eta Up ${fieldUnits.eta_up ? `[${fieldUnits.eta_up}]` : ''}`,
+                            },
+                            { field: 'h_up', label: `H Up [${fieldUnits.h_up}]` },
+                          ]
+                        : []),
+                    ].map((param) => (
+                      <div key={param.field} className="mb-2 flex flex-col">
+                        <label className="mb-1 text-sm text-white">{param.label}</label>
+                        <input
+                          type="number"
+                          step="any"
+                          value={params[param.field as keyof FDPBDParams]}
+                          onChange={(e) => handleInputChange(e, param.field as keyof FDPBDParams)}
+                          className={`rounded border-2 bg-gray-800 p-2 text-white focus:outline-none ${
+                            isValidDecimal(params[param.field as keyof FDPBDParams])
+                              ? 'border-gray-600 focus:border-teal-500'
+                              : 'border-red-500'
+                          }`}
+                          disabled={isProcessing}
+                          required
+                        />
+                      </div>
+                    ))}
+                  </div>
+                  {/* Transducer Layer */}
+                  <div className="mb-4 rounded-lg bg-gray-700 p-4">
+                    <h4 className="mb-2 text-sm font-semibold text-white">Transducer Layer</h4>
+                    <div className="mb-2 flex space-x-4">
+                      {['Al', 'custom'].map((opt) => (
+                        <label key={opt} className="flex items-center text-white">
+                          <input
+                            type="radio"
+                            name="transducer"
+                            value={opt}
+                            checked={transducerOption === opt}
+                            onChange={() => handleTransducerOptionChange(opt as 'Al' | 'custom')}
+                            className="mr-2"
+                            disabled={isProcessing}
+                          />
+                          {opt}
+                        </label>
+                      ))}
+                    </div>
+                    {[
+                      {
+                        field: 'lambda_down',
+                        index: 0,
+                        label: `Lambda Down [${fieldUnits.lambda_down}]`,
+                      },
+                      {
+                        field: 'c_down',
+                        index: 0,
+                        label: `C Down [${fieldUnits.c_down}]`,
+                      },
+                      {
+                        field: 'h_down',
+                        index: 0,
+                        label: `h Down [${fieldUnits.h_down}]`,
+                      },
+                      ...(isotropyOption === 'isotropy'
+                        ? [
+                            {
+                              field: 'eta_down',
+                              index: 0,
+                              label: `Eta Down ${
+                                fieldUnits.eta_down ? `[${fieldUnits.eta_down}]` : ''
+                              }`,
+                            },
+                          ]
+                        : []),
+                      {
+                        field: 'n_al',
+                        label: `Refractive Index (n) ${fieldUnits.n_al ? `[${fieldUnits.n_al}]` : ''}`,
+                      },
+                      {
+                        field: 'k_al',
+                        label: `Imaginary Index (k) ${fieldUnits.k_al ? `[${fieldUnits.k_al}]` : ''}`,
+                      },
+                      ...(isotropyOption === 'anisotropy'
+                        ? [
+                            { field: 'rho', label: `Rho [${fieldUnits.rho}]` },
+                            {
+                              field: 'alphaT',
+                              label: `Alpha T [${fieldUnits.alphaT}]`,
+                            },
+                            { field: 'C11_0', label: `C11 [${fieldUnits.C11_0}]` },
+                            { field: 'C12_0', label: `C12 [${fieldUnits.C12_0}]` },
+                            { field: 'C44_0', label: `C44 [${fieldUnits.C44_0}]` },
+                          ]
+                        : []),
+                    ].map((param) => (
+                      <div
+                        key={`${param.field}${param.index ?? ''}`}
+                        className="mb-2 flex flex-col"
+                      >
+                        <label className="mb-1 text-sm text-white">{param.label}</label>
+                        <input
+                          type="number"
+                          step="any"
+                          value={
+                            param.index !== undefined
+                              ? params[param.field as keyof FDPBDParams][param.index]
+                              : params[param.field as keyof FDPBDParams]
+                          }
+                          onChange={(e) =>
+                            handleInputChange(e, param.field as keyof FDPBDParams, param.index)
+                          }
+                          className={`rounded border-2 bg-gray-800 p-2 text-white focus:outline-none ${
+                            isValidDecimal(
+                              param.index !== undefined
+                                ? params[param.field as keyof FDPBDParams][param.index]
+                                : params[param.field as keyof FDPBDParams]
+                            )
+                              ? 'border-gray-600 focus:border-teal-500'
+                              : 'border-red-500'
+                          }`}
+                          disabled={isProcessing}
+                          required
+                        />
+                      </div>
+                    ))}
+                  </div>
+                  {/* Interface Layer */}
+                  {isotropyOption === 'isotropy' && (
+                    <div className="mb-4 rounded-lg bg-gray-700 p-4">
+                      <h4 className="mb-2 text-sm font-semibold text-white">Interface Layer</h4>
+                      {[
                         {
                           field: 'lambda_down',
-                          index: 2,
+                          index: 1,
                           label: `Lambda Down [${fieldUnits.lambda_down}]`,
                         },
                         {
                           field: 'c_down',
-                          index: 2,
+                          index: 1,
                           label: `C Down [${fieldUnits.c_down}]`,
                         },
                         {
                           field: 'h_down',
-                          index: 2,
+                          index: 1,
                           label: `h Down [${fieldUnits.h_down}]`,
                         },
                         {
                           field: 'eta_down',
-                          index: 2,
-                          label: `Eta Down ${
-                            fieldUnits.eta_down ? `[${fieldUnits.eta_down}]` : ''
-                          }`,
+                          index: 1,
+                          label: `Eta Down ${fieldUnits.eta_down ? `[${fieldUnits.eta_down}]` : ''}`,
                         },
-                        {
-                          field: 'alpha_t',
-                          label: `Alpha T [${fieldUnits.alpha_t}]`,
-                        },
-                        {
-                          field: 'niu',
-                          label: `Niu ${fieldUnits.niu ? `[${fieldUnits.niu}]` : ''}`,
-                        },
-                      ]
-                    : [
-                        {
-                          field: 'lambda_down_x_sample',
-                          label: `Lambda Down X [${fieldUnits.lambda_down_x_sample}]`,
-                        },
-                        {
-                          field: 'lambda_down_y_sample',
-                          label: `Lambda Down Y [${fieldUnits.lambda_down_y_sample}]`,
-                        },
-                        {
-                          field: 'lambda_down_z_sample',
-                          label: `Lambda Down Z [${fieldUnits.lambda_down_z_sample}]`,
-                        },
-                        {
-                          field: 'c_down',
-                          index: 2,
-                          label: `C Down [${fieldUnits.c_down}]`,
-                        },
-                        {
-                          field: 'rho_sample',
-                          label: `Rho [${fieldUnits.rho_sample}]`,
-                        },
-                        {
-                          field: 'C11_0_sample',
-                          label: `C11 [${fieldUnits.C11_0_sample}]`,
-                        },
-                        {
-                          field: 'C12_0_sample',
-                          label: `C12 [${fieldUnits.C12_0_sample}]`,
-                        },
-                        {
-                          field: 'C13_0_sample',
-                          label: `C13 [${fieldUnits.C13_0_sample}]`,
-                        },
-                        {
-                          field: 'C33_0_sample',
-                          label: `C33 [${fieldUnits.C33_0_sample}]`,
-                        },
-                        {
-                          field: 'C44_0_sample',
-                          label: `C44 [${fieldUnits.C44_0_sample}]`,
-                        },
-                        {
-                          field: 'alphaT_perp',
-                          label: `Alpha T Perpendicular [${fieldUnits.alphaT_perp}]`,
-                        },
-                        {
-                          field: 'alphaT_para',
-                          label: `Alpha T Parallel [${fieldUnits.alphaT_para}]`,
-                        },
-                      ]),
-                ].map((param) => (
-                  <div key={`${param.field}${param.index ?? ''}`} className="mb-2 flex flex-col">
-                    <label className="mb-1 text-sm text-white">{param.label}</label>
-                    <input
-                      type="number"
-                      step="any"
-                      value={
-                        param.index !== undefined
-                          ? params[param.field as keyof FDPBDParams][param.index]
-                          : params[param.field as keyof FDPBDParams]
-                      }
-                      onChange={(e) =>
-                        handleInputChange(e, param.field as keyof FDPBDParams, param.index)
-                      }
-                      className={`rounded border-2 bg-gray-800 p-2 text-white focus:outline-none ${
-                        isValidDecimal(
-                          param.index !== undefined
-                            ? params[param.field as keyof FDPBDParams][param.index]
-                            : params[param.field as keyof FDPBDParams]
-                        )
-                          ? 'border-gray-600 focus:border-teal-500'
-                          : 'border-red-500'
-                      }`}
-                      disabled={isProcessing}
-                      required
-                    />
+                      ].map((param) => (
+                        <div key={`${param.field}${param.index}`} className="mb-2 flex flex-col">
+                          <label className="mb-1 text-sm text-white">{param.label}</label>
+                          <input
+                            type="number"
+                            step="any"
+                            value={params[param.field as keyof FDPBDParams][param.index]}
+                            onChange={(e) =>
+                              handleInputChange(e, param.field as keyof FDPBDParams, param.index)
+                            }
+                            className={`rounded border-2 bg-gray-800 p-2 text-white focus:outline-none ${
+                              isValidDecimal(params[param.field as keyof FDPBDParams][param.index])
+                                ? 'border-gray-600 focus:border-teal-500'
+                                : 'border-red-500'
+                            }`}
+                            disabled={isProcessing}
+                            required
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {/* Sample Layer */}
+                  <div className="mb-4 rounded-lg bg-gray-700 p-4">
+                    <h4 className="mb-2 text-sm font-semibold text-white">Sample Layer</h4>
+                    {[
+                      ...(isotropyOption === 'isotropy'
+                        ? [
+                            {
+                              field: 'lambda_down',
+                              index: 2,
+                              label: `Lambda Down [${fieldUnits.lambda_down}]`,
+                            },
+                            {
+                              field: 'c_down',
+                              index: 2,
+                              label: `C Down [${fieldUnits.c_down}]`,
+                            },
+                            {
+                              field: 'h_down',
+                              index: 2,
+                              label: `h Down [${fieldUnits.h_down}]`,
+                            },
+                            {
+                              field: 'eta_down',
+                              index: 2,
+                              label: `Eta Down ${
+                                fieldUnits.eta_down ? `[${fieldUnits.eta_down}]` : ''
+                              }`,
+                            },
+                            {
+                              field: 'alpha_t',
+                              label: `Alpha T [${fieldUnits.alpha_t}]`,
+                            },
+                            {
+                              field: 'niu',
+                              label: `Niu ${fieldUnits.niu ? `[${fieldUnits.niu}]` : ''}`,
+                            },
+                          ]
+                        : [
+                            {
+                              field: 'lambda_down_x_sample',
+                              label: `Lambda Down X [${fieldUnits.lambda_down_x_sample}]`,
+                            },
+                            {
+                              field: 'lambda_down_y_sample',
+                              label: `Lambda Down Y [${fieldUnits.lambda_down_y_sample}]`,
+                            },
+                            {
+                              field: 'lambda_down_z_sample',
+                              label: `Lambda Down Z [${fieldUnits.lambda_down_z_sample}]`,
+                            },
+                            {
+                              field: 'c_down',
+                              index: 2,
+                              label: `C Down [${fieldUnits.c_down}]`,
+                            },
+                            {
+                              field: 'rho_sample',
+                              label: `Rho [${fieldUnits.rho_sample}]`,
+                            },
+                            {
+                              field: 'C11_0_sample',
+                              label: `C11 [${fieldUnits.C11_0_sample}]`,
+                            },
+                            {
+                              field: 'C12_0_sample',
+                              label: `C12 [${fieldUnits.C12_0_sample}]`,
+                            },
+                            {
+                              field: 'C13_0_sample',
+                              label: `C13 [${fieldUnits.C13_0_sample}]`,
+                            },
+                            {
+                              field: 'C33_0_sample',
+                              label: `C33 [${fieldUnits.C33_0_sample}]`,
+                            },
+                            {
+                              field: 'C44_0_sample',
+                              label: `C44 [${fieldUnits.C44_0_sample}]`,
+                            },
+                            {
+                              field: 'alphaT_perp',
+                              label: `Alpha T Perpendicular [${fieldUnits.alphaT_perp}]`,
+                            },
+                            {
+                              field: 'alphaT_para',
+                              label: `Alpha T Parallel [${fieldUnits.alphaT_para}]`,
+                            },
+                          ]),
+                    ].map((param) => (
+                      <div
+                        key={`${param.field}${param.index ?? ''}`}
+                        className="mb-2 flex flex-col"
+                      >
+                        <label className="mb-1 text-sm text-white">{param.label}</label>
+                        <input
+                          type="number"
+                          step="any"
+                          value={
+                            param.index !== undefined
+                              ? params[param.field as keyof FDPBDParams][param.index]
+                              : params[param.field as keyof FDPBDParams]
+                          }
+                          onChange={(e) =>
+                            handleInputChange(e, param.field as keyof FDPBDParams, param.index)
+                          }
+                          className={`rounded border-2 bg-gray-800 p-2 text-white focus:outline-none ${
+                            isValidDecimal(
+                              param.index !== undefined
+                                ? params[param.field as keyof FDPBDParams][param.index]
+                                : params[param.field as keyof FDPBDParams]
+                            )
+                              ? 'border-gray-600 focus:border-teal-500'
+                              : 'border-red-500'
+                          }`}
+                          disabled={isProcessing}
+                          required
+                        />
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
-            </div>
+                </div>
+              </>
+            )}
+
+            {/* Transverse Anisotropy form fields */}
+            {isotropyOption === 'transverse_anisotropy' && (
+              <>
+                <div className="mb-6">
+                  <h3 className="text-md mb-2 font-semibold text-white">Experimental Inputs</h3>
+                  {/* Lens Magnification */}
+                  <div className="mb-4 rounded-lg bg-gray-700 p-4">
+                    <h4 className="mb-2 text-sm font-semibold text-white">Lens Magnification</h4>
+                    <div className="mb-2 flex space-x-4">
+                      {['5x', '10x', '20x', 'custom'].map((opt) => (
+                        <label key={opt} className="flex items-center text-white">
+                          <input
+                            type="radio"
+                            name="lens_transverse"
+                            value={opt}
+                            checked={lensOption === opt}
+                            onChange={() =>
+                              handleLensOptionChange(opt as '5x' | '10x' | '20x' | 'custom')
+                            }
+                            className="mr-2"
+                            disabled={isProcessing}
+                          />
+                          {opt}
+                        </label>
+                      ))}
+                    </div>
+                    {[
+                      { field: 'w_rms', label: `W RMS [${fieldUnits.w_rms}]` },
+                      { field: 'x_offset', label: `X Offset [${fieldUnits.x_offset}]` },
+                      { field: 'lens_transmittance', label: 'Lens Transmittance' },
+                      {
+                        field: 'detector_factor',
+                        label: `Detector Factor [${fieldUnits.detector_factor}]`,
+                      },
+                      { field: 'v_sum_fixed', label: `V Sum Fixed [${fieldUnits.v_sum_fixed}]` },
+                      { field: 'c_probe', label: 'C Probe' },
+                    ].map((param) => (
+                      <div key={param.field} className="mb-2 flex flex-col">
+                        <label className="mb-1 text-sm text-white">{param.label}</label>
+                        <input
+                          type="number"
+                          step="any"
+                          value={params[param.field as keyof FDPBDParams]}
+                          onChange={(e) => handleInputChange(e, param.field as keyof FDPBDParams)}
+                          className={`rounded border-2 bg-gray-800 p-2 text-white focus:outline-none ${
+                            isValidDecimal(params[param.field as keyof FDPBDParams])
+                              ? 'border-gray-600 focus:border-teal-500'
+                              : 'border-red-500'
+                          }`}
+                          disabled={isProcessing}
+                          required
+                        />
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Laser */}
+                  <div className="mb-4 rounded-lg bg-gray-700 p-4">
+                    <h4 className="mb-2 text-sm font-semibold text-white">Laser</h4>
+                    <div className="mb-2 flex space-x-4">
+                      {['TOPS 1', 'TOPS 2', 'custom'].map((opt) => (
+                        <label key={opt} className="flex items-center text-white">
+                          <input
+                            type="radio"
+                            name="laser_transverse"
+                            value={opt}
+                            checked={laserOption === opt}
+                            onChange={() =>
+                              handleLaserOptionChange(opt as 'TOPS 1' | 'TOPS 2' | 'custom')
+                            }
+                            className="mr-2"
+                            disabled={isProcessing}
+                          />
+                          {opt}
+                        </label>
+                      ))}
+                    </div>
+                    {[
+                      { field: 'f_rolloff', label: `f Rolloff [${fieldUnits.f_rolloff}]` },
+                      { field: 'delay_1', label: `Delay 1 [${fieldUnits.delay_1}]` },
+                      { field: 'delay_2', label: `Delay 2 [${fieldUnits.delay_2}]` },
+                      {
+                        field: 'incident_pump',
+                        label: `Incident Pump [${fieldUnits.incident_pump}]`,
+                      },
+                    ].map((param) => (
+                      <div key={param.field} className="mb-2 flex flex-col">
+                        <label className="mb-1 text-sm text-white">{param.label}</label>
+                        <input
+                          type="number"
+                          step="any"
+                          value={params[param.field as keyof FDPBDParams]}
+                          onChange={(e) => handleInputChange(e, param.field as keyof FDPBDParams)}
+                          className={`rounded border-2 bg-gray-800 p-2 text-white focus:outline-none ${
+                            isValidDecimal(params[param.field as keyof FDPBDParams])
+                              ? 'border-gray-600 focus:border-teal-500'
+                              : 'border-red-500'
+                          }`}
+                          disabled={isProcessing}
+                          required
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Sample Inputs */}
+                <div className="mb-6">
+                  <h3 className="text-md mb-2 font-semibold text-white">Sample Inputs</h3>
+
+                  {/* Medium (Air / Layer 3) */}
+                  <div className="mb-4 rounded-lg bg-gray-700 p-4">
+                    <h4 className="mb-2 text-sm font-semibold text-white">Medium</h4>
+                    <div className="mb-2 flex space-x-4">
+                      {['air', 'custom'].map((opt) => (
+                        <label key={opt} className="flex items-center text-white">
+                          <input
+                            type="radio"
+                            name="medium_transverse"
+                            value={opt}
+                            checked={mediumOption === opt}
+                            onChange={() => handleMediumOptionChange(opt as 'air' | 'custom')}
+                            className="mr-2"
+                            disabled={isProcessing}
+                          />
+                          {opt}
+                        </label>
+                      ))}
+                    </div>
+                    {[
+                      {
+                        field: 'lambda_up',
+                        label: `Thermal Conductivity [${fieldUnits.lambda_up}]`,
+                      },
+                      { field: 'c_up', label: `Heat Capacity [${fieldUnits.c_up}]` },
+                    ].map((param) => (
+                      <div key={param.field} className="mb-2 flex flex-col">
+                        <label className="mb-1 text-sm text-white">{param.label}</label>
+                        <input
+                          type="number"
+                          step="any"
+                          value={params[param.field as keyof FDPBDParams]}
+                          onChange={(e) => handleInputChange(e, param.field as keyof FDPBDParams)}
+                          className={`rounded border-2 bg-gray-800 p-2 text-white focus:outline-none ${
+                            isValidDecimal(params[param.field as keyof FDPBDParams])
+                              ? 'border-gray-600 focus:border-teal-500'
+                              : 'border-red-500'
+                          }`}
+                          disabled={isProcessing}
+                          required
+                        />
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Transducer Layer (Al Film / Layer 1) */}
+                  <div className="mb-4 rounded-lg bg-gray-700 p-4">
+                    <h4 className="mb-2 text-sm font-semibold text-white">
+                      Transducer Layer (Al Film)
+                    </h4>
+                    <div className="mb-2 flex space-x-4">
+                      {['Al', 'custom'].map((opt) => (
+                        <label key={opt} className="flex items-center text-white">
+                          <input
+                            type="radio"
+                            name="transducer_transverse"
+                            value={opt}
+                            checked={transducerOption === opt}
+                            onChange={() => handleTransducerOptionChange(opt as 'Al' | 'custom')}
+                            className="mr-2"
+                            disabled={isProcessing}
+                          />
+                          {opt}
+                        </label>
+                      ))}
+                    </div>
+                    {[
+                      {
+                        field: 'lambda_down',
+                        index: 0,
+                        label: `Thermal Conductivity [${fieldUnits.lambda_down}]`,
+                      },
+                      { field: 'c_down', index: 0, label: `Heat Capacity [${fieldUnits.c_down}]` },
+                      { field: 'h_down', index: 0, label: `Thickness [${fieldUnits.h_down}]` },
+                      { field: 'n_al', label: 'Refractive Index (n)' },
+                      { field: 'k_al', label: 'Imaginary Index (k)' },
+                      { field: 'rho', label: `Density [${fieldUnits.rho}]` },
+                      { field: 'alphaT', label: `CTE [${fieldUnits.alphaT}]` },
+                      { field: 'C11_0', label: `C11 [${fieldUnits.C11_0}]` },
+                      { field: 'C12_0', label: `C12 [${fieldUnits.C12_0}]` },
+                      { field: 'C44_0', label: `C44 [${fieldUnits.C44_0}]` },
+                      {
+                        field: 'g_int',
+                        label: `Thermal Boundary Conductance [${fieldUnits.g_int}]`,
+                      },
+                    ].map((param) => (
+                      <div
+                        key={`${param.field}${param.index ?? ''}`}
+                        className="mb-2 flex flex-col"
+                      >
+                        <label className="mb-1 text-sm text-white">{param.label}</label>
+                        <input
+                          type="number"
+                          step="any"
+                          value={
+                            param.index !== undefined
+                              ? params[param.field as keyof FDPBDParams][param.index]
+                              : params[param.field as keyof FDPBDParams]
+                          }
+                          onChange={(e) =>
+                            handleInputChange(e, param.field as keyof FDPBDParams, param.index)
+                          }
+                          className={`rounded border-2 bg-gray-800 p-2 text-white focus:outline-none ${
+                            isValidDecimal(
+                              param.index !== undefined
+                                ? params[param.field as keyof FDPBDParams][param.index]
+                                : params[param.field as keyof FDPBDParams]
+                            )
+                              ? 'border-gray-600 focus:border-teal-500'
+                              : 'border-red-500'
+                          }`}
+                          disabled={isProcessing}
+                          required
+                        />
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Sample Layer (Bulk / Layer 2) */}
+                  <div className="mb-4 rounded-lg bg-gray-700 p-4">
+                    <h4 className="mb-2 text-sm font-semibold text-white">Sample Layer (Bulk)</h4>
+                    {[
+                      {
+                        field: 'lambda_down_x_sample',
+                        label: `In-plane Conductivity [${fieldUnits.lambda_down_x_sample}]`,
+                      },
+                      {
+                        field: 'lambda_down_z_sample',
+                        label: `Through-plane Conductivity [${fieldUnits.lambda_down_z_sample}]`,
+                      },
+                      { field: 'c_down', index: 2, label: `Heat Capacity [${fieldUnits.c_down}]` },
+                      { field: 'rho_sample', label: `Density [${fieldUnits.rho_sample}]` },
+                      { field: 'alphaT_perp', label: `CTE In-plane [${fieldUnits.alphaT_perp}]` },
+                      {
+                        field: 'alphaT_para',
+                        label: `CTE Through-plane [${fieldUnits.alphaT_para}]`,
+                      },
+                      { field: 'C11_0_sample', label: `C11 [${fieldUnits.C11_0_sample}]` },
+                      { field: 'C12_0_sample', label: `C12 [${fieldUnits.C12_0_sample}]` },
+                      { field: 'C13_0_sample', label: `C13 [${fieldUnits.C13_0_sample}]` },
+                      { field: 'C33_0_sample', label: `C33 [${fieldUnits.C33_0_sample}]` },
+                      { field: 'C44_0_sample', label: `C44 [${fieldUnits.C44_0_sample}]` },
+                    ].map((param) => (
+                      <div
+                        key={`${param.field}${param.index ?? ''}`}
+                        className="mb-2 flex flex-col"
+                      >
+                        <label className="mb-1 text-sm text-white">{param.label}</label>
+                        <input
+                          type="number"
+                          step="any"
+                          value={
+                            param.index !== undefined
+                              ? params[param.field as keyof FDPBDParams][param.index]
+                              : params[param.field as keyof FDPBDParams]
+                          }
+                          onChange={(e) =>
+                            handleInputChange(e, param.field as keyof FDPBDParams, param.index)
+                          }
+                          className={`rounded border-2 bg-gray-800 p-2 text-white focus:outline-none ${
+                            isValidDecimal(
+                              param.index !== undefined
+                                ? params[param.field as keyof FDPBDParams][param.index]
+                                : params[param.field as keyof FDPBDParams]
+                            )
+                              ? 'border-gray-600 focus:border-teal-500'
+                              : 'border-red-500'
+                          }`}
+                          disabled={isProcessing}
+                          required
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </>
+            )}
 
             {/* Buttons */}
             <div className="flex space-x-4">
@@ -1249,6 +1698,12 @@ export default function FDPBDPage() {
                           </>
                         );
                       })()}
+                    {isotropyOption === 'transverse_anisotropy' && (
+                      <p className="text-white">
+                        Forward model complete. Compare model vs experimental data in the plots
+                        below.
+                      </p>
+                    )}
                   </>
                 )}
               </div>
@@ -1541,6 +1996,156 @@ export default function FDPBDPage() {
                             showticklabels: true,
                             tickmode: 'auto',
                             nticks: 5,
+                          },
+                          legend: { x: 1, xanchor: 'right', y: 1 },
+                          plot_bgcolor: 'white',
+                          paper_bgcolor: 'white',
+                          font: { color: 'black' },
+                          width: 800,
+                          height: 400,
+                          margin: { l: 60, r: 40, t: 60, b: 60 },
+                          shapes: [
+                            {
+                              type: 'rect',
+                              xref: 'paper',
+                              yref: 'paper',
+                              x0: 0,
+                              y0: 0,
+                              x1: 1,
+                              y1: 1,
+                              line: { color: 'black', width: 2 },
+                            },
+                          ],
+                        }}
+                      />
+                    </>
+                  )}
+                  {isotropyOption === 'transverse_anisotropy' && result && (
+                    <>
+                      <Plot
+                        data={[
+                          {
+                            x: (result as TransverseIsotropicResult).plot_data.exp_freqs,
+                            y: (result as TransverseIsotropicResult).plot_data.in_exp,
+                            type: 'scatter',
+                            mode: 'markers',
+                            name: 'In-phase (data)',
+                            marker: { color: 'red' },
+                          },
+                          {
+                            x: (result as TransverseIsotropicResult).plot_data.exp_freqs,
+                            y: (result as TransverseIsotropicResult).plot_data.out_exp,
+                            type: 'scatter',
+                            mode: 'markers',
+                            name: 'Out-of-phase (data)',
+                            marker: { color: 'red', symbol: 'x' },
+                          },
+                          {
+                            x: (result as TransverseIsotropicResult).plot_data.model_freqs,
+                            y: (result as TransverseIsotropicResult).plot_data.in_model,
+                            type: 'scatter',
+                            mode: 'lines+markers',
+                            name: 'In-phase (model)',
+                            line: { color: 'black', dash: 'dash' },
+                            marker: { color: 'black' },
+                          },
+                          {
+                            x: (result as TransverseIsotropicResult).plot_data.model_freqs,
+                            y: (result as TransverseIsotropicResult).plot_data.out_model,
+                            type: 'scatter',
+                            mode: 'lines+markers',
+                            name: 'Out-of-phase (model)',
+                            line: { color: 'black', dash: 'dash' },
+                            marker: { color: 'black', symbol: 'x' },
+                          },
+                        ]}
+                        layout={{
+                          title: 'In/Out-of-phase (Transverse Anisotropy)',
+                          xaxis: {
+                            title: {
+                              text: 'Frequency (Hz)',
+                              font: { size: 14, color: 'black' },
+                              standoff: 10,
+                            },
+                            type: 'log',
+                            showgrid: true,
+                            gridcolor: '#ddd',
+                            tickfont: { size: 12, color: 'black' },
+                          },
+                          yaxis: {
+                            title: {
+                              text: 'Signal (V)',
+                              font: { size: 14, color: 'black' },
+                              standoff: 10,
+                            },
+                            showgrid: true,
+                            gridcolor: '#ddd',
+                            tickfont: { size: 12, color: 'black' },
+                          },
+                          legend: { x: 1, xanchor: 'right', y: 1 },
+                          plot_bgcolor: 'white',
+                          paper_bgcolor: 'white',
+                          font: { color: 'black' },
+                          width: 800,
+                          height: 400,
+                          margin: { l: 60, r: 40, t: 60, b: 60 },
+                          shapes: [
+                            {
+                              type: 'rect',
+                              xref: 'paper',
+                              yref: 'paper',
+                              x0: 0,
+                              y0: 0,
+                              x1: 1,
+                              y1: 1,
+                              line: { color: 'black', width: 2 },
+                            },
+                          ],
+                        }}
+                      />
+                      <Plot
+                        data={[
+                          {
+                            x: (result as TransverseIsotropicResult).plot_data.exp_freqs,
+                            y: (result as TransverseIsotropicResult).plot_data.ratio_exp,
+                            type: 'scatter',
+                            mode: 'markers',
+                            name: 'Ratio (data)',
+                            marker: { color: 'red' },
+                          },
+                          {
+                            x: (result as TransverseIsotropicResult).plot_data.model_freqs,
+                            y: (result as TransverseIsotropicResult).plot_data.ratio_model,
+                            type: 'scatter',
+                            mode: 'lines+markers',
+                            name: 'Ratio (model)',
+                            line: { color: 'black', dash: 'dash' },
+                            marker: { color: 'black' },
+                          },
+                        ]}
+                        layout={{
+                          title: 'Ratio (Transverse Anisotropy)',
+                          xaxis: {
+                            title: {
+                              text: 'Frequency (Hz)',
+                              font: { size: 14, color: 'black' },
+                              standoff: 10,
+                            },
+                            type: 'log',
+                            showgrid: true,
+                            gridcolor: '#ddd',
+                            tickfont: { size: 12, color: 'black' },
+                          },
+                          yaxis: {
+                            title: {
+                              text: 'Ratio',
+                              font: { size: 14, color: 'black' },
+                              standoff: 10,
+                            },
+                            type: 'log',
+                            showgrid: true,
+                            gridcolor: '#ddd',
+                            tickfont: { size: 12, color: 'black' },
                           },
                           legend: { x: 1, xanchor: 'right', y: 1 },
                           plot_bgcolor: 'white',
