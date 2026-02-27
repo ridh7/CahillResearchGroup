@@ -1710,7 +1710,7 @@ export default function FDPBDPage() {
               </div>
               <div className="rounded-lg bg-gray-800 p-4 shadow-md">
                 <h2 className="mb-4 text-lg font-semibold text-white">Graphs</h2>
-                <div className="flex flex-col space-y-4">
+                <div className="flex flex-wrap gap-4">
                   {isotropyOption === 'isotropy' && result && (
                     <>
                       <Plot
@@ -1719,33 +1719,37 @@ export default function FDPBDPage() {
                             x: (result as FDPBDResult).plot_data.freq_fit,
                             y: (result as FDPBDResult).plot_data.v_corr_in_fit,
                             type: 'scatter',
-                            mode: 'markers',
+                            mode: 'lines+markers',
                             name: 'In-phase (data)',
                             marker: { color: 'black' },
+                            line: { color: 'black', dash: 'dash' },
                           },
                           {
                             x: (result as FDPBDResult).plot_data.freq_fit,
                             y: (result as FDPBDResult).plot_data.v_corr_out_fit,
                             type: 'scatter',
-                            mode: 'markers',
+                            mode: 'lines+markers',
                             name: 'Out-of-phase (data)',
                             marker: { color: 'black' },
+                            line: { color: 'black', dash: 'dash' },
                           },
                           {
                             x: (result as FDPBDResult).plot_data.freq_fit,
                             y: (result as FDPBDResult).plot_data.delta_in,
                             type: 'scatter',
-                            mode: 'lines',
+                            mode: 'lines+markers',
                             name: 'In-phase (model)',
-                            line: { color: 'blue' },
+                            marker: { color: 'blue' },
+                            line: { color: 'blue', dash: 'dash' },
                           },
                           {
                             x: (result as FDPBDResult).plot_data.freq_fit,
                             y: (result as FDPBDResult).plot_data.delta_out,
                             type: 'scatter',
-                            mode: 'lines',
+                            mode: 'lines+markers',
                             name: 'Out-of-phase (model)',
-                            line: { color: 'red' },
+                            marker: { color: 'red' },
+                            line: { color: 'red', dash: 'dash' },
                           },
                         ]}
                         layout={{
@@ -1779,9 +1783,9 @@ export default function FDPBDPage() {
                           plot_bgcolor: 'white',
                           paper_bgcolor: 'white',
                           font: { color: 'black' },
-                          width: 800,
+                          width: 550,
                           height: 400,
-                          margin: { l: 60, r: 40, t: 60, b: 60 },
+                          margin: { l: 60, r: 30, t: 40, b: 50 },
                           shapes: [
                             {
                               type: 'rect',
@@ -1802,17 +1806,19 @@ export default function FDPBDPage() {
                             x: (result as FDPBDResult).plot_data.freq_fit,
                             y: (result as FDPBDResult).plot_data.v_corr_ratio_fit,
                             type: 'scatter',
-                            mode: 'markers',
+                            mode: 'lines+markers',
                             name: 'Ratio (data)',
                             marker: { color: 'black' },
+                            line: { color: 'black', dash: 'dash' },
                           },
                           {
                             x: (result as FDPBDResult).plot_data.freq_fit,
                             y: (result as FDPBDResult).plot_data.delta_ratio,
                             type: 'scatter',
-                            mode: 'lines',
+                            mode: 'lines+markers',
                             name: 'Ratio (model)',
-                            line: { color: 'blue' },
+                            marker: { color: 'blue' },
+                            line: { color: 'blue', dash: 'dash' },
                           },
                         ]}
                         layout={{
@@ -1847,9 +1853,9 @@ export default function FDPBDPage() {
                           plot_bgcolor: 'white',
                           paper_bgcolor: 'white',
                           font: { color: 'black' },
-                          width: 800,
+                          width: 550,
                           height: 400,
-                          margin: { l: 60, r: 40, t: 60, b: 60 },
+                          margin: { l: 60, r: 30, t: 40, b: 50 },
                           shapes: [
                             {
                               type: 'rect',
@@ -1874,33 +1880,37 @@ export default function FDPBDPage() {
                             x: (result as AnisotropicFDPBDResult).plot_data.exp_freqs,
                             y: (result as AnisotropicFDPBDResult).plot_data.in_exp,
                             type: 'scatter',
-                            mode: 'markers',
+                            mode: 'lines+markers',
                             name: 'In-phase (data)',
                             marker: { color: 'black' },
+                            line: { color: 'black', dash: 'dash' },
                           },
                           {
                             x: (result as AnisotropicFDPBDResult).plot_data.exp_freqs,
                             y: (result as AnisotropicFDPBDResult).plot_data.out_exp,
                             type: 'scatter',
-                            mode: 'markers',
+                            mode: 'lines+markers',
                             name: 'Out-of-phase (data)',
                             marker: { color: 'black' },
+                            line: { color: 'black', dash: 'dash' },
                           },
                           {
                             x: (result as AnisotropicFDPBDResult).plot_data.model_freqs,
                             y: (result as AnisotropicFDPBDResult).plot_data.in_model,
                             type: 'scatter',
-                            mode: 'lines',
+                            mode: 'lines+markers',
                             name: 'In-phase (model)',
-                            line: { color: 'blue' },
+                            marker: { color: 'blue' },
+                            line: { color: 'blue', dash: 'dash' },
                           },
                           {
                             x: (result as AnisotropicFDPBDResult).plot_data.model_freqs,
                             y: (result as AnisotropicFDPBDResult).plot_data.out_model,
                             type: 'scatter',
-                            mode: 'lines',
+                            mode: 'lines+markers',
                             name: 'Out-of-phase (model)',
-                            line: { color: 'red' },
+                            marker: { color: 'red' },
+                            line: { color: 'red', dash: 'dash' },
                           },
                         ]}
                         layout={{
@@ -1934,9 +1944,9 @@ export default function FDPBDPage() {
                           plot_bgcolor: 'white',
                           paper_bgcolor: 'white',
                           font: { color: 'black' },
-                          width: 800,
+                          width: 550,
                           height: 400,
-                          margin: { l: 60, r: 40, t: 60, b: 60 },
+                          margin: { l: 60, r: 30, t: 40, b: 50 },
                           shapes: [
                             {
                               type: 'rect',
@@ -1957,17 +1967,19 @@ export default function FDPBDPage() {
                             x: (result as AnisotropicFDPBDResult).plot_data.exp_freqs,
                             y: (result as AnisotropicFDPBDResult).plot_data.ratio_exp,
                             type: 'scatter',
-                            mode: 'markers',
+                            mode: 'lines+markers',
                             name: 'Ratio (data)',
                             marker: { color: 'black' },
+                            line: { color: 'black', dash: 'dash' },
                           },
                           {
                             x: (result as AnisotropicFDPBDResult).plot_data.model_freqs,
                             y: (result as AnisotropicFDPBDResult).plot_data.ratio_model,
                             type: 'scatter',
-                            mode: 'lines',
+                            mode: 'lines+markers',
                             name: 'Ratio (model)',
-                            line: { color: 'blue' },
+                            marker: { color: 'blue' },
+                            line: { color: 'blue', dash: 'dash' },
                           },
                         ]}
                         layout={{
@@ -2002,9 +2014,9 @@ export default function FDPBDPage() {
                           plot_bgcolor: 'white',
                           paper_bgcolor: 'white',
                           font: { color: 'black' },
-                          width: 800,
+                          width: 550,
                           height: 400,
-                          margin: { l: 60, r: 40, t: 60, b: 60 },
+                          margin: { l: 60, r: 30, t: 40, b: 50 },
                           shapes: [
                             {
                               type: 'rect',
@@ -2029,17 +2041,19 @@ export default function FDPBDPage() {
                             x: (result as TransverseIsotropicResult).plot_data.exp_freqs,
                             y: (result as TransverseIsotropicResult).plot_data.in_exp,
                             type: 'scatter',
-                            mode: 'markers',
+                            mode: 'lines+markers',
                             name: 'In-phase (data)',
                             marker: { color: 'red' },
+                            line: { color: 'red', dash: 'dash' },
                           },
                           {
                             x: (result as TransverseIsotropicResult).plot_data.exp_freqs,
                             y: (result as TransverseIsotropicResult).plot_data.out_exp,
                             type: 'scatter',
-                            mode: 'markers',
+                            mode: 'lines+markers',
                             name: 'Out-of-phase (data)',
                             marker: { color: 'red', symbol: 'x' },
+                            line: { color: 'red', dash: 'dash' },
                           },
                           {
                             x: (result as TransverseIsotropicResult).plot_data.model_freqs,
@@ -2087,9 +2101,9 @@ export default function FDPBDPage() {
                           plot_bgcolor: 'white',
                           paper_bgcolor: 'white',
                           font: { color: 'black' },
-                          width: 800,
+                          width: 550,
                           height: 400,
-                          margin: { l: 60, r: 40, t: 60, b: 60 },
+                          margin: { l: 60, r: 30, t: 40, b: 50 },
                           shapes: [
                             {
                               type: 'rect',
@@ -2110,9 +2124,10 @@ export default function FDPBDPage() {
                             x: (result as TransverseIsotropicResult).plot_data.exp_freqs,
                             y: (result as TransverseIsotropicResult).plot_data.ratio_exp,
                             type: 'scatter',
-                            mode: 'markers',
+                            mode: 'lines+markers',
                             name: 'Ratio (data)',
                             marker: { color: 'red' },
+                            line: { color: 'red', dash: 'dash' },
                           },
                           {
                             x: (result as TransverseIsotropicResult).plot_data.model_freqs,
@@ -2152,9 +2167,9 @@ export default function FDPBDPage() {
                           plot_bgcolor: 'white',
                           paper_bgcolor: 'white',
                           font: { color: 'black' },
-                          width: 800,
+                          width: 550,
                           height: 400,
-                          margin: { l: 60, r: 40, t: 60, b: 60 },
+                          margin: { l: 60, r: 30, t: 40, b: 50 },
                           shapes: [
                             {
                               type: 'rect',

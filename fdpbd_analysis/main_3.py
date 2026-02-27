@@ -288,7 +288,7 @@ def compute_surface_displacement(
             if G_d_den == 0 or s1z == 0:
                 G_d = np.inf  # Or handle appropriately
             else:
-                G_d = (G_d_num / s1z) / (G_d_den / s1z)  # Simpler division
+                G_d = (G_d_num / s1z) / G_d_den
 
             # Avoid division by zero for s3z
             G_u = 1.0 / s3z if s3z != 0 else np.inf
@@ -506,9 +506,7 @@ def compute_surface_displacement(
                             + safe_div(C_s2 * exp_neg_z1L, (-zeta1 - eigvals1[j]))
                         )
                     )
-                    # Contribution from layer 2 particular solution (only first 3 modes needed for BC)
-                    if j < 3:
-                        s2 += Q2[rw - 3, j] * U2[j] * safe_div(θ_bs, (-zeta2 - L2[j]))
+                    s2 += Q2[rw - 3, j] * U2[j] * safe_div(θ_bs, (-zeta2 - L2[j]))
                 BCC[rw] = -s1 + s2
 
             for rw in range(6, 9):  # Traction continuity at z=L1
@@ -522,8 +520,7 @@ def compute_surface_displacement(
                             + safe_div(C_s2 * exp_neg_z1L, (-zeta1 - eigvals1[j]))
                         )
                     )
-                    if j < 3:
-                        s2 += Q2[rw - 3, j] * U2[j] * safe_div(θ_bs, (-zeta2 - L2[j]))
+                    s2 += Q2[rw - 3, j] * U2[j] * safe_div(θ_bs, (-zeta2 - L2[j]))
                 # Apply scaling factor C11_0_2 / C11_1 to layer 2 traction term
                 BCC[rw] = -s1 + (C11_0_2 / C11_1) * s2
 
@@ -781,7 +778,7 @@ def main():
     )  # Matches MATLAB d_p:d_p:up_p if N_P = up_p/d_p
 
     # Define psi_vals for function signature - only one value needed (Option C)
-    psi_vals = np.array([0.0])  # e.g., psi=0
+    psi_vals = np.array([np.pi / 4])  # psi=pi/4 to match MATLAB
 
     # 3) Compute the model surface displacement Z(p,f)
     # Pass the single psi value

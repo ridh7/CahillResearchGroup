@@ -127,8 +127,8 @@ def compute_surface_displacement(
     betazC11_2 = betaz2 / C11_2
     sqrtC11rho_2 = np.sqrt((1 + 1e-6j) * C11_2 / layer2["rho"])
 
-    # Fixed psi=0 for transverse isotropy
-    psi = 0.0
+    # Use psi=pi/4 to match MATLAB (k=p/sqrt(2), xi=p/sqrt(2))
+    psi = np.pi / 4
 
     for i_f, f in enumerate(freqs):
         omega = 2 * np.pi * f
@@ -163,10 +163,7 @@ def compute_surface_displacement(
                 + s1z * s2z / g_int * np.sinh(z1L)
             )
 
-            if s1z == 0 or G_d_den == 0:
-                G_d = np.inf
-            else:
-                G_d = (G_d_num / s1z) / (G_d_den / s1z)
+            G_d = np.inf if s1z == 0 or G_d_den == 0 else (G_d_num / s1z) / G_d_den
 
             G_u = 1.0 / s3z if s3z != 0 else np.inf
 
@@ -339,10 +336,7 @@ def compute_surface_displacement(
                             + safe_div(C_s2 * exp_neg_z1L, (-zeta1 - eigvals1[j]))
                         )
                     )
-                    if j < 3:
-                        s2 += (
-                            Q2[rw - 3, j] * U2[j] * safe_div(theta_bs, (-zeta2 - L2[j]))
-                        )
+                    s2 += Q2[rw - 3, j] * U2[j] * safe_div(theta_bs, (-zeta2 - L2[j]))
                 BCC[rw] = -s1 + s2
 
             for rw in range(6, 9):
@@ -356,10 +350,7 @@ def compute_surface_displacement(
                             + safe_div(C_s2 * exp_neg_z1L, (-zeta1 - eigvals1[j]))
                         )
                     )
-                    if j < 3:
-                        s2 += (
-                            Q2[rw - 3, j] * U2[j] * safe_div(theta_bs, (-zeta2 - L2[j]))
-                        )
+                    s2 += Q2[rw - 3, j] * U2[j] * safe_div(theta_bs, (-zeta2 - L2[j]))
                 BCC[rw] = -s1 + (C11_0_2 / C11_1) * s2
 
             # Solve for coefficients J
