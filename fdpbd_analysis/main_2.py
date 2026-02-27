@@ -11,6 +11,10 @@ import warnings
 import matplotlib.pyplot as plt
 import numpy as np
 import scipy.linalg as la
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "backend" / "app" / "core" / "fdpbd"))
 from data_processing import calculate_leaking, correct_data, load_data
 from scipy.optimize import differential_evolution
 

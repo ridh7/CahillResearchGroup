@@ -172,7 +172,7 @@ export default function FDPBDPage() {
     lens_transmittance: '',
     detector_factor: 'V/rad',
     phi: 'degrees',
-    rho: 'g/m\u00B3',
+    rho: 'g/cm\u00B3',
     alphaT: '1/K',
     C11_0: 'GPa',
     C12_0: 'GPa',
@@ -180,7 +180,7 @@ export default function FDPBDPage() {
     lambda_down_x_sample: 'W/m-K',
     lambda_down_y_sample: 'W/m-K',
     lambda_down_z_sample: 'W/m-K',
-    rho_sample: 'g/m\u00B3',
+    rho_sample: 'g/cm\u00B3',
     C11_0_sample: 'GPa',
     C12_0_sample: 'GPa',
     C13_0_sample: 'GPa',
@@ -537,6 +537,7 @@ export default function FDPBDPage() {
     option: 'isotropy' | 'anisotropy' | 'transverse_anisotropy'
   ) => {
     setIsotropyOption(option);
+    setResult(null);
     if (option === 'isotropy') {
       setParams((prev) => ({
         ...prev,
@@ -561,7 +562,7 @@ export default function FDPBDPage() {
         lambda_down_x_sample: '0.64',
         lambda_down_z_sample: '0.21',
         c_down: [prev.c_down[0], prev.c_down[1], '1.56'],
-        rho_sample: '1430',
+        rho_sample: '1.43',
         C11_0_sample: '8.9',
         C12_0_sample: '5.4',
         C13_0_sample: '5.4',
@@ -700,7 +701,7 @@ export default function FDPBDPage() {
         layer1_thickness: parseFloat(params.h_down[0]) * 1e-6, // µm -> m
         layer1_sigma: parseFloat(params.lambda_down[0]), // W/m-K
         layer1_capac: parseFloat(params.c_down[0]) * 1e6, // J/cm³-K -> J/m³-K
-        layer1_rho: parseFloat(params.rho) * 1e3, // g/m³ -> kg/m³
+        layer1_rho: parseFloat(params.rho) * 1e3, // g/cm³ -> kg/m³
         layer1_alphaT: parseFloat(params.alphaT), // 1/K
         layer1_C11_0: parseFloat(params.C11_0) * 1e9, // GPa -> Pa
         layer1_C12_0: parseFloat(params.C12_0) * 1e9, // GPa -> Pa
@@ -709,7 +710,7 @@ export default function FDPBDPage() {
         layer2_sigma_r: parseFloat(params.lambda_down_x_sample), // W/m-K (in-plane)
         layer2_sigma_z: parseFloat(params.lambda_down_z_sample), // W/m-K (through-plane)
         layer2_capac: parseFloat(params.c_down[2]) * 1e6, // J/cm³-K -> J/m³-K
-        layer2_rho: parseFloat(params.rho_sample), // kg/m³ (transverse uses kg/m³ directly)
+        layer2_rho: parseFloat(params.rho_sample) * 1e3, // g/cm³ -> kg/m³
         layer2_alphaT_perp: parseFloat(params.alphaT_perp), // 1/K
         layer2_alphaT_para: parseFloat(params.alphaT_para), // 1/K
         layer2_C11_0: parseFloat(params.C11_0_sample) * 1e9, // GPa -> Pa
@@ -771,8 +772,8 @@ export default function FDPBDPage() {
         ? {
             eta_up: undefined,
             h_up: undefined,
-            lambda_down: [modifiedParams.lambda_down[0], undefined, undefined],
-            h_down: [modifiedParams.h_down[0], undefined, undefined],
+            lambda_down: [modifiedParams.lambda_down[0]],
+            h_down: [modifiedParams.h_down[0]],
             niu: undefined,
             alpha_t: undefined,
           }

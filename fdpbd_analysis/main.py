@@ -1,11 +1,16 @@
 #!/usr/bin/env python3
 """Main script for FD-PBD analysis of thermal properties."""
 
+import sys
+from pathlib import Path
+
 import matplotlib.pyplot as plt
 import numpy as np
-from data_processing import calculate_leaking, correct_data, load_data
-from fitting import fit_in_out
-from thermal_model import compute_steady_state_heat, delta_bo_theta
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "backend"))
+from app.core.fdpbd.data_processing import calculate_leaking, correct_data, load_data
+from app.core.fdpbd.fitting import fit_in_out
+from app.core.fdpbd.thermal_model import compute_steady_state_heat, delta_bo_theta
 
 # Hard-coded parameters
 DATA_FILENAME = "1_CaF2_176mV-100k-100Hz_40P_1pump_0p85probe_5X"

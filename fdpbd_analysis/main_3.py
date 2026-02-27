@@ -4,15 +4,18 @@ Thermoelastic surface-displacement & probe-beam deflection model
 for transversely isotropic material, translated from MATLAB code2 to Python.
 """
 
-import numpy as np
-import scipy.io as sio
-import scipy.linalg as la
-import scipy.special as sp  # Added for Bessel function
-import matplotlib.pyplot as plt
 import warnings
 
-# Assuming data_processing.py contains the necessary functions
-from data_processing import load_data, calculate_leaking, correct_data
+import matplotlib.pyplot as plt
+import numpy as np
+import scipy.linalg as la
+import scipy.special as sp  # Added for Bessel function
+
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "backend" / "app" / "core" / "fdpbd"))
+from data_processing import calculate_leaking, correct_data, load_data
 
 # -----------------------------------------------------------------------------
 # —— Hard-coded Input Parameters (from code2) ——————————————————————————
@@ -830,7 +833,7 @@ if __name__ == "__main__":
             or "correct_data" in str(e)
         ):
             print(
-                f"Error: Make sure the 'data_processing.py' module is in the same directory or Python path."
+                "Error: Make sure the 'data_processing.py' module is in the same directory or Python path."
             )
         else:
             print(f"An unexpected NameError occurred: {e}")
