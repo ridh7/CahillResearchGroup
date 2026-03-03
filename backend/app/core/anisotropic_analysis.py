@@ -1,3 +1,6 @@
+import time
+from multiprocessing import Pool, cpu_count
+
 import numpy as np
 from scipy import linalg as la
 
@@ -5,7 +8,7 @@ from .fdpbd.data_processing import calculate_leaking, correct_data, load_data
 
 
 def simpson_integration(y: np.ndarray, dx: float) -> float:
-    """Simpson’s rule for equally-spaced data."""
+    """Simpson's rule for equally-spaced data."""
     n = y.size
     if n < 3 or n % 2 == 0:
         raise ValueError("Simpson integration requires odd number of points ≥ 3.")
@@ -13,14 +16,266 @@ def simpson_integration(y: np.ndarray, dx: float) -> float:
     return res
 
 
+def _compute_single_freq(args):
+    """Worker: compute Z[:, :] for one frequency. Must be top-level for pickling."""
+    i_f, f, p_vals, psi_vals, pc = args
+
+    n_p = len(p_vals)
+    n_psi = len(psi_vals)
+    Z_slice = np.zeros((n_p, n_psi), dtype=complex)
+
+    # Unpack precomputed constants to local variables for speed
+    Dif1 = pc["Dif1"]
+    Dif2 = pc["Dif2"]
+    Dif3 = pc["Dif3"]
+    L1 = pc["L1"]
+    sigma1 = pc["sigma1"]
+    sigma2z = pc["sigma2z"]
+    sigma3 = pc["sigma3"]
+    a0 = pc["a0"]
+    w_rms = pc["w_rms"]
+    g_int = pc["g_int"]
+    C11_0_2 = pc["C11_0_2"]
+    C11_1 = pc["C11_1"]
+    sigma_x_over_z = pc["sigma_x_over_z"]
+    sigma_y_over_z = pc["sigma_y_over_z"]
+
+    C55C11_1 = pc["C55C11_1"]
+    C44C11_1 = pc["C44C11_1"]
+    C33C11_1 = pc["C33C11_1"]
+    C22C11_1 = pc["C22C11_1"]
+    C12C11_1 = pc["C12C11_1"]
+    C13C11_1 = pc["C13C11_1"]
+    C23C11_1 = pc["C23C11_1"]
+    C66C11_1 = pc["C66C11_1"]
+    C46C11_1 = pc["C46C11_1"]
+    betaxC11_1 = pc["betaxC11_1"]
+    betayC11_1 = pc["betayC11_1"]
+    betazC11_1 = pc["betazC11_1"]
+    sqrtC11rho_1 = pc["sqrtC11rho_1"]
+
+    C55C11_2 = pc["C55C11_2"]
+    C44C11_2 = pc["C44C11_2"]
+    C33C11_2 = pc["C33C11_2"]
+    C22C11_2 = pc["C22C11_2"]
+    C12C11_2 = pc["C12C11_2"]
+    C13C11_2 = pc["C13C11_2"]
+    C23C11_2 = pc["C23C11_2"]
+    C66C11_2 = pc["C66C11_2"]
+    betaxC11_2 = pc["betaxC11_2"]
+    betayC11_2 = pc["betayC11_2"]
+    betazC11_2 = pc["betazC11_2"]
+    sqrtC11rho_2 = pc["sqrtC11rho_2"]
+
+    ω = 2 * np.pi * f
+    qn2_1 = 1j * ω / Dif1
+    qn2_2 = 1j * ω / Dif2
+    qn2_3 = 1j * ω / Dif3
+
+    for i_p, p in enumerate(p_vals):
+        flx = a0 * np.exp(-(w_rms**2) * p**2 / 8)
+
+        for i_psi, psi in enumerate(psi_vals):
+            k = p * np.cos(psi)
+            xi = p * np.sin(psi)
+
+            zeta1 = np.sqrt(qn2_1 + p**2)
+            zeta2 = np.sqrt(qn2_2 + k**2 * sigma_x_over_z + xi**2 * sigma_y_over_z)
+            zeta3 = np.sqrt(qn2_3 + p**2)
+
+            # Thermal boundary G
+            z1L = zeta1 * L1
+            s1z = sigma1 * zeta1
+            s2z = sigma2z * zeta2
+            s3z = sigma3 * zeta3
+
+            G_d = (
+                s2z * np.sinh(z1L)
+                + s1z * np.cosh(z1L)
+                + s1z * s2z / g_int * np.cosh(z1L)
+            ) / s1z
+            G_d /= (
+                s2z * np.cosh(z1L)
+                + s1z * np.sinh(z1L)
+                + s1z * s2z / g_int * np.sinh(z1L)
+            )
+            G_u = 1.0 / s3z
+            G = 1.0 / (1.0 / G_u + 1.0 / G_d)
+
+            θ_s = flx * G
+            θ_bs = (
+                np.cosh(z1L) * θ_s
+                + s1z / g_int * np.sinh(z1L) * θ_s
+                - np.sinh(z1L) * flx / s1z
+                - np.cosh(z1L) * flx / g_int
+            )
+
+            C_s1 = (s2z / g_int * θ_bs + θ_bs - θ_s * np.exp(-z1L)) / (
+                np.exp(z1L) - np.exp(-z1L)
+            )
+            C_s2 = θ_s - C_s1
+
+            # Layer1 matrices A1, B1, D1
+            A1 = np.zeros((6, 6), dtype=complex)
+            B1 = np.zeros((6, 6), dtype=complex)
+            D1 = np.zeros(6, dtype=complex)
+
+            A1[0, 3] = A1[1, 4] = A1[2, 5] = 1.0
+            A1[3, 0] = C55C11_1
+            A1[4, 1] = C44C11_1
+            A1[5, 2] = C33C11_1
+            B1[3, 3] = B1[4, 4] = B1[5, 5] = 1.0
+            D1[5] = betazC11_1
+
+            A1[0, 0] = -C46C11_1 * 1j * k
+            A1[1, 1] = C46C11_1 * 1j * k
+            A1[0, 1] = C46C11_1 * 1j * xi
+            A1[1, 0] = C46C11_1 * 1j * xi
+            A1[0, 2] = C13C11_1 * 1j * k
+            A1[1, 2] = C23C11_1 * 1j * xi
+
+            B1[0, 0] = k**2 + C66C11_1 * xi**2 - ω**2 / sqrtC11rho_1**2
+            B1[1, 1] = C22C11_1 * xi**2 + C66C11_1 * k**2 - ω**2 / sqrtC11rho_1**2
+            B1[0, 1] = B1[1, 0] = (C12C11_1 + C66C11_1) * k * xi
+            B1[2, 2] = -(ω**2) / sqrtC11rho_1**2
+            B1[0, 2] = C46C11_1 * (xi**2 - k**2)
+            B1[1, 2] = 2 * C46C11_1 * k * xi
+            B1[2, 3] = -1j * k
+            B1[2, 4] = -1j * xi
+            B1[3, 0] = C46C11_1 * 1j * k
+            B1[3, 1] = -C46C11_1 * 1j * xi
+            B1[3, 2] = -C55C11_1 * 1j * k
+            B1[4, 0] = -C46C11_1 * 1j * xi
+            B1[4, 1] = -C46C11_1 * 1j * k
+            B1[4, 2] = -C44C11_1 * 1j * xi
+            B1[5, 0] = -C13C11_1 * 1j * k
+            B1[5, 1] = -C23C11_1 * 1j * xi
+
+            D1[0] = betaxC11_1 * 1j * k
+            D1[1] = betayC11_1 * 1j * xi
+
+            eigvals1, Q1 = la.eig(B1, A1)
+            N1 = la.solve(A1, D1)
+            U1 = la.solve(Q1, N1)
+
+            # Layer2 matrices A2, B2, D2
+            A2 = np.zeros((6, 6), dtype=complex)
+            B2 = np.zeros((6, 6), dtype=complex)
+            D2 = np.zeros(6, dtype=complex)
+
+            A2[0, 3] = 1.0
+            A2[1, 4] = 1.0
+            A2[2, 5] = 1.0
+            A2[3, 0] = C55C11_2
+            A2[4, 1] = C44C11_2
+            A2[5, 2] = C33C11_2
+            B2[3, 3] = 1.0
+            B2[4, 4] = 1.0
+            B2[5, 5] = 1.0
+
+            D2[0] = betaxC11_2 * 1j * k
+            D2[1] = betayC11_2 * 1j * xi
+            D2[5] = betazC11_2
+
+            A2[0, 2] = C13C11_2 * 1j * k
+            A2[1, 2] = C23C11_2 * 1j * xi
+
+            B2[0, 0] = k**2 + C66C11_2 * xi**2 - ω**2 / sqrtC11rho_2**2
+            B2[1, 1] = C22C11_2 * xi**2 + C66C11_2 * k**2 - ω**2 / sqrtC11rho_2**2
+            B2[0, 1] = B2[1, 0] = (C12C11_2 + C66C11_2) * k * xi
+            B2[2, 2] = -(ω**2) / sqrtC11rho_2**2
+            B2[2, 3] = -1j * k
+            B2[2, 4] = -1j * xi
+            B2[3, 2] = -C55C11_2 * 1j * k
+            B2[4, 2] = -C44C11_2 * 1j * xi
+            B2[5, 0] = -C13C11_2 * 1j * k
+            B2[5, 1] = -C23C11_2 * 1j * xi
+
+            D2[0] = betaxC11_2 * 1j * k
+            D2[1] = betayC11_2 * 1j * xi
+
+            eigvals2, Q2_raw = la.eig(B2, A2)
+            neg = [i for i, lam in enumerate(eigvals2) if lam.real < 0]
+            pos = [i for i, lam in enumerate(eigvals2) if lam.real >= 0]
+            idx_order = neg + pos
+            Q2 = Q2_raw[:, idx_order]
+            L2 = eigvals2[idx_order]
+            U2 = la.solve(Q2, la.solve(A2, D2))
+
+            # Build 9×9 BCM & BCC
+            BCM = np.zeros((9, 9), dtype=complex)
+            BCC = np.zeros(9, dtype=complex)
+
+            for m in range(6):
+                BCM[0:3, m] = Q1[3:6, m]
+                BCM[3:9, m] = Q1[0:6, m] * np.exp(eigvals1[m] * L1)
+
+            for m in range(3):
+                BCM[3:6, 6 + m] = -Q2[0:3, m] * np.exp(L2[m] * L1)
+                BCM[6:9, 6 + m] = -C11_0_2 / C11_1 * Q2[3:6, m] * np.exp(L2[m] * L1)
+
+            for rw in range(3):
+                s = 0
+                for j in range(6):
+                    s += (
+                        Q1[rw + 3, j]
+                        * U1[j]
+                        * (C_s1 / (zeta1 - eigvals1[j]) + C_s2 / (-zeta1 - eigvals1[j]))
+                    )
+                BCC[rw] = -s
+
+            for rw in range(3, 6):
+                s1 = s2 = 0
+                for j in range(6):
+                    temp1 = (
+                        Q1[rw - 3, j]
+                        * U1[j]
+                        * (
+                            C_s1 * np.exp(z1L) / (zeta1 - eigvals1[j])
+                            + C_s2 * np.exp(-z1L) / (-zeta1 - eigvals1[j])
+                        )
+                    )
+                    temp2 = Q2[rw - 3, j] * U2[j] * (θ_bs / (-zeta2 - L2[j]))
+                    s1 += temp1
+                    s2 += temp2
+                BCC[rw] = -s1 + s2
+
+            for rw in range(6, 9):
+                s1 = s2 = 0
+                for j in range(6):
+                    s1 += (
+                        Q1[rw - 3, j]
+                        * U1[j]
+                        * (
+                            C_s1 * np.exp(z1L) / (zeta1 - eigvals1[j])
+                            + C_s2 * np.exp(-z1L) / (-zeta1 - eigvals1[j])
+                        )
+                    )
+                    s2 += Q2[rw - 3, j] * U2[j] * (θ_bs / (-zeta2 - L2[j]))
+                BCC[rw] = -s1 + (C11_0_2 / C11_1) * s2
+
+            J = la.solve(BCM, BCC)
+
+            w_H = sum(Q1[2, m] * J[m] for m in range(6))
+            w_P = sum(
+                Q1[2, j]
+                * U1[j]
+                * (C_s1 / (zeta1 - eigvals1[j]) + C_s2 / (-zeta1 - eigvals1[j]))
+                for j in range(6)
+            )
+
+            Z_slice[i_p, i_psi] = -(w_H + w_P)
+
+    return i_f, Z_slice
+
+
 def compute_surface_displacement(
     freqs: np.ndarray, p_vals: np.ndarray, psi_vals: np.ndarray, params: dict
 ) -> np.ndarray:
     """Build and solve the 9×9 thermo-elastic boundary-condition system."""
     n_p, n_psi, n_f = len(p_vals), len(psi_vals), len(freqs)
-    Z = np.zeros((n_p, n_psi, n_f), dtype=complex)
 
-    # Extract parameters
+    # Extract parameters and precompute all constants once
     layer1 = params["layer1"]
     layer2 = params["layer2"]
     layer3 = params["layer3"]
@@ -36,7 +291,6 @@ def compute_surface_displacement(
         * (1.0 - abs((n_al - 1 + 1j * k_al) / (n_al + 1 + 1j * k_al)) ** 2)
     )
 
-    # Precompute thermal diffusivities
     Dif1 = layer1["sigma"] / layer1["capac"]
     Dif2 = layer2["sigma_z"] / layer2["capac"]
     Dif3 = layer3["sigma"] / layer3["capac"]
@@ -49,31 +303,15 @@ def compute_surface_displacement(
     C11_0_1, C12_0_1, C44_0_1 = (layer1["C11_0"], layer1["C12_0"], layer1["C44_0"])
     alpha1 = layer1["alphaT"]
     beta1 = (C11_0_1 + 2 * C12_0_1) * alpha1
-    betax1 = betay1 = betaz1 = beta1
     C11_1 = (C11_0_1 + C12_0_1 + 2 * C44_0_1) / 2
-    C33_1 = (C11_0_1 + 2 * C12_0_1 + 4 * C44_0_1) / 3
     C44_1 = (C11_0_1 - C12_0_1 + C44_0_1) / 3
     C12_1 = (C11_0_1 + 5 * C12_0_1 - 2 * C44_0_1) / 6
     C13_1 = (C11_0_1 + 2 * C12_0_1 - 4 * C44_0_1) / 3
-    # C46_1 = 0.0
+    C33_1 = (C11_0_1 + 2 * C12_0_1 + 4 * C44_0_1) / 3
     C22_1 = C11_1
     C23_1 = C13_1
     C55_1 = C44_1
     C66_1 = (C11_1 - C12_1) / 2
-
-    C22C11_1 = C22_1 / C11_1
-    C33C11_1 = C33_1 / C11_1
-    C12C11_1 = C12_1 / C11_1
-    C13C11_1 = C13_1 / C11_1
-    C23C11_1 = C23_1 / C11_1
-    C44C11_1 = C44_1 / C11_1
-    C55C11_1 = C55_1 / C11_1
-    C66C11_1 = C66_1 / C11_1
-    C46C11_1 = 0.0
-    betaxC11_1 = betax1 / C11_1
-    betayC11_1 = betay1 / C11_1
-    betazC11_1 = betaz1 / C11_1
-    sqrtC11rho_1 = np.sqrt(C11_1 / layer1["rho"])
 
     # Layer 2 effective elastic constants & betas
     C11_0_2 = layer2["C11_0"]
@@ -97,225 +335,63 @@ def compute_surface_displacement(
     C55_2 = (C11_0_2 - C12_0_2) / 2
     C66_2 = C44_0_2
 
-    C22C11_2 = C22_2 / C11_2
-    C33C11_2 = C33_2 / C11_2
-    C12C11_2 = C12_2 / C11_2
-    C13C11_2 = C13_2 / C11_2
-    C23C11_2 = C23_2 / C11_2
-    C44C11_2 = C44_2 / C11_2
-    C55C11_2 = C55_2 / C11_2
-    C66C11_2 = C66_2 / C11_2
-    betaxC11_2 = betax2 / C11_2
-    betayC11_2 = betay2 / C11_2
-    betazC11_2 = betaz2 / C11_2
-    sqrtC11rho_2 = np.sqrt((1 + 1e-6j) * C11_2 / layer2["rho"])
+    # Pack all precomputed constants into a dict for the worker
+    precomputed = {
+        "Dif1": Dif1,
+        "Dif2": Dif2,
+        "Dif3": Dif3,
+        "L1": L1,
+        "sigma1": sigma1,
+        "sigma2z": sigma2z,
+        "sigma3": sigma3,
+        "a0": a0,
+        "w_rms": w_rms,
+        "g_int": g_int,
+        "C11_0_2": C11_0_2,
+        "C11_1": C11_1,
+        "sigma_x_over_z": layer2["sigma_x"] / layer2["sigma_z"],
+        "sigma_y_over_z": layer2["sigma_y"] / layer2["sigma_z"],
+        # Layer 1 normalized constants
+        "C55C11_1": C55_1 / C11_1,
+        "C44C11_1": C44_1 / C11_1,
+        "C33C11_1": C33_1 / C11_1,
+        "C22C11_1": C22_1 / C11_1,
+        "C12C11_1": C12_1 / C11_1,
+        "C13C11_1": C13_1 / C11_1,
+        "C23C11_1": C23_1 / C11_1,
+        "C66C11_1": C66_1 / C11_1,
+        "C46C11_1": 0.0,
+        "betaxC11_1": beta1 / C11_1,
+        "betayC11_1": beta1 / C11_1,
+        "betazC11_1": beta1 / C11_1,
+        "sqrtC11rho_1": np.sqrt(C11_1 / layer1["rho"]),
+        # Layer 2 normalized constants
+        "C55C11_2": C55_2 / C11_2,
+        "C44C11_2": C44_2 / C11_2,
+        "C33C11_2": C33_2 / C11_2,
+        "C22C11_2": C22_2 / C11_2,
+        "C12C11_2": C12_2 / C11_2,
+        "C13C11_2": C13_2 / C11_2,
+        "C23C11_2": C23_2 / C11_2,
+        "C66C11_2": C66_2 / C11_2,
+        "betaxC11_2": betax2 / C11_2,
+        "betayC11_2": betay2 / C11_2,
+        "betazC11_2": betaz2 / C11_2,
+        "sqrtC11rho_2": np.sqrt((1 + 1e-6j) * C11_2 / layer2["rho"]),
+    }
 
-    for i_f, f in enumerate(freqs):
-        ω = 2 * np.pi * f
-        qn2_1 = 1j * ω / Dif1
-        qn2_2 = 1j * ω / Dif2
-        qn2_3 = 1j * ω / Dif3
+    # Build args for each frequency
+    args_list = [(i_f, f, p_vals, psi_vals, precomputed) for i_f, f in enumerate(freqs)]
 
-        for i_p, p in enumerate(p_vals):
-            flx = a0 * np.exp(-(w_rms**2) * p**2 / 8)
+    # Parallelize across frequencies
+    n_workers = min(cpu_count(), n_f)
+    with Pool(n_workers) as pool:
+        results = pool.map(_compute_single_freq, args_list)
 
-            for i_psi, psi in enumerate(psi_vals):
-                k = p * np.cos(psi)
-                xi = p * np.sin(psi)
-
-                zeta1 = np.sqrt(qn2_1 + p**2)
-                zeta2 = np.sqrt(
-                    qn2_2
-                    + k**2 * layer2["sigma_x"] / layer2["sigma_z"]
-                    + xi**2 * layer2["sigma_y"] / layer2["sigma_z"]
-                )
-                zeta3 = np.sqrt(qn2_3 + p**2)
-
-                # Thermal boundary G
-                z1L = zeta1 * L1
-                s1z = sigma1 * zeta1
-                s2z = sigma2z * zeta2
-                s3z = sigma3 * zeta3
-
-                G_d = (
-                    s2z * np.sinh(z1L)
-                    + s1z * np.cosh(z1L)
-                    + s1z * s2z / g_int * np.cosh(z1L)
-                ) / s1z
-                G_d /= (
-                    s2z * np.cosh(z1L)
-                    + s1z * np.sinh(z1L)
-                    + s1z * s2z / g_int * np.sinh(z1L)
-                )
-                G_u = 1.0 / s3z
-                G = 1.0 / (1.0 / G_u + 1.0 / G_d)
-
-                θ_s = flx * G
-                θ_bs = (
-                    np.cosh(z1L) * θ_s
-                    + s1z / g_int * np.sinh(z1L) * θ_s
-                    - np.sinh(z1L) * flx / s1z
-                    - np.cosh(z1L) * flx / g_int
-                )
-
-                C_s1 = (s2z / g_int * θ_bs + θ_bs - θ_s * np.exp(-z1L)) / (
-                    np.exp(z1L) - np.exp(-z1L)
-                )
-                C_s2 = θ_s - C_s1
-
-                # Layer1 matrices A1, B1, D1
-                A1 = np.zeros((6, 6), dtype=complex)
-                B1 = np.zeros((6, 6), dtype=complex)
-                D1 = np.zeros(6, dtype=complex)
-
-                A1[0, 3] = A1[1, 4] = A1[2, 5] = 1.0
-                A1[3, 0] = C55C11_1
-                A1[4, 1] = C44C11_1
-                A1[5, 2] = C33C11_1
-                B1[3, 3] = B1[4, 4] = B1[5, 5] = 1.0
-                D1[5] = betazC11_1
-
-                A1[0, 0] = -C46C11_1 * 1j * k
-                A1[1, 1] = C46C11_1 * 1j * k
-                A1[0, 1] = C46C11_1 * 1j * xi
-                A1[1, 0] = C46C11_1 * 1j * xi
-                A1[0, 2] = C13C11_1 * 1j * k
-                A1[1, 2] = C23C11_1 * 1j * xi
-
-                B1[0, 0] = k**2 + C66C11_1 * xi**2 - ω**2 / sqrtC11rho_1**2
-                B1[1, 1] = C22C11_1 * xi**2 + C66C11_1 * k**2 - ω**2 / sqrtC11rho_1**2
-                B1[0, 1] = B1[1, 0] = (C12C11_1 + C66C11_1) * k * xi
-                B1[2, 2] = -(ω**2) / sqrtC11rho_1**2
-                B1[0, 2] = C46C11_1 * (xi**2 - k**2)
-                B1[1, 2] = 2 * C46C11_1 * k * xi
-                B1[2, 3] = -1j * k
-                B1[2, 4] = -1j * xi
-                B1[3, 0] = C46C11_1 * 1j * k
-                B1[3, 1] = -C46C11_1 * 1j * xi
-                B1[3, 2] = -C55C11_1 * 1j * k
-                B1[4, 0] = -C46C11_1 * 1j * xi
-                B1[4, 1] = -C46C11_1 * 1j * k
-                B1[4, 2] = -C44C11_1 * 1j * xi
-                B1[5, 0] = -C13C11_1 * 1j * k
-                B1[5, 1] = -C23C11_1 * 1j * xi
-
-                D1[0] = betaxC11_1 * 1j * k
-                D1[1] = betayC11_1 * 1j * xi
-
-                eigvals1, Q1 = la.eig(B1, A1)
-                N1 = la.solve(A1, D1)
-                U1 = la.solve(Q1, N1)
-
-                # Layer2 matrices A2, B2, D2
-                A2 = np.zeros((6, 6), dtype=complex)
-                B2 = np.zeros((6, 6), dtype=complex)
-                D2 = np.zeros(6, dtype=complex)
-
-                A2[0, 3] = 1.0
-                A2[1, 4] = 1.0
-                A2[2, 5] = 1.0
-                A2[3, 0] = C55C11_2
-                A2[4, 1] = C44C11_2
-                A2[5, 2] = C33C11_2
-                B2[3, 3] = 1.0
-                B2[4, 4] = 1.0
-                B2[5, 5] = 1.0
-
-                D2[0] = betaxC11_2 * 1j * k
-                D2[1] = betayC11_2 * 1j * xi
-                D2[5] = betazC11_2
-
-                A2[0, 2] = C13C11_2 * 1j * k
-                A2[1, 2] = C23C11_2 * 1j * xi
-
-                B2[0, 0] = k**2 + C66C11_2 * xi**2 - ω**2 / sqrtC11rho_2**2
-                B2[1, 1] = C22C11_2 * xi**2 + C66C11_2 * k**2 - ω**2 / sqrtC11rho_2**2
-                B2[0, 1] = B2[1, 0] = (C12C11_2 + C66C11_2) * k * xi
-                B2[2, 2] = -(ω**2) / sqrtC11rho_2**2
-                B2[2, 3] = -1j * k
-                B2[2, 4] = -1j * xi
-                B2[3, 2] = -C55C11_2 * 1j * k
-                B2[4, 2] = -C44C11_2 * 1j * xi
-                B2[5, 0] = -C13C11_2 * 1j * k
-                B2[5, 1] = -C23C11_2 * 1j * xi
-
-                D2[0] = betaxC11_2 * 1j * k
-                D2[1] = betayC11_2 * 1j * xi
-
-                eigvals2, Q2_raw = la.eig(B2, A2)
-                neg = [i for i, lam in enumerate(eigvals2) if lam.real < 0]
-                pos = [i for i, lam in enumerate(eigvals2) if lam.real >= 0]
-                idx_order = neg + pos
-                Q2 = Q2_raw[:, idx_order]
-                L2 = eigvals2[idx_order]
-                U2 = la.solve(Q2, la.solve(A2, D2))
-
-                # Build 9×9 BCM & BCC
-                BCM = np.zeros((9, 9), dtype=complex)
-                BCC = np.zeros(9, dtype=complex)
-
-                for m in range(6):
-                    BCM[0:3, m] = Q1[3:6, m]
-                    BCM[3:9, m] = Q1[0:6, m] * np.exp(eigvals1[m] * L1)
-
-                for m in range(3):
-                    BCM[3:6, 6 + m] = -Q2[0:3, m] * np.exp(L2[m] * L1)
-                    BCM[6:9, 6 + m] = -C11_0_2 / C11_1 * Q2[3:6, m] * np.exp(L2[m] * L1)
-
-                for rw in range(3):
-                    s = 0
-                    for j in range(6):
-                        s += (
-                            Q1[rw + 3, j]
-                            * U1[j]
-                            * (
-                                C_s1 / (zeta1 - eigvals1[j])
-                                + C_s2 / (-zeta1 - eigvals1[j])
-                            )
-                        )
-                    BCC[rw] = -s
-
-                for rw in range(3, 6):
-                    s1 = s2 = 0
-                    for j in range(6):
-                        temp1 = (
-                            Q1[rw - 3, j]
-                            * U1[j]
-                            * (
-                                C_s1 * np.exp(z1L) / (zeta1 - eigvals1[j])
-                                + C_s2 * np.exp(-z1L) / (-zeta1 - eigvals1[j])
-                            )
-                        )
-                        temp2 = Q2[rw - 3, j] * U2[j] * (θ_bs / (-zeta2 - L2[j]))
-                        s1 += temp1
-                        s2 += temp2
-                    BCC[rw] = -s1 + s2
-
-                for rw in range(6, 9):
-                    s1 = s2 = 0
-                    for j in range(6):
-                        s1 += (
-                            Q1[rw - 3, j]
-                            * U1[j]
-                            * (
-                                C_s1 * np.exp(z1L) / (zeta1 - eigvals1[j])
-                                + C_s2 * np.exp(-z1L) / (-zeta1 - eigvals1[j])
-                            )
-                        )
-                        s2 += Q2[rw - 3, j] * U2[j] * (θ_bs / (-zeta2 - L2[j]))
-                    BCC[rw] = -s1 + (C11_0_2 / C11_1) * s2
-
-                J = la.solve(BCM, BCC)
-
-                w_H = sum(Q1[2, m] * J[m] for m in range(6))
-                w_P = sum(
-                    Q1[2, j]
-                    * U1[j]
-                    * (C_s1 / (zeta1 - eigvals1[j]) + C_s2 / (-zeta1 - eigvals1[j]))
-                    for j in range(6)
-                )
-
-                Z[i_p, i_psi, i_f] = -(w_H + w_P)
+    # Assemble Z array from worker results
+    Z = np.zeros((n_p, n_psi, n_f), dtype=complex)
+    for i_f, Z_slice in results:
+        Z[:, :, i_f] = Z_slice
 
     return Z
 
@@ -475,14 +551,22 @@ def run_anisotropic_analysis(params: dict, data_filename: str) -> dict:
     up_psi = np.pi / 2
     psi_vals = np.linspace(0, up_psi, n_psi)
 
-    # Compute model
+    # Compute model (with timing)
+    t0 = time.time()
     Z = compute_surface_displacement(model_freqs, p_vals, psi_vals, transformed_params)
+    t1 = time.time()
     pbd_angles = compute_probe_deflection(
         Z, p_vals, psi_vals, model_freqs, transformed_params
     )
+    t2 = time.time()
     in_mod, out_mod, ratio_mod = compute_lockin_signals(
         pbd_angles, v_sum_avg, transformed_params["detector_factor"]
     )
+    t3 = time.time()
+    print(f"[anisotropic] compute_surface_displacement: {t1 - t0:.3f}s")
+    print(f"[anisotropic] compute_probe_deflection:     {t2 - t1:.3f}s")
+    print(f"[anisotropic] compute_lockin_signals:        {t3 - t2:.3f}s")
+    print(f"[anisotropic] TOTAL forward model:           {t3 - t0:.3f}s")
 
     # Rough analysis
     f_peak, ratio_at_peak = fit_rough_analysis(model_freqs, out_mod, ratio_mod)

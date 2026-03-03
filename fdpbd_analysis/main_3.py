@@ -4,6 +4,7 @@ Thermoelastic surface-displacement & probe-beam deflection model
 for transversely isotropic material, translated from MATLAB code2 to Python.
 """
 
+import time
 import warnings
 
 import matplotlib.pyplot as plt
@@ -781,10 +782,9 @@ def main():
     psi_vals = np.array([np.pi / 4])  # psi=pi/4 to match MATLAB
 
     # 3) Compute the model surface displacement Z(p,f)
-    # Pass the single psi value
-    print("Starting surface displacement calculation...")
+    t0 = time.time()
     Z_pf = compute_surface_displacement(MODEL_FREQS, p_vals, psi_vals)
-    print("... Displacement calculation finished.")
+    t1 = time.time()
 
     # Check if Z_pf contains NaNs before proceeding
     if np.isnan(Z_pf).any():
@@ -793,15 +793,20 @@ def main():
         )
 
     # 4) Integrate to get probe-beam deflection angle vs. freq
-    print("Starting probe deflection calculation...")
     pbd_angles = compute_probe_deflection(Z_pf, p_vals, MODEL_FREQS)
-    print("... Probe deflection calculation finished.")
+    t2 = time.time()
 
     if np.isnan(pbd_angles).any():
         warnings.warn("NaNs found in PBD angle results.")
 
     # 5) Convert to lock-in signals using fixed V_sum
     in_mod, out_mod, ratio_mod = compute_lockin_signals(pbd_angles, V_SUM_FIXED)
+    t3 = time.time()
+
+    print(f"[script] compute_surface_displacement: {t1 - t0:.3f}s")
+    print(f"[script] compute_probe_deflection:     {t2 - t1:.3f}s")
+    print(f"[script] compute_lockin_signals:        {t3 - t2:.3f}s")
+    print(f"[script] TOTAL forward model:           {t3 - t0:.3f}s")
 
     # 6) Rough analysis is skipped (as requested)
 

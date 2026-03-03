@@ -198,6 +198,7 @@ export default function FDPBDPage() {
   >(null);
   const [status, setStatus] = useState<string>('');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [timeTaken, setTimeTaken] = useState<number | null>(null);
   const [lensOption, setLensOption] = useState<'5x' | '10x' | '20x' | 'custom'>('5x');
   const [mediumOption, setMediumOption] = useState<'air' | 'custom'>('air');
   const [isotropyOption, setIsotropyOption] = useState<
@@ -654,6 +655,8 @@ export default function FDPBDPage() {
     }
     setIsProcessing(true);
     setStatus('Processing...');
+    setTimeTaken(null);
+    const startTime = performance.now();
 
     const formData = new FormData();
     formData.append('file', file);
@@ -708,6 +711,7 @@ export default function FDPBDPage() {
         });
         const data = await response.json();
         if (response.ok) {
+          setTimeTaken((performance.now() - startTime) / 1000);
           setResult(data);
           setStatus('Analysis completed');
         } else {
@@ -787,6 +791,7 @@ export default function FDPBDPage() {
       });
       const data = await response.json();
       if (response.ok) {
+        setTimeTaken((performance.now() - startTime) / 1000);
         setResult(data);
         setStatus('Analysis completed');
       } else {
@@ -1605,6 +1610,9 @@ export default function FDPBDPage() {
             <>
               <div className="rounded-lg bg-gray-800 p-4 shadow-md">
                 <h2 className="mb-4 text-lg font-semibold text-white">Results</h2>
+                {timeTaken !== null && (
+                  <p className="mb-2 text-sm text-gray-400">Completed in {timeTaken.toFixed(2)}s</p>
+                )}
                 {result && (
                   <>
                     {isotropyOption === 'isotropy' &&

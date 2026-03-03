@@ -810,23 +810,29 @@ def main():
     up_psi = np.pi / 2
     PSI_VALS_GLOBAL = np.linspace(0, up_psi, N_PSI)  # N_PSI must be odd
 
-    # --- Initial Model Run (Before Fitting) ---
-    print("--- Running Initial Model (Before Fitting) ---")
-    # Save a pristine copy of LAYER2 to ensure this run uses original hardcoded values
-    original_hardcoded_layer2 = copy.deepcopy(LAYER2)
+    # --- Forward Model Run (with timing) ---
+    print("--- Running Forward Model (Timing Benchmark) ---")
 
-    # Simulation with original hardcoded LAYER2 and plot-specific frequencies
+    t0 = time.time()
     Z_initial = compute_surface_displacement(
         MODEL_FREQS, P_VALS_GLOBAL, PSI_VALS_GLOBAL
     )
+    t1 = time.time()
     pbd_angles_initial = compute_probe_deflection(
         Z_initial, P_VALS_GLOBAL, PSI_VALS_GLOBAL, MODEL_FREQS
     )
+    t2 = time.time()
     in_mod_initial, out_mod_initial, ratio_mod_initial = compute_lockin_signals(
         pbd_angles_initial, v_sum_avg
     )
+    t3 = time.time()
 
-    # Rough analysis for initial parameters
+    print(f"  compute_surface_displacement: {t1 - t0:.3f}s")
+    print(f"  compute_probe_deflection:     {t2 - t1:.3f}s")
+    print(f"  compute_lockin_signals:        {t3 - t2:.3f}s")
+    print(f"  TOTAL forward model:           {t3 - t0:.3f}s")
+
+    # Rough analysis
     f_peak_initial, ratio_at_peak_initial = fit_rough_analysis(
         MODEL_FREQS, out_mod_initial, ratio_mod_initial
     )
@@ -846,121 +852,14 @@ def main():
         Vout_exp,
         ratio_mod_initial,
         ratio_exp,
-        title_suffix=" (Initial Parameters)",
-    )
-    # Restore global LAYER2 to its original hardcoded state before fitting changes it
-    LAYER2 = original_hardcoded_layer2
-    # --- End of Initial Model Run ---
-
-    # 3) Perform Fitting using Differential Evolution ---
-    print(
-        f"\n--- Starting Global Fit (Differential Evolution) for: {FITTING_CONFIG['parameter_to_fit']} ---"
-    )
-    param_to_fit_name = FITTING_CONFIG["parameter_to_fit"]
-
-    # Bounds are crucial for differential_evolution. It explores this entire range.
-    # It expects a sequence of (min, max) pairs, one for each parameter being optimized.
-    # Since we optimize one parameter, it's a list containing one tuple.
-    de_bounds = [FITTING_CONFIG["bounds"]]
-
-    iteration_count_global = 0
-    overall_start_time = time.time()
-    last_time_global = overall_start_time
-
-    # Before calling differential_evolution in main():
-    # LAYER2 is configured here based on FITTING_CONFIG for its initial state
-    # that objective_function's original_param_val will see for the param_to_fit
-    # This also sets the fixed_values for the parameters not being fitted
-    base_layer2_for_objective = copy.deepcopy(LAYER2)  # Get current state of LAYER2
-    base_layer2_for_objective[param_to_fit_name] = FITTING_CONFIG["initial_guess"]
-    for key, value in FITTING_CONFIG["fixed_values"].items():
-        base_layer2_for_objective[key] = value
-    # We pass this 'base_layer2_for_objective' so each objective function call
-    # starts its internal LAYER2 modification from a clean, consistent base.
-
-    de_args = (
-        param_to_fit_name,
-        FITTING_CONFIG["fixed_values"],
-        EXP_DATA_STORAGE,  # Pass the dictionary
-        P_VALS_GLOBAL,  # Pass the array
-        PSI_VALS_GLOBAL,  # Pass the array
-        # ---- Pass other globals needed by compute_surface_displacement ----
-        LAYER1,  # Pass a copy or ensure it's treated as read-only by workers
-        base_layer2_for_objective,  # Pass the specially prepared LAYER2 base
-        LAYER3,
-        A0,
-        W_RMS,
-        R_0,
-        PHI,
-        C_PROBE,
-        DETECTOR_GAIN,
-        G_int,
+        title_suffix=" (Forward Model Benchmark)",
     )
 
-    optimization_result = differential_evolution(
-        objective_function,
-        bounds=de_bounds,
-        args=de_args,  # <<-- MODIFIED ARGS
-        disp=True,
-        strategy="best1bin",
-        maxiter=2,
-        popsize=2,
-        tol=0.01,
-        mutation=(0.5, 1),
-        recombination=0.7,
-        callback=de_callback,
-        workers=-1,
-        updating="deferred",
-    )
-
-    overall_end_time = time.time()
-    total_fitting_duration = overall_end_time - overall_start_time
-
-    fitted_param_value = optimization_result.x[0]  # Result is in .x (an array)
-    print("\n--- Global Fitting Complete ---")
-    print(f"Fitted {param_to_fit_name}: {fitted_param_value:.4e}")
-    if hasattr(optimization_result, "message"):  # Check if message attribute exists
-        print(f"Optimization message: {optimization_result.message}")
-    print(f"Final cost: {optimization_result.fun:.4e}")  # Lowest function value found
-    print(f"Total fitting time: {total_fitting_duration:.2f} seconds")
-
-    # Update global LAYER2 with the successfully fitted parameter
-    LAYER2[param_to_fit_name] = fitted_param_value
-    # The fixed_values from FITTING_CONFIG are already set in LAYER2
-
-    # --- Final Model Run (After Fitting) ---
-    print("\n--- Running Model with Fitted Parameter ---")
-    # Simulation with fitted LAYER2 and plot-specific frequencies
-    Z_fitted = compute_surface_displacement(MODEL_FREQS, P_VALS_GLOBAL, PSI_VALS_GLOBAL)
-    pbd_angles_fitted = compute_probe_deflection(
-        Z_fitted, P_VALS_GLOBAL, PSI_VALS_GLOBAL, MODEL_FREQS
-    )
-    in_mod_fitted, out_mod_fitted, ratio_mod_fitted = compute_lockin_signals(
-        pbd_angles_fitted, v_sum_avg
-    )
-
-    # Rough analysis for fitted parameters
-    f_peak_fitted, ratio_at_peak_fitted = fit_rough_analysis(
-        MODEL_FREQS, out_mod_fitted, ratio_mod_fitted
-    )
-    print(
-        f"After fit: Peak out-of-phase at {f_peak_fitted if not np.isnan(f_peak_fitted) else 'N/A'} Hz"
-    )
-    print(
-        f"After fit: Ratio at peak: {ratio_at_peak_fitted if not np.isnan(ratio_at_peak_fitted) else 'N/A'}"
-    )
-
-    plot_results(
-        MODEL_FREQS,
-        in_mod_fitted,
-        out_mod_fitted,
-        Fexp,
-        Vin_exp,
-        Vout_exp,
-        ratio_mod_fitted,
-        ratio_exp,
-        title_suffix=f" (Fitted {param_to_fit_name} = {fitted_param_value:.2e})",
-    )
+    # --- Differential Evolution COMMENTED OUT for benchmarking ---
+    # print(
+    #     f"\n--- Starting Global Fit (Differential Evolution) for: {FITTING_CONFIG['parameter_to_fit']} ---"
+    # )
+    # ... (DE code omitted for timing comparison) ...
 
 
 if __name__ == "__main__":

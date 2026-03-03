@@ -3,10 +3,10 @@ Thermoelastic surface-displacement & probe-beam deflection model
 for transversely isotropic material.
 
 Adapted from fdpbd_analysis/main_3.py (MATLAB code2 translation).
-Uses single psi=0 (axial symmetry) and Bessel J1 kernel.
+Uses single psi=pi/4 and Bessel J1 kernel.
 """
 
-import warnings
+import time
 
 import numpy as np
 import scipy.linalg as la
@@ -31,6 +31,293 @@ def simpson_integration(y: np.ndarray, dx: float) -> float:
     return dx / 3 * (y[0] + y[-1] + 4 * y[1:-1:2].sum() + 2 * y[2:-1:2].sum())
 
 
+def _safe_div(num, den):
+    """Safe division avoiding zero denominators."""
+    if den == 0:
+        return np.inf * np.sign(num) if num != 0 else 0
+    return num / den
+
+
+def _compute_single_freq_transverse(args):
+    """Worker: compute Z[:, i_f] for one frequency (transverse isotropic)."""
+    i_f, f, p_vals, pc = args
+
+    n_p = len(p_vals)
+    Z_slice = np.zeros(n_p, dtype=complex)
+
+    # Unpack precomputed constants
+    Dif1 = pc["Dif1"]
+    Dif2 = pc["Dif2"]
+    Dif3 = pc["Dif3"]
+    L1 = pc["L1"]
+    sigma1 = pc["sigma1"]
+    sigma2z = pc["sigma2z"]
+    sigma3 = pc["sigma3"]
+    a0 = pc["a0"]
+    w_rms = pc["w_rms"]
+    g_int = pc["g_int"]
+    C11_0_2 = pc["C11_0_2"]
+    C11_1 = pc["C11_1"]
+    sigma_r_over_z = pc["sigma_r_over_z"]
+    psi = pc["psi"]
+
+    C55C11_1 = pc["C55C11_1"]
+    C44C11_1 = pc["C44C11_1"]
+    C33C11_1 = pc["C33C11_1"]
+    C22C11_1 = pc["C22C11_1"]
+    C12C11_1 = pc["C12C11_1"]
+    C13C11_1 = pc["C13C11_1"]
+    C23C11_1 = pc["C23C11_1"]
+    C66C11_1 = pc["C66C11_1"]
+    C46C11_1 = pc["C46C11_1"]
+    betaxC11_1 = pc["betaxC11_1"]
+    betayC11_1 = pc["betayC11_1"]
+    betazC11_1 = pc["betazC11_1"]
+    sqrtC11rho_1 = pc["sqrtC11rho_1"]
+
+    C55C11_2 = pc["C55C11_2"]
+    C44C11_2 = pc["C44C11_2"]
+    C33C11_2 = pc["C33C11_2"]
+    C22C11_2 = pc["C22C11_2"]
+    C12C11_2 = pc["C12C11_2"]
+    C13C11_2 = pc["C13C11_2"]
+    C23C11_2 = pc["C23C11_2"]
+    C66C11_2 = pc["C66C11_2"]
+    betaxC11_2 = pc["betaxC11_2"]
+    betayC11_2 = pc["betayC11_2"]
+    betazC11_2 = pc["betazC11_2"]
+    sqrtC11rho_2 = pc["sqrtC11rho_2"]
+
+    omega = 2 * np.pi * f
+    qn2_1 = 1j * omega / Dif1
+    qn2_2 = 1j * omega / Dif2
+    qn2_3 = 1j * omega / Dif3
+
+    for i_p, p in enumerate(p_vals):
+        flx = a0 * np.exp(-(w_rms**2) * p**2 / 8)
+
+        k = p * np.cos(psi)
+        xi = p * np.sin(psi)
+
+        zeta1 = np.sqrt(qn2_1 + p**2)
+        zeta2 = np.sqrt(qn2_2 + p**2 * sigma_r_over_z)
+        zeta3 = np.sqrt(qn2_3 + p**2)
+
+        # Thermal boundary G
+        z1L = zeta1 * L1
+        s1z = sigma1 * zeta1
+        s2z = sigma2z * zeta2
+        s3z = sigma3 * zeta3
+
+        G_d_num = (
+            s2z * np.sinh(z1L) + s1z * np.cosh(z1L) + s1z * s2z / g_int * np.cosh(z1L)
+        )
+        G_d_den = (
+            s2z * np.cosh(z1L) + s1z * np.sinh(z1L) + s1z * s2z / g_int * np.sinh(z1L)
+        )
+
+        G_d = np.inf if s1z == 0 or G_d_den == 0 else (G_d_num / s1z) / G_d_den
+
+        G_u = 1.0 / s3z if s3z != 0 else np.inf
+
+        if np.isinf(G_u) and np.isinf(G_d):
+            G = 0
+        elif np.isinf(G_u):
+            G = G_d
+        elif np.isinf(G_d):
+            G = G_u
+        elif (1.0 / G_u + 1.0 / G_d) == 0:
+            G = np.inf
+        else:
+            G = 1.0 / (1.0 / G_u + 1.0 / G_d)
+
+        theta_s = flx * G
+
+        term1 = np.cosh(z1L) * theta_s
+        term2 = (s1z / g_int * np.sinh(z1L) * theta_s) if g_int != 0 else 0
+        term3 = (np.sinh(z1L) * flx / s1z) if s1z != 0 else 0
+        term4 = (np.cosh(z1L) * flx / g_int) if g_int != 0 else 0
+        theta_bs = term1 + term2 - term3 - term4
+
+        exp_z1L = np.exp(z1L)
+        exp_neg_z1L = np.exp(-z1L)
+        denom_cs = exp_z1L - exp_neg_z1L
+        if denom_cs == 0:
+            C_s1 = 0
+        else:
+            num_cs1 = (
+                (s2z / g_int * theta_bs + theta_bs - theta_s * exp_neg_z1L)
+                if g_int != 0
+                else (theta_bs - theta_s * exp_neg_z1L)
+            )
+            C_s1 = num_cs1 / denom_cs
+
+        C_s2 = theta_s - C_s1
+
+        # Layer 1 matrices A1, B1, D1
+        A1 = np.zeros((6, 6), dtype=complex)
+        B1 = np.zeros((6, 6), dtype=complex)
+        D1 = np.zeros(6, dtype=complex)
+
+        A1[0, 3] = A1[1, 4] = A1[2, 5] = 1.0
+        A1[3, 0] = C55C11_1
+        A1[4, 1] = C44C11_1
+        A1[5, 2] = C33C11_1
+        B1[3, 3] = B1[4, 4] = B1[5, 5] = 1.0
+        D1[5] = betazC11_1
+        A1[0, 0] = -C46C11_1 * 1j * k
+        A1[1, 1] = C46C11_1 * 1j * k
+        A1[0, 1] = C46C11_1 * 1j * xi
+        A1[1, 0] = C46C11_1 * 1j * xi
+        A1[0, 2] = C13C11_1 * 1j * k
+        A1[1, 2] = C23C11_1 * 1j * xi
+        B1[0, 0] = k**2 + C66C11_1 * xi**2 - omega**2 / sqrtC11rho_1**2
+        B1[1, 1] = C22C11_1 * xi**2 + C66C11_1 * k**2 - omega**2 / sqrtC11rho_1**2
+        B1[0, 1] = B1[1, 0] = (C12C11_1 + C66C11_1) * k * xi
+        B1[2, 2] = -(omega**2) / sqrtC11rho_1**2
+        B1[0, 2] = C46C11_1 * (xi**2 - k**2)
+        B1[1, 2] = 2 * C46C11_1 * k * xi
+        B1[2, 3] = -1j * k
+        B1[2, 4] = -1j * xi
+        B1[3, 0] = C46C11_1 * 1j * k
+        B1[3, 1] = -C46C11_1 * 1j * xi
+        B1[3, 2] = -C55C11_1 * 1j * k
+        B1[4, 0] = -C46C11_1 * 1j * xi
+        B1[4, 1] = -C46C11_1 * 1j * k
+        B1[4, 2] = -C44C11_1 * 1j * xi
+        B1[5, 0] = -C13C11_1 * 1j * k
+        B1[5, 1] = -C23C11_1 * 1j * xi
+        D1[0] = betaxC11_1 * 1j * k
+        D1[1] = betayC11_1 * 1j * xi
+
+        # Solve generalized eigenproblem for Layer 1
+        try:
+            eigvals1, Q1 = la.eig(B1, A1)
+            N1 = la.solve(A1, D1)
+            U1 = la.solve(Q1, N1)
+        except la.LinAlgError:
+            Z_slice[i_p] = np.nan
+            continue
+
+        # Layer 2 matrices A2, B2, D2
+        A2 = np.zeros((6, 6), dtype=complex)
+        B2 = np.zeros((6, 6), dtype=complex)
+        D2 = np.zeros(6, dtype=complex)
+
+        A2[0, 3] = A2[1, 4] = A2[2, 5] = 1.0
+        A2[3, 0] = C55C11_2
+        A2[4, 1] = C44C11_2
+        A2[5, 2] = C33C11_2
+        B2[3, 3] = B2[4, 4] = B2[5, 5] = 1.0
+        D2[5] = betazC11_2
+        A2[0, 2] = C13C11_2 * 1j * k
+        A2[1, 2] = C23C11_2 * 1j * xi
+        B2[0, 0] = k**2 + C66C11_2 * xi**2 - omega**2 / sqrtC11rho_2**2
+        B2[1, 1] = C22C11_2 * xi**2 + C66C11_2 * k**2 - omega**2 / sqrtC11rho_2**2
+        B2[0, 1] = B2[1, 0] = (C12C11_2 + C66C11_2) * k * xi
+        B2[2, 2] = -(omega**2) / sqrtC11rho_2**2
+        B2[2, 3] = -1j * k
+        B2[2, 4] = -1j * xi
+        B2[3, 2] = -C55C11_2 * 1j * k
+        B2[4, 2] = -C44C11_2 * 1j * xi
+        B2[5, 0] = -C13C11_2 * 1j * k
+        B2[5, 1] = -C23C11_2 * 1j * xi
+        D2[0] = betaxC11_2 * 1j * k
+        D2[1] = betayC11_2 * 1j * xi
+
+        # Solve generalized eigenproblem for Layer 2
+        try:
+            eigvals2_raw, Q2_raw = la.eig(B2, A2)
+            neg_idx = [i for i, lam in enumerate(eigvals2_raw) if lam.real < 0]
+            pos_idx = [i for i, lam in enumerate(eigvals2_raw) if lam.real >= 0]
+            idx_order = neg_idx[:3] + pos_idx[: 6 - len(neg_idx[:3])]
+
+            Q2 = Q2_raw[:, idx_order]
+            L2 = eigvals2_raw[idx_order]
+
+            N2 = la.solve(A2, D2)
+            U2 = la.solve(Q2, N2)
+        except la.LinAlgError:
+            Z_slice[i_p] = np.nan
+            continue
+
+        # Build 9x9 BCM & BCC
+        BCM = np.zeros((9, 9), dtype=complex)
+        BCC = np.zeros(9, dtype=complex)
+
+        for m in range(6):
+            BCM[0:3, m] = Q1[3:6, m]
+            BCM[3:9, m] = Q1[0:6, m] * np.exp(eigvals1[m] * L1)
+
+        for m in range(3):
+            BCM[3:6, 6 + m] = -Q2[0:3, m] * np.exp(L2[m] * L1)
+            BCM[6:9, 6 + m] = -(C11_0_2 / C11_1) * Q2[3:6, m] * np.exp(L2[m] * L1)
+
+        for rw in range(3):
+            s = 0
+            for j in range(6):
+                s += (
+                    Q1[rw + 3, j]
+                    * U1[j]
+                    * (
+                        _safe_div(C_s1, (zeta1 - eigvals1[j]))
+                        + _safe_div(C_s2, (-zeta1 - eigvals1[j]))
+                    )
+                )
+            BCC[rw] = -s
+
+        for rw in range(3, 6):
+            s1 = s2 = 0
+            for j in range(6):
+                s1 += (
+                    Q1[rw - 3, j]
+                    * U1[j]
+                    * (
+                        _safe_div(C_s1 * exp_z1L, (zeta1 - eigvals1[j]))
+                        + _safe_div(C_s2 * exp_neg_z1L, (-zeta1 - eigvals1[j]))
+                    )
+                )
+                s2 += Q2[rw - 3, j] * U2[j] * _safe_div(theta_bs, (-zeta2 - L2[j]))
+            BCC[rw] = -s1 + s2
+
+        for rw in range(6, 9):
+            s1 = s2 = 0
+            for j in range(6):
+                s1 += (
+                    Q1[rw - 3, j]
+                    * U1[j]
+                    * (
+                        _safe_div(C_s1 * exp_z1L, (zeta1 - eigvals1[j]))
+                        + _safe_div(C_s2 * exp_neg_z1L, (-zeta1 - eigvals1[j]))
+                    )
+                )
+                s2 += Q2[rw - 3, j] * U2[j] * _safe_div(theta_bs, (-zeta2 - L2[j]))
+            BCC[rw] = -s1 + (C11_0_2 / C11_1) * s2
+
+        # Solve for coefficients J
+        try:
+            J = la.solve(BCM, BCC)
+        except la.LinAlgError:
+            Z_slice[i_p] = np.nan
+            continue
+
+        # Compute displacement
+        w_H = sum(Q1[2, m] * J[m] for m in range(6))
+        w_P = sum(
+            Q1[2, j]
+            * U1[j]
+            * (
+                _safe_div(C_s1, (zeta1 - eigvals1[j]))
+                + _safe_div(C_s2, (-zeta1 - eigvals1[j]))
+            )
+            for j in range(6)
+        )
+
+        Z_slice[i_p] = -(w_H + w_P)
+
+    return i_f, Z_slice
+
+
 def compute_surface_displacement(
     freqs: np.ndarray,
     p_vals: np.ndarray,
@@ -43,14 +330,13 @@ def compute_surface_displacement(
 ) -> np.ndarray:
     """
     Build and solve the 9x9 thermo-elastic boundary-condition system
-    for transversely isotropic case (single psi=0).
+    for transversely isotropic case (single psi=pi/4).
 
     Returns Z[n_p, n_f] complex surface displacement.
     """
     n_p, n_f = len(p_vals), len(freqs)
-    Z = np.zeros((n_p, n_f), dtype=complex)
 
-    # Thermal diffusivities
+    # Precompute all constants
     Dif1 = layer1["sigma"] / layer1["capac"]
     Dif2 = layer2["sigma_z"] / layer2["capac"]
     Dif3 = layer3["sigma"] / layer3["capac"]
@@ -60,13 +346,12 @@ def compute_surface_displacement(
     sigma2r = layer2["sigma_r"]
     sigma3 = layer3["sigma"]
 
-    # Layer 1 effective elastic constants (isotropic Al)
+    # Layer 1 effective elastic constants
     C11_0_1 = layer1["C11_0"]
     C12_0_1 = layer1["C12_0"]
     C44_0_1 = layer1["C44_0"]
     alpha1 = layer1["alphaT"]
     beta1 = (C11_0_1 + 2 * C12_0_1) * alpha1
-    betax1 = betay1 = betaz1 = beta1
     C11_1 = (C11_0_1 + C12_0_1 + 2 * C44_0_1) / 2
     C33_1 = (C11_0_1 + 2 * C12_0_1 + 4 * C44_0_1) / 3
     C44_1 = (C11_0_1 - C12_0_1 + C44_0_1) / 3
@@ -77,21 +362,7 @@ def compute_surface_displacement(
     C55_1 = C44_1
     C66_1 = (C11_1 - C12_1) / 2
 
-    C22C11_1 = C22_1 / C11_1
-    C33C11_1 = C33_1 / C11_1
-    C12C11_1 = C12_1 / C11_1
-    C13C11_1 = C13_1 / C11_1
-    C23C11_1 = C23_1 / C11_1
-    C44C11_1 = C44_1 / C11_1
-    C55C11_1 = C55_1 / C11_1
-    C66C11_1 = C66_1 / C11_1
-    C46C11_1 = 0.0
-    betaxC11_1 = betax1 / C11_1
-    betayC11_1 = betay1 / C11_1
-    betazC11_1 = betaz1 / C11_1
-    sqrtC11rho_1 = np.sqrt(C11_1 / layer1["rho"])
-
-    # Layer 2 effective elastic constants (transversely isotropic)
+    # Layer 2 effective elastic constants
     C11_0_2 = layer2["C11_0"]
     C12_0_2 = layer2["C12_0"]
     C13_0_2 = layer2["C13_0"]
@@ -99,7 +370,6 @@ def compute_surface_displacement(
     C44_0_2 = layer2["C44_0"]
     alpha_v = layer2["alphaT_perp"]
     alpha_p = layer2["alphaT_para"]
-
     betax2 = (C11_0_2 + C12_0_2) * alpha_v + C13_0_2 * alpha_p
     betay2 = betax2
     betaz2 = 2 * C13_0_2 * alpha_v + C33_0_2 * alpha_p
@@ -114,266 +384,57 @@ def compute_surface_displacement(
     C55_2 = C44_2
     C66_2 = (C11_0_2 - C12_0_2) / 2
 
-    C22C11_2 = C22_2 / C11_2
-    C33C11_2 = C33_2 / C11_2
-    C12C11_2 = C12_2 / C11_2
-    C13C11_2 = C13_2 / C11_2
-    C23C11_2 = C23_2 / C11_2
-    C44C11_2 = C44_2 / C11_2
-    C55C11_2 = C55_2 / C11_2
-    C66C11_2 = C66_2 / C11_2
-    betaxC11_2 = betax2 / C11_2
-    betayC11_2 = betay2 / C11_2
-    betazC11_2 = betaz2 / C11_2
-    sqrtC11rho_2 = np.sqrt((1 + 1e-6j) * C11_2 / layer2["rho"])
+    precomputed = {
+        "Dif1": Dif1,
+        "Dif2": Dif2,
+        "Dif3": Dif3,
+        "L1": L1,
+        "sigma1": sigma1,
+        "sigma2z": sigma2z,
+        "sigma2r": sigma2r,
+        "sigma3": sigma3,
+        "a0": a0,
+        "w_rms": w_rms,
+        "g_int": g_int,
+        "C11_0_2": C11_0_2,
+        "C11_1": C11_1,
+        "sigma_r_over_z": sigma2r / sigma2z,
+        "psi": np.pi / 4,
+        # Layer 1 normalized constants
+        "C55C11_1": C55_1 / C11_1,
+        "C44C11_1": C44_1 / C11_1,
+        "C33C11_1": C33_1 / C11_1,
+        "C22C11_1": C22_1 / C11_1,
+        "C12C11_1": C12_1 / C11_1,
+        "C13C11_1": C13_1 / C11_1,
+        "C23C11_1": C23_1 / C11_1,
+        "C66C11_1": C66_1 / C11_1,
+        "C46C11_1": 0.0,
+        "betaxC11_1": beta1 / C11_1,
+        "betayC11_1": beta1 / C11_1,
+        "betazC11_1": beta1 / C11_1,
+        "sqrtC11rho_1": np.sqrt(C11_1 / layer1["rho"]),
+        # Layer 2 normalized constants
+        "C55C11_2": C55_2 / C11_2,
+        "C44C11_2": C44_2 / C11_2,
+        "C33C11_2": C33_2 / C11_2,
+        "C22C11_2": C22_2 / C11_2,
+        "C12C11_2": C12_2 / C11_2,
+        "C13C11_2": C13_2 / C11_2,
+        "C23C11_2": C23_2 / C11_2,
+        "C66C11_2": C66_2 / C11_2,
+        "betaxC11_2": betax2 / C11_2,
+        "betayC11_2": betay2 / C11_2,
+        "betazC11_2": betaz2 / C11_2,
+        "sqrtC11rho_2": np.sqrt((1 + 1e-6j) * C11_2 / layer2["rho"]),
+    }
 
-    # Use psi=pi/4 to match MATLAB (k=p/sqrt(2), xi=p/sqrt(2))
-    psi = np.pi / 4
-
+    # Transverse isotropic is lightweight (no psi loop), so run serially
+    # to avoid Windows multiprocessing spawn overhead
+    Z = np.zeros((n_p, n_f), dtype=complex)
     for i_f, f in enumerate(freqs):
-        omega = 2 * np.pi * f
-        qn2_1 = 1j * omega / Dif1
-        qn2_2 = 1j * omega / Dif2
-        qn2_3 = 1j * omega / Dif3
-
-        for i_p, p in enumerate(p_vals):
-            flx = a0 * np.exp(-(w_rms**2) * p**2 / 8)
-
-            k = p * np.cos(psi)
-            xi = p * np.sin(psi)
-
-            zeta1 = np.sqrt(qn2_1 + p**2)
-            zeta2 = np.sqrt(qn2_2 + p**2 * sigma2r / sigma2z)
-            zeta3 = np.sqrt(qn2_3 + p**2)
-
-            # Thermal boundary G
-            z1L = zeta1 * L1
-            s1z = sigma1 * zeta1
-            s2z = sigma2z * zeta2
-            s3z = sigma3 * zeta3
-
-            G_d_num = (
-                s2z * np.sinh(z1L)
-                + s1z * np.cosh(z1L)
-                + s1z * s2z / g_int * np.cosh(z1L)
-            )
-            G_d_den = (
-                s2z * np.cosh(z1L)
-                + s1z * np.sinh(z1L)
-                + s1z * s2z / g_int * np.sinh(z1L)
-            )
-
-            G_d = np.inf if s1z == 0 or G_d_den == 0 else (G_d_num / s1z) / G_d_den
-
-            G_u = 1.0 / s3z if s3z != 0 else np.inf
-
-            if np.isinf(G_u) and np.isinf(G_d):
-                G = 0
-            elif np.isinf(G_u):
-                G = G_d
-            elif np.isinf(G_d):
-                G = G_u
-            elif (1.0 / G_u + 1.0 / G_d) == 0:
-                G = np.inf
-            else:
-                G = 1.0 / (1.0 / G_u + 1.0 / G_d)
-
-            theta_s = flx * G
-
-            term1 = np.cosh(z1L) * theta_s
-            term2 = (s1z / g_int * np.sinh(z1L) * theta_s) if g_int != 0 else 0
-            term3 = (np.sinh(z1L) * flx / s1z) if s1z != 0 else 0
-            term4 = (np.cosh(z1L) * flx / g_int) if g_int != 0 else 0
-            theta_bs = term1 + term2 - term3 - term4
-
-            exp_z1L = np.exp(z1L)
-            exp_neg_z1L = np.exp(-z1L)
-            denom_cs = exp_z1L - exp_neg_z1L
-            if denom_cs == 0:
-                C_s1 = 0
-                warnings.warn(f"Singular denominator in C_s1 at f={f}, p={p}")
-            else:
-                num_cs1 = (
-                    (s2z / g_int * theta_bs + theta_bs - theta_s * exp_neg_z1L)
-                    if g_int != 0
-                    else (theta_bs - theta_s * exp_neg_z1L)
-                )
-                C_s1 = num_cs1 / denom_cs
-
-            C_s2 = theta_s - C_s1
-
-            # Layer 1 matrices A1, B1, D1
-            A1 = np.zeros((6, 6), dtype=complex)
-            B1 = np.zeros((6, 6), dtype=complex)
-            D1 = np.zeros(6, dtype=complex)
-
-            A1[0, 3] = A1[1, 4] = A1[2, 5] = 1.0
-            A1[3, 0] = C55C11_1
-            A1[4, 1] = C44C11_1
-            A1[5, 2] = C33C11_1
-            B1[3, 3] = B1[4, 4] = B1[5, 5] = 1.0
-            D1[5] = betazC11_1
-            A1[0, 0] = -C46C11_1 * 1j * k
-            A1[1, 1] = C46C11_1 * 1j * k
-            A1[0, 1] = C46C11_1 * 1j * xi
-            A1[1, 0] = C46C11_1 * 1j * xi
-            A1[0, 2] = C13C11_1 * 1j * k
-            A1[1, 2] = C23C11_1 * 1j * xi
-            B1[0, 0] = k**2 + C66C11_1 * xi**2 - omega**2 / sqrtC11rho_1**2
-            B1[1, 1] = C22C11_1 * xi**2 + C66C11_1 * k**2 - omega**2 / sqrtC11rho_1**2
-            B1[0, 1] = B1[1, 0] = (C12C11_1 + C66C11_1) * k * xi
-            B1[2, 2] = -(omega**2) / sqrtC11rho_1**2
-            B1[0, 2] = C46C11_1 * (xi**2 - k**2)
-            B1[1, 2] = 2 * C46C11_1 * k * xi
-            B1[2, 3] = -1j * k
-            B1[2, 4] = -1j * xi
-            B1[3, 0] = C46C11_1 * 1j * k
-            B1[3, 1] = -C46C11_1 * 1j * xi
-            B1[3, 2] = -C55C11_1 * 1j * k
-            B1[4, 0] = -C46C11_1 * 1j * xi
-            B1[4, 1] = -C46C11_1 * 1j * k
-            B1[4, 2] = -C44C11_1 * 1j * xi
-            B1[5, 0] = -C13C11_1 * 1j * k
-            B1[5, 1] = -C23C11_1 * 1j * xi
-            D1[0] = betaxC11_1 * 1j * k
-            D1[1] = betayC11_1 * 1j * xi
-
-            # Solve generalized eigenproblem for Layer 1
-            try:
-                eigvals1, Q1 = la.eig(B1, A1)
-                N1 = la.solve(A1, D1)
-                U1 = la.solve(Q1, N1)
-            except la.LinAlgError as e:
-                warnings.warn(f"LinAlg error in Layer 1 at f={f}, p={p}: {e}")
-                Z[i_p, i_f] = np.nan
-                continue
-
-            # Layer 2 matrices A2, B2, D2
-            A2 = np.zeros((6, 6), dtype=complex)
-            B2 = np.zeros((6, 6), dtype=complex)
-            D2 = np.zeros(6, dtype=complex)
-
-            A2[0, 3] = A2[1, 4] = A2[2, 5] = 1.0
-            A2[3, 0] = C55C11_2
-            A2[4, 1] = C44C11_2
-            A2[5, 2] = C33C11_2
-            B2[3, 3] = B2[4, 4] = B2[5, 5] = 1.0
-            D2[5] = betazC11_2
-            A2[0, 2] = C13C11_2 * 1j * k
-            A2[1, 2] = C23C11_2 * 1j * xi
-            B2[0, 0] = k**2 + C66C11_2 * xi**2 - omega**2 / sqrtC11rho_2**2
-            B2[1, 1] = C22C11_2 * xi**2 + C66C11_2 * k**2 - omega**2 / sqrtC11rho_2**2
-            B2[0, 1] = B2[1, 0] = (C12C11_2 + C66C11_2) * k * xi
-            B2[2, 2] = -(omega**2) / sqrtC11rho_2**2
-            B2[2, 3] = -1j * k
-            B2[2, 4] = -1j * xi
-            B2[3, 2] = -C55C11_2 * 1j * k
-            B2[4, 2] = -C44C11_2 * 1j * xi
-            B2[5, 0] = -C13C11_2 * 1j * k
-            B2[5, 1] = -C23C11_2 * 1j * xi
-            D2[0] = betaxC11_2 * 1j * k
-            D2[1] = betayC11_2 * 1j * xi
-
-            # Solve generalized eigenproblem for Layer 2
-            try:
-                eigvals2_raw, Q2_raw = la.eig(B2, A2)
-                neg_idx = [i for i, lam in enumerate(eigvals2_raw) if lam.real < 0]
-                pos_idx = [i for i, lam in enumerate(eigvals2_raw) if lam.real >= 0]
-                if len(neg_idx) < 3:
-                    warnings.warn(
-                        f"Fewer than 3 decaying modes in Layer 2 at f={f}, p={p}"
-                    )
-                idx_order = neg_idx[:3] + pos_idx[: 6 - len(neg_idx[:3])]
-
-                Q2 = Q2_raw[:, idx_order]
-                L2 = eigvals2_raw[idx_order]
-
-                N2 = la.solve(A2, D2)
-                U2 = la.solve(Q2, N2)
-            except la.LinAlgError as e:
-                warnings.warn(f"LinAlg error in Layer 2 at f={f}, p={p}: {e}")
-                Z[i_p, i_f] = np.nan
-                continue
-
-            # Build 9x9 BCM & BCC
-            BCM = np.zeros((9, 9), dtype=complex)
-            BCC = np.zeros(9, dtype=complex)
-
-            for m in range(6):
-                BCM[0:3, m] = Q1[3:6, m]
-                BCM[3:9, m] = Q1[0:6, m] * np.exp(eigvals1[m] * L1)
-
-            for m in range(3):
-                BCM[3:6, 6 + m] = -Q2[0:3, m] * np.exp(L2[m] * L1)
-                BCM[6:9, 6 + m] = -(C11_0_2 / C11_1) * Q2[3:6, m] * np.exp(L2[m] * L1)
-
-            def safe_div(num, den):
-                if den == 0:
-                    return np.inf * np.sign(num) if num != 0 else 0
-                return num / den
-
-            for rw in range(3):
-                s = 0
-                for j in range(6):
-                    s += (
-                        Q1[rw + 3, j]
-                        * U1[j]
-                        * (
-                            safe_div(C_s1, (zeta1 - eigvals1[j]))
-                            + safe_div(C_s2, (-zeta1 - eigvals1[j]))
-                        )
-                    )
-                BCC[rw] = -s
-
-            for rw in range(3, 6):
-                s1 = s2 = 0
-                for j in range(6):
-                    s1 += (
-                        Q1[rw - 3, j]
-                        * U1[j]
-                        * (
-                            safe_div(C_s1 * exp_z1L, (zeta1 - eigvals1[j]))
-                            + safe_div(C_s2 * exp_neg_z1L, (-zeta1 - eigvals1[j]))
-                        )
-                    )
-                    s2 += Q2[rw - 3, j] * U2[j] * safe_div(theta_bs, (-zeta2 - L2[j]))
-                BCC[rw] = -s1 + s2
-
-            for rw in range(6, 9):
-                s1 = s2 = 0
-                for j in range(6):
-                    s1 += (
-                        Q1[rw - 3, j]
-                        * U1[j]
-                        * (
-                            safe_div(C_s1 * exp_z1L, (zeta1 - eigvals1[j]))
-                            + safe_div(C_s2 * exp_neg_z1L, (-zeta1 - eigvals1[j]))
-                        )
-                    )
-                    s2 += Q2[rw - 3, j] * U2[j] * safe_div(theta_bs, (-zeta2 - L2[j]))
-                BCC[rw] = -s1 + (C11_0_2 / C11_1) * s2
-
-            # Solve for coefficients J
-            try:
-                J = la.solve(BCM, BCC)
-            except la.LinAlgError as e:
-                warnings.warn(f"Could not solve BCM at f={f}, p={p}: {e}")
-                Z[i_p, i_f] = np.nan
-                continue
-
-            # Compute displacement
-            w_H = sum(Q1[2, m] * J[m] for m in range(6))
-            w_P = sum(
-                Q1[2, j]
-                * U1[j]
-                * (
-                    safe_div(C_s1, (zeta1 - eigvals1[j]))
-                    + safe_div(C_s2, (-zeta1 - eigvals1[j]))
-                )
-                for j in range(6)
-            )
-
-            Z[i_p, i_f] = -(w_H + w_P)
+        _, Z_slice = _compute_single_freq_transverse((i_f, f, p_vals, precomputed))
+        Z[:, i_f] = Z_slice
 
     return Z
 
@@ -512,18 +573,26 @@ def run_transverse_isotropic_analysis(
         "capac": params.layer3_capac,
     }
 
-    # 7. Compute model
+    # 7. Compute model (with timing)
+    t0 = time.time()
     Z_pf = compute_surface_displacement(
         model_freqs, p_vals, a0, params.w_rms, params.g_int, layer1, layer2, layer3
     )
+    t1 = time.time()
 
     pbd_angles = compute_probe_deflection(
         Z_pf, p_vals, model_freqs, params.w_rms, params.r_0, params.c_probe
     )
+    t2 = time.time()
 
     in_mod, out_mod, ratio_mod = compute_lockin_signals(
         pbd_angles, params.v_sum_fixed, params.detector_gain
     )
+    t3 = time.time()
+    print(f"[transverse] compute_surface_displacement: {t1 - t0:.3f}s")
+    print(f"[transverse] compute_probe_deflection:     {t2 - t1:.3f}s")
+    print(f"[transverse] compute_lockin_signals:        {t3 - t2:.3f}s")
+    print(f"[transverse] TOTAL forward model:           {t3 - t0:.3f}s")
 
     # 8. Return results
     return {
