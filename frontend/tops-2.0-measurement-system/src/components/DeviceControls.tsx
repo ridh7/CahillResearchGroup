@@ -31,6 +31,7 @@ type DeviceControlsProps = {
 const initialFormData: FormData = {
   sampleId: '',
   comments: '',
+  saveDir: '',
   x1: '',
   x2: '',
   y1: '',
@@ -73,6 +74,22 @@ export default function DeviceControls({
   const [moveX, setMoveX] = useState('');
   const [moveY, setMoveY] = useState('');
   const [isMoving, setIsMoving] = useState(false);
+
+  const fetchCurrentPosition = async (field: 'x1' | 'y1' | 'x2' | 'y2') => {
+    try {
+      const res = await fetch('http://localhost:8000/get_current_position');
+      const data = await res.json();
+      if (data.status === 'success') {
+        const value =
+          field === 'x1' || field === 'x2'
+            ? parseFloat(data.x).toFixed(4)
+            : parseFloat(data.y).toFixed(4);
+        setFormData((prev) => ({ ...prev, [field]: value }));
+      }
+    } catch (e) {
+      console.error('Failed to fetch position:', e);
+    }
+  };
 
   const handleMoveTo = async () => {
     const x = parseFloat(moveX);
@@ -189,11 +206,11 @@ export default function DeviceControls({
       {activeTab === 'stage' && (
         <div className="space-y-3">
           {/* Move to Position */}
-          <div className="flex items-center space-x-2">
+          <div className="grid grid-cols-4 gap-2">
             <input
               type="number"
-              placeholder="X (0-110)"
-              className={`w-24 rounded border bg-gray-700 p-2 text-sm text-white ${
+              placeholder="x (0-110) (mm)"
+              className={`rounded border bg-gray-700 p-2 text-sm text-white ${
                 moveX !== '' && (Number(moveX) < 0 || Number(moveX) > 110)
                   ? 'border-red-500'
                   : 'border-gray-600 focus:border-teal-500'
@@ -203,8 +220,8 @@ export default function DeviceControls({
             />
             <input
               type="number"
-              placeholder="Y (0-75)"
-              className={`w-24 rounded border bg-gray-700 p-2 text-sm text-white ${
+              placeholder="y (0-75) (mm)"
+              className={`rounded border bg-gray-700 p-2 text-sm text-white ${
                 moveY !== '' && (Number(moveY) < 0 || Number(moveY) > 75)
                   ? 'border-red-500'
                   : 'border-gray-600 focus:border-teal-500'
@@ -215,7 +232,7 @@ export default function DeviceControls({
             <button
               onClick={handleMoveTo}
               disabled={!isMoveValid || isMoving || isProcessing}
-              className={`flex-1 rounded py-2 text-sm text-white transition-colors ${
+              className={`col-span-2 rounded py-2 text-sm text-white transition-colors ${
                 isMoveValid && !isMoving && !isProcessing
                   ? 'bg-teal-600 hover:bg-teal-700'
                   : 'cursor-not-allowed bg-gray-600'
@@ -295,36 +312,56 @@ export default function DeviceControls({
 
           {/* Coordinate Inputs */}
           <div className="grid grid-cols-2 gap-2">
-            {['x1', 'y1', 'x2', 'y2'].map((key) => (
-              <input
-                key={key}
-                type="number"
-                placeholder={`${key} (${key === 'x1' || key === 'x2' ? '0-110' : '0-75'}) (mm)`}
-                className={`rounded border bg-gray-700 p-2 text-white ${
-                  formData[key as keyof FormData] === '' ||
-                  ((key === 'x1' || key === 'x2') &&
-                    (Number(formData[key as keyof FormData]) < 0 ||
-                      Number(formData[key as keyof FormData]) > 110)) ||
-                  ((key === 'y1' || key === 'y2') &&
-                    (Number(formData[key as keyof FormData]) < 0 ||
-                      Number(formData[key as keyof FormData]) > 75))
-                    ? 'border-red-500'
-                    : 'border-gray-600 focus:border-teal-500'
-                } focus:outline-none`}
-                value={formData[key as keyof FormData] as string}
-                onChange={(e) => {
-                  const value = e.target.value;
-                  if (
-                    ((key === 'x1' || key === 'x2') &&
-                      (value === '' || (Number(value) >= 0 && Number(value) <= 110))) ||
-                    ((key === 'y1' || key === 'y2') &&
-                      (value === '' || (Number(value) >= 0 && Number(value) <= 75)))
-                  ) {
-                    setFormData({ ...formData, [key]: value });
-                  }
-                }}
-              />
-            ))}
+            {['x1', 'y1', 'x2', 'y2'].map((key) => {
+              const isX = key === 'x1' || key === 'x2';
+              const max = isX ? 110 : 75;
+              const val = formData[key as keyof FormData] as string;
+              const invalid = val === '' || Number(val) < 0 || Number(val) > max;
+              return (
+                <div key={key} className="flex items-stretch gap-1">
+                  <input
+                    type="number"
+                    placeholder={`${key} (0-${max}) (mm)`}
+                    className={`min-w-0 flex-1 rounded border bg-gray-700 p-2 text-white ${
+                      invalid ? 'border-red-500' : 'border-gray-600 focus:border-teal-500'
+                    } focus:outline-none`}
+                    value={val}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      if (v === '' || (Number(v) >= 0 && Number(v) <= max)) {
+                        setFormData({ ...formData, [key]: v });
+                      }
+                    }}
+                  />
+                  <button
+                    type="button"
+                    title="Use current stage position"
+                    disabled={isProcessing}
+                    onClick={() => fetchCurrentPosition(key as 'x1' | 'y1' | 'x2' | 'y2')}
+                    className="flex-shrink-0 rounded border border-gray-600 bg-gray-700 px-2 text-teal-400 hover:bg-gray-600 hover:text-teal-300 disabled:opacity-50"
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="18"
+                      height="18"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <circle cx="12" cy="12" r="10" />
+                      <circle cx="12" cy="12" r="2" />
+                      <line x1="12" y1="2" x2="12" y2="6" />
+                      <line x1="12" y1="18" x2="12" y2="22" />
+                      <line x1="2" y1="12" x2="6" y2="12" />
+                      <line x1="18" y1="12" x2="22" y2="12" />
+                    </svg>
+                  </button>
+                </div>
+              );
+            })}
           </div>
 
           {/* Step Inputs — conditional on motion type and movement mode */}
@@ -333,7 +370,7 @@ export default function DeviceControls({
               <div className="grid grid-cols-2 gap-2">
                 <input
                   type="number"
-                  placeholder={`X steps ${formData.fastAxis === 'x' ? '(fast)' : '(slow)'} (int >0)`}
+                  placeholder={`x steps ${formData.fastAxis === 'x' ? '(fast)' : '(slow)'} (int >0)`}
                   className={`rounded border bg-gray-700 p-2 text-white ${
                     formData.xSteps === '' ||
                     Number(formData.xSteps) <= 0 ||
@@ -351,7 +388,7 @@ export default function DeviceControls({
                 />
                 <input
                   type="number"
-                  placeholder={`Y steps ${formData.fastAxis === 'y' ? '(fast)' : '(slow)'} (int >0)`}
+                  placeholder={`y steps ${formData.fastAxis === 'y' ? '(fast)' : '(slow)'} (int >0)`}
                   className={`rounded border bg-gray-700 p-2 text-white ${
                     formData.ySteps === '' ||
                     Number(formData.ySteps) <= 0 ||
@@ -372,7 +409,7 @@ export default function DeviceControls({
               <div className="grid grid-cols-2 gap-2">
                 <input
                   type="number"
-                  placeholder={`X step size ${formData.fastAxis === 'x' ? '(fast)' : '(slow)'} (mm)`}
+                  placeholder={`x step size ${formData.fastAxis === 'x' ? '(fast)' : '(slow)'} (mm)`}
                   className={`rounded border bg-gray-700 p-2 text-white ${
                     formData.xStepSize === '' || Number(formData.xStepSize) <= 0
                       ? 'border-red-500'
@@ -383,7 +420,7 @@ export default function DeviceControls({
                 />
                 <input
                   type="number"
-                  placeholder={`Y step size ${formData.fastAxis === 'y' ? '(fast)' : '(slow)'} (mm)`}
+                  placeholder={`y step size ${formData.fastAxis === 'y' ? '(fast)' : '(slow)'} (mm)`}
                   className={`rounded border bg-gray-700 p-2 text-white ${
                     formData.yStepSize === '' || Number(formData.yStepSize) <= 0
                       ? 'border-red-500'
@@ -398,7 +435,7 @@ export default function DeviceControls({
             <div className="grid grid-cols-2 gap-2">
               <input
                 type="number"
-                placeholder="xSteps (int >0)"
+                placeholder={`x steps ${formData.fastAxis === 'x' ? '(fast)' : '(slow)'} (int >0)`}
                 className={`rounded border bg-gray-700 p-2 text-white ${
                   formData.xSteps === '' ||
                   Number(formData.xSteps) <= 0 ||
@@ -416,7 +453,7 @@ export default function DeviceControls({
               />
               <input
                 type="number"
-                placeholder="ySteps (int >0)"
+                placeholder={`y steps ${formData.fastAxis === 'y' ? '(fast)' : '(slow)'} (int >0)`}
                 className={`rounded border bg-gray-700 p-2 text-white ${
                   formData.ySteps === '' ||
                   Number(formData.ySteps) <= 0 ||
@@ -437,7 +474,7 @@ export default function DeviceControls({
             <div className="grid grid-cols-2 gap-2">
               <input
                 type="number"
-                placeholder="xStepSize (>0) (mm)"
+                placeholder={`x step size ${formData.fastAxis === 'x' ? '(fast)' : '(slow)'} (mm)`}
                 className={`rounded border bg-gray-700 p-2 text-white ${
                   formData.xStepSize === '' || Number(formData.xStepSize) <= 0
                     ? 'border-red-500'
@@ -448,7 +485,7 @@ export default function DeviceControls({
               />
               <input
                 type="number"
-                placeholder="yStepSize (>0) (mm)"
+                placeholder={`y step size ${formData.fastAxis === 'y' ? '(fast)' : '(slow)'} (mm)`}
                 className={`rounded border bg-gray-700 p-2 text-white ${
                   formData.yStepSize === '' || Number(formData.yStepSize) <= 0
                     ? 'border-red-500'
@@ -553,24 +590,10 @@ export default function DeviceControls({
               Home XY
             </button>
             <button
-              onClick={() => handleHome('x')}
-              className="flex-1 rounded bg-teal-600 py-2 text-white transition-colors hover:bg-teal-700"
-            >
-              Home X
-            </button>
-            <button
-              onClick={() => handleHome('y')}
-              className="flex-1 rounded bg-teal-600 py-2 text-white transition-colors hover:bg-teal-700"
-            >
-              Home Y
-            </button>
-          </div>
-          <div className="flex space-x-2">
-            <button
               onClick={handleReset}
               className="flex-1 rounded bg-red-600 py-2 text-white transition-colors hover:bg-red-700"
             >
-              Reset Values
+              Clear Values
             </button>
             <button
               onClick={handleStop}

@@ -155,21 +155,6 @@ export default function CalculatePage() {
       .catch(() => {});
   }, []);
 
-  useEffect(() => {
-    fetch(`${API_BASE}/get_current_position`)
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.status === 'success') {
-          setFormData((prev) => ({
-            ...prev,
-            x1: parseFloat(data.x).toFixed(4),
-            y1: parseFloat(data.y).toFixed(4),
-          }));
-        }
-      })
-      .catch(() => {});
-  }, []);
-
   // Close device streams when scan completes (isProcessing: true → false)
   useEffect(() => {
     if (prevIsProcessingRef.current && !isProcessing) {
@@ -650,7 +635,7 @@ export default function CalculatePage() {
   };
 
   return (
-    <div className="flex min-h-screen flex-col bg-gray-900">
+    <div className="flex h-screen flex-col overflow-hidden bg-gray-900">
       {/* Top Bar */}
       <header className="flex items-center justify-between bg-gray-800 p-4">
         <h1 className="text-xl font-semibold text-white">Experiment Dashboard</h1>
@@ -765,15 +750,6 @@ export default function CalculatePage() {
           />
         )}
       </AnimatePresence>
-
-      {/* Status Bar */}
-      <footer className="flex justify-between bg-gray-800 p-2 text-sm text-white">
-        <div>
-          Stage: Connected | Lock-in: {lockinConnected ? 'Connected' : 'Disconnected'} | Multimeter:{' '}
-          {multimeterConnected ? 'Connected' : 'Disconnected'}
-        </div>
-        <div>{new Date().toLocaleString()}</div>
-      </footer>
     </div>
   );
 }
