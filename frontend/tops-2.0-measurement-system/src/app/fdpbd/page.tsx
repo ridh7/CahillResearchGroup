@@ -170,7 +170,7 @@ export default function FDPBDPage() {
     n_al: '',
     k_al: '',
     lens_transmittance: '',
-    detector_factor: 'V/rad',
+    detector_factor: '1/rad',
     phi: 'degrees',
     rho: 'g/cm\u00B3',
     alphaT: '1/K',
@@ -199,7 +199,6 @@ export default function FDPBDPage() {
   const [status, setStatus] = useState<string>('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [lensOption, setLensOption] = useState<'5x' | '10x' | '20x' | 'custom'>('5x');
-  const [transducerOption, setTransducerOption] = useState<'Al' | 'custom'>('Al');
   const [mediumOption, setMediumOption] = useState<'air' | 'custom'>('air');
   const [isotropyOption, setIsotropyOption] = useState<
     'isotropy' | 'anisotropy' | 'transverse_anisotropy'
@@ -400,7 +399,6 @@ export default function FDPBDPage() {
               updatedParams.C44_0 === alValues.C44_0))
         )
       ) {
-        setTransducerOption('custom');
       }
     }
     if (['lambda_up', 'eta_up', 'c_up', 'h_up'].includes(field)) {
@@ -501,25 +499,6 @@ export default function FDPBDPage() {
     }
   };
 
-  const handleTransducerOptionChange = (option: 'Al' | 'custom') => {
-    setTransducerOption(option);
-    if (option === 'Al') {
-      setParams((prev) => ({
-        ...prev,
-        lambda_down: ['149.0', prev.lambda_down[1], prev.lambda_down[2]],
-        c_down: ['2.44', prev.c_down[1], prev.c_down[2]],
-        h_down: ['0.07', prev.h_down[1], prev.h_down[2]],
-        n_al: '2.9',
-        k_al: '8.2',
-        rho: isotropyOption !== 'isotropy' ? '2.70' : prev.rho,
-        alphaT: isotropyOption !== 'isotropy' ? '23.1e-6' : prev.alphaT,
-        C11_0: isotropyOption !== 'isotropy' ? '107.4' : prev.C11_0,
-        C12_0: isotropyOption !== 'isotropy' ? '60.5' : prev.C12_0,
-        C44_0: isotropyOption !== 'isotropy' ? '28.3' : prev.C44_0,
-      }));
-    }
-  };
-
   const handleMediumOptionChange = (option: 'air' | 'custom') => {
     setMediumOption(option);
     if (option === 'air') {
@@ -571,7 +550,6 @@ export default function FDPBDPage() {
         alphaT_perp: '28e-6',
         alphaT_para: '120e-6',
       }));
-      setTransducerOption('Al');
       setMediumOption('air');
     }
   };
@@ -652,7 +630,6 @@ export default function FDPBDPage() {
     });
     setFile(null);
     setLensOption('custom');
-    setTransducerOption('custom');
     setMediumOption('custom');
     setIsotropyOption('anisotropy');
     setLaserOption('custom');
@@ -856,9 +833,9 @@ export default function FDPBDPage() {
               <h4 className="mb-2 text-sm font-semibold text-white">Analysis Mode</h4>
               <div className="mb-2 flex flex-wrap gap-4">
                 {[
-                  { value: 'isotropy', label: 'Isotropy' },
-                  { value: 'anisotropy', label: 'Anisotropy' },
-                  { value: 'transverse_anisotropy', label: 'Transverse Anisotropy' },
+                  { value: 'isotropy', label: 'Isotropic' },
+                  { value: 'anisotropy', label: 'Anisotropic' },
+                  { value: 'transverse_anisotropy', label: 'Transversely Anisotropic' },
                 ].map((opt) => (
                   <label key={opt.value} className="flex items-center text-white">
                     <input
@@ -973,11 +950,11 @@ export default function FDPBDPage() {
                       },
                       {
                         field: 'delay_1',
-                        label: `Delay 1 [${fieldUnits.delay_1}]`,
+                        label: `Dwell 1 [${fieldUnits.delay_1}]`,
                       },
                       {
                         field: 'delay_2',
-                        label: `Delay 2 [${fieldUnits.delay_2}]`,
+                        label: `Dwell 2 [${fieldUnits.delay_2}]`,
                       },
                       {
                         field: 'incident_pump',
@@ -1067,22 +1044,6 @@ export default function FDPBDPage() {
                   {/* Transducer Layer */}
                   <div className="mb-4 rounded-lg bg-gray-700 p-4">
                     <h4 className="mb-2 text-sm font-semibold text-white">Transducer Layer</h4>
-                    <div className="mb-2 flex space-x-4">
-                      {['Al', 'custom'].map((opt) => (
-                        <label key={opt} className="flex items-center text-white">
-                          <input
-                            type="radio"
-                            name="transducer"
-                            value={opt}
-                            checked={transducerOption === opt}
-                            onChange={() => handleTransducerOptionChange(opt as 'Al' | 'custom')}
-                            className="mr-2"
-                            disabled={isProcessing}
-                          />
-                          {opt}
-                        </label>
-                      ))}
-                    </div>
                     {[
                       {
                         field: 'lambda_down',
@@ -1412,8 +1373,8 @@ export default function FDPBDPage() {
                     </div>
                     {[
                       { field: 'f_rolloff', label: `f Rolloff [${fieldUnits.f_rolloff}]` },
-                      { field: 'delay_1', label: `Delay 1 [${fieldUnits.delay_1}]` },
-                      { field: 'delay_2', label: `Delay 2 [${fieldUnits.delay_2}]` },
+                      { field: 'delay_1', label: `Dwell 1 [${fieldUnits.delay_1}]` },
+                      { field: 'delay_2', label: `Dwell 2 [${fieldUnits.delay_2}]` },
                       {
                         field: 'incident_pump',
                         label: `Incident Pump [${fieldUnits.incident_pump}]`,
@@ -1493,22 +1454,6 @@ export default function FDPBDPage() {
                     <h4 className="mb-2 text-sm font-semibold text-white">
                       Transducer Layer (Al Film)
                     </h4>
-                    <div className="mb-2 flex space-x-4">
-                      {['Al', 'custom'].map((opt) => (
-                        <label key={opt} className="flex items-center text-white">
-                          <input
-                            type="radio"
-                            name="transducer_transverse"
-                            value={opt}
-                            checked={transducerOption === opt}
-                            onChange={() => handleTransducerOptionChange(opt as 'Al' | 'custom')}
-                            className="mr-2"
-                            disabled={isProcessing}
-                          />
-                          {opt}
-                        </label>
-                      ))}
-                    </div>
                     {[
                       {
                         field: 'lambda_down',
@@ -1719,7 +1664,7 @@ export default function FDPBDPage() {
                             x: (result as FDPBDResult).plot_data.freq_fit,
                             y: (result as FDPBDResult).plot_data.v_corr_in_fit,
                             type: 'scatter',
-                            mode: 'lines+markers',
+                            mode: 'markers',
                             name: 'In-phase (data)',
                             marker: { color: 'black' },
                             line: { color: 'black', dash: 'dash' },
@@ -1728,7 +1673,7 @@ export default function FDPBDPage() {
                             x: (result as FDPBDResult).plot_data.freq_fit,
                             y: (result as FDPBDResult).plot_data.v_corr_out_fit,
                             type: 'scatter',
-                            mode: 'lines+markers',
+                            mode: 'markers',
                             name: 'Out-of-phase (data)',
                             marker: { color: 'black' },
                             line: { color: 'black', dash: 'dash' },
@@ -1737,7 +1682,7 @@ export default function FDPBDPage() {
                             x: (result as FDPBDResult).plot_data.freq_fit,
                             y: (result as FDPBDResult).plot_data.delta_in,
                             type: 'scatter',
-                            mode: 'lines+markers',
+                            mode: 'lines',
                             name: 'In-phase (model)',
                             marker: { color: 'blue' },
                             line: { color: 'blue', dash: 'dash' },
@@ -1746,7 +1691,7 @@ export default function FDPBDPage() {
                             x: (result as FDPBDResult).plot_data.freq_fit,
                             y: (result as FDPBDResult).plot_data.delta_out,
                             type: 'scatter',
-                            mode: 'lines+markers',
+                            mode: 'lines',
                             name: 'Out-of-phase (model)',
                             marker: { color: 'red' },
                             line: { color: 'red', dash: 'dash' },
@@ -1806,7 +1751,7 @@ export default function FDPBDPage() {
                             x: (result as FDPBDResult).plot_data.freq_fit,
                             y: (result as FDPBDResult).plot_data.v_corr_ratio_fit,
                             type: 'scatter',
-                            mode: 'lines+markers',
+                            mode: 'markers',
                             name: 'Ratio (data)',
                             marker: { color: 'black' },
                             line: { color: 'black', dash: 'dash' },
@@ -1815,7 +1760,7 @@ export default function FDPBDPage() {
                             x: (result as FDPBDResult).plot_data.freq_fit,
                             y: (result as FDPBDResult).plot_data.delta_ratio,
                             type: 'scatter',
-                            mode: 'lines+markers',
+                            mode: 'lines',
                             name: 'Ratio (model)',
                             marker: { color: 'blue' },
                             line: { color: 'blue', dash: 'dash' },
@@ -1880,7 +1825,7 @@ export default function FDPBDPage() {
                             x: (result as AnisotropicFDPBDResult).plot_data.exp_freqs,
                             y: (result as AnisotropicFDPBDResult).plot_data.in_exp,
                             type: 'scatter',
-                            mode: 'lines+markers',
+                            mode: 'markers',
                             name: 'In-phase (data)',
                             marker: { color: 'black' },
                             line: { color: 'black', dash: 'dash' },
@@ -1889,7 +1834,7 @@ export default function FDPBDPage() {
                             x: (result as AnisotropicFDPBDResult).plot_data.exp_freqs,
                             y: (result as AnisotropicFDPBDResult).plot_data.out_exp,
                             type: 'scatter',
-                            mode: 'lines+markers',
+                            mode: 'markers',
                             name: 'Out-of-phase (data)',
                             marker: { color: 'black' },
                             line: { color: 'black', dash: 'dash' },
@@ -1898,7 +1843,7 @@ export default function FDPBDPage() {
                             x: (result as AnisotropicFDPBDResult).plot_data.model_freqs,
                             y: (result as AnisotropicFDPBDResult).plot_data.in_model,
                             type: 'scatter',
-                            mode: 'lines+markers',
+                            mode: 'lines',
                             name: 'In-phase (model)',
                             marker: { color: 'blue' },
                             line: { color: 'blue', dash: 'dash' },
@@ -1907,7 +1852,7 @@ export default function FDPBDPage() {
                             x: (result as AnisotropicFDPBDResult).plot_data.model_freqs,
                             y: (result as AnisotropicFDPBDResult).plot_data.out_model,
                             type: 'scatter',
-                            mode: 'lines+markers',
+                            mode: 'lines',
                             name: 'Out-of-phase (model)',
                             marker: { color: 'red' },
                             line: { color: 'red', dash: 'dash' },
@@ -1967,7 +1912,7 @@ export default function FDPBDPage() {
                             x: (result as AnisotropicFDPBDResult).plot_data.exp_freqs,
                             y: (result as AnisotropicFDPBDResult).plot_data.ratio_exp,
                             type: 'scatter',
-                            mode: 'lines+markers',
+                            mode: 'markers',
                             name: 'Ratio (data)',
                             marker: { color: 'black' },
                             line: { color: 'black', dash: 'dash' },
@@ -1976,7 +1921,7 @@ export default function FDPBDPage() {
                             x: (result as AnisotropicFDPBDResult).plot_data.model_freqs,
                             y: (result as AnisotropicFDPBDResult).plot_data.ratio_model,
                             type: 'scatter',
-                            mode: 'lines+markers',
+                            mode: 'lines',
                             name: 'Ratio (model)',
                             marker: { color: 'blue' },
                             line: { color: 'blue', dash: 'dash' },
@@ -2041,7 +1986,7 @@ export default function FDPBDPage() {
                             x: (result as TransverseIsotropicResult).plot_data.exp_freqs,
                             y: (result as TransverseIsotropicResult).plot_data.in_exp,
                             type: 'scatter',
-                            mode: 'lines+markers',
+                            mode: 'markers',
                             name: 'In-phase (data)',
                             marker: { color: 'red' },
                             line: { color: 'red', dash: 'dash' },
@@ -2050,7 +1995,7 @@ export default function FDPBDPage() {
                             x: (result as TransverseIsotropicResult).plot_data.exp_freqs,
                             y: (result as TransverseIsotropicResult).plot_data.out_exp,
                             type: 'scatter',
-                            mode: 'lines+markers',
+                            mode: 'markers',
                             name: 'Out-of-phase (data)',
                             marker: { color: 'red', symbol: 'x' },
                             line: { color: 'red', dash: 'dash' },
@@ -2059,7 +2004,7 @@ export default function FDPBDPage() {
                             x: (result as TransverseIsotropicResult).plot_data.model_freqs,
                             y: (result as TransverseIsotropicResult).plot_data.in_model,
                             type: 'scatter',
-                            mode: 'lines+markers',
+                            mode: 'lines',
                             name: 'In-phase (model)',
                             line: { color: 'black', dash: 'dash' },
                             marker: { color: 'black' },
@@ -2068,7 +2013,7 @@ export default function FDPBDPage() {
                             x: (result as TransverseIsotropicResult).plot_data.model_freqs,
                             y: (result as TransverseIsotropicResult).plot_data.out_model,
                             type: 'scatter',
-                            mode: 'lines+markers',
+                            mode: 'lines',
                             name: 'Out-of-phase (model)',
                             line: { color: 'black', dash: 'dash' },
                             marker: { color: 'black', symbol: 'x' },
@@ -2124,7 +2069,7 @@ export default function FDPBDPage() {
                             x: (result as TransverseIsotropicResult).plot_data.exp_freqs,
                             y: (result as TransverseIsotropicResult).plot_data.ratio_exp,
                             type: 'scatter',
-                            mode: 'lines+markers',
+                            mode: 'markers',
                             name: 'Ratio (data)',
                             marker: { color: 'red' },
                             line: { color: 'red', dash: 'dash' },
@@ -2133,7 +2078,7 @@ export default function FDPBDPage() {
                             x: (result as TransverseIsotropicResult).plot_data.model_freqs,
                             y: (result as TransverseIsotropicResult).plot_data.ratio_model,
                             type: 'scatter',
-                            mode: 'lines+markers',
+                            mode: 'lines',
                             name: 'Ratio (model)',
                             line: { color: 'black', dash: 'dash' },
                             marker: { color: 'black' },

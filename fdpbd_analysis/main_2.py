@@ -64,7 +64,7 @@ W_RMS = 11.3e-6 * 0.25  # m
 R_0 = 12.6e-6 * 0.25  # m
 PHI = np.deg2rad(0.0)  # radians
 LENS_TRANSMITTANCE = 0.82
-DETECTOR_GAIN = 37.0  # V/rad
+DETECTOR_GAIN = 37.0  # 1/rad
 
 # Material stack: layer 1 = Al film, 2 = Mylar, 3 = air
 # — Layer 1 (Al)
