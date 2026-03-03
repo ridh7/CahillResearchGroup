@@ -177,8 +177,8 @@ export default function LiveScanPanel({ scanData, formData, isProcessing }: Live
   const heatmapLayout: Partial<Plotly.Layout> = {
     title: isProcessing ? 'Live Scan' : 'Scan Complete',
     // Row 1: X(V), Y(V)
-    xaxis: { domain: [0.05, 0.38], anchor: 'y1', showgrid: true, gridcolor: 'white' },
-    yaxis: { domain: [0.73, 1], anchor: 'x1', showgrid: true, gridcolor: 'white' },
+    xaxis: { domain: [0.05, 0.38], anchor: 'y' as const, showgrid: true, gridcolor: 'white' },
+    yaxis: { domain: [0.73, 1], anchor: 'x' as const, showgrid: true, gridcolor: 'white' },
     xaxis2: { domain: [0.62, 0.95], anchor: 'y2', showgrid: true, gridcolor: 'white' },
     yaxis2: { domain: [0.73, 1], anchor: 'x2', showgrid: true, gridcolor: 'white' },
     // Row 2: R, X/Y
