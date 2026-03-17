@@ -6,14 +6,23 @@ Adapted from fdpbd_analysis/main_3.py (MATLAB code2 translation).
 Uses single psi=pi/4 and Bessel J1 kernel.
 """
 
+import copy
 import time
 
 import numpy as np
 import scipy.linalg as la
 import scipy.special as sp
+from scipy.optimize import differential_evolution
 
 from app.core.fdpbd.data_processing import calculate_leaking, correct_data, load_data
 from app.models.transverse_isotropic import TransverseIsotropicParams
+
+TRANSVERSE_FIT_PARAMS = [
+    "sigma_r",
+    "sigma_z",
+    "alphaT_perp",
+    "alphaT_para",
+]
 
 
 def simpson_integration(y: np.ndarray, dx: float) -> float:
@@ -596,6 +605,208 @@ def run_transverse_isotropic_analysis(
 
     # 8. Return results
     return {
+        "plot_data": {
+            "model_freqs": model_freqs.tolist(),
+            "in_model": in_mod.tolist(),
+            "out_model": out_mod.tolist(),
+            "ratio_model": ratio_mod.tolist(),
+            "exp_freqs": freq_middle.tolist(),
+            "in_exp": v_corr_in_middle.tolist(),
+            "out_exp": v_corr_out_middle.tolist(),
+            "ratio_exp": v_corr_ratio_middle.tolist(),
+        },
+    }
+
+
+def run_de_fitting_transverse(
+    params: TransverseIsotropicParams,
+    data_filename: str,
+    fit_param: str,
+    bounds: tuple[float, float],
+    progress_callback=None,
+    maxiter: int = 20,
+    popsize: int = 8,
+    tol: float = 1e-3,
+) -> dict:
+    """Run DE fitting for a single transverse isotropic layer2 parameter."""
+    if fit_param not in TRANSVERSE_FIT_PARAMS:
+        raise ValueError(
+            f"Unknown fit parameter: {fit_param}. Must be one of {TRANSVERSE_FIT_PARAMS}"
+        )
+
+    # Same setup as run_transverse_isotropic_analysis
+    v_out, v_in, _, v_sum, freq = load_data(data_filename)
+    complex_leaking = calculate_leaking(
+        freq, params.f_rolloff, params.delay_1, params.delay_2
+    )
+    v_corr_in, v_corr_out, v_corr_ratio = correct_data(v_out, v_in, complex_leaking)
+
+    # Select middle points
+    num_points = len(freq)
+    num_middle = params.num_middle_points
+    if num_points >= num_middle:
+        start_idx = (num_points - num_middle) // 2
+        end_idx = start_idx + num_middle
+        freq_middle = freq[start_idx:end_idx]
+        v_corr_in_middle = v_corr_in[start_idx:end_idx]
+        v_corr_out_middle = v_corr_out[start_idx:end_idx]
+        v_corr_ratio_middle = v_corr_ratio[start_idx:end_idx]
+    else:
+        freq_middle = freq
+        v_corr_in_middle = v_corr_in
+        v_corr_out_middle = v_corr_out
+        v_corr_ratio_middle = v_corr_ratio
+
+    # Compute A0
+    refl_al = (
+        abs((params.n_al - 1 + 1j * params.k_al) / (params.n_al + 1 + 1j * params.k_al))
+        ** 2
+    )
+    a0 = (
+        params.incident_pump
+        * params.lens_transmittance
+        * (4.0 / np.pi)
+        * (1.0 - refl_al)
+    )
+
+    # Build grids
+    up_p = 8 / params.w_rms
+    d_p = up_p / params.n_p
+    p_vals = np.linspace(d_p, up_p, params.n_p)
+
+    model_freqs = np.logspace(
+        np.log10(params.model_freq_start),
+        np.log10(params.model_freq_end),
+        params.model_freq_points,
+    )
+
+    # Build layer dicts
+    layer1 = {
+        "thickness": params.layer1_thickness,
+        "sigma": params.layer1_sigma,
+        "capac": params.layer1_capac,
+        "rho": params.layer1_rho,
+        "alphaT": params.layer1_alphaT,
+        "C11_0": params.layer1_C11_0,
+        "C12_0": params.layer1_C12_0,
+        "C44_0": params.layer1_C44_0,
+    }
+    layer2 = {
+        "sigma_r": params.layer2_sigma_r,
+        "sigma_z": params.layer2_sigma_z,
+        "capac": params.layer2_capac,
+        "rho": params.layer2_rho,
+        "alphaT_perp": params.layer2_alphaT_perp,
+        "alphaT_para": params.layer2_alphaT_para,
+        "C11_0": params.layer2_C11_0,
+        "C12_0": params.layer2_C12_0,
+        "C13_0": params.layer2_C13_0,
+        "C33_0": params.layer2_C33_0,
+        "C44_0": params.layer2_C44_0,
+    }
+    layer3 = {
+        "sigma": params.layer3_sigma,
+        "capac": params.layer3_capac,
+    }
+
+    # Interpolate experimental data to model frequencies for cost comparison
+    exp_in_interp = np.interp(model_freqs, freq_middle[::-1], v_corr_in_middle[::-1])
+    exp_out_interp = np.interp(model_freqs, freq_middle[::-1], v_corr_out_middle[::-1])
+
+    gen_count = [0]
+    t_start = time.time()
+
+    def objective(x):
+        trial_layer2 = copy.deepcopy(layer2)
+        trial_layer2[fit_param] = x[0]
+
+        Z_pf = compute_surface_displacement(
+            model_freqs,
+            p_vals,
+            a0,
+            params.w_rms,
+            params.g_int,
+            layer1,
+            trial_layer2,
+            layer3,
+        )
+        angles = compute_probe_deflection(
+            Z_pf, p_vals, model_freqs, params.w_rms, params.r_0, params.c_probe
+        )
+        in_mod, out_mod, _ = compute_lockin_signals(
+            angles, params.v_sum_fixed, params.detector_gain
+        )
+
+        if np.isnan(in_mod).any() or np.isnan(out_mod).any():
+            return 1e12
+
+        cost = float(
+            np.sum((in_mod - exp_in_interp) ** 2)
+            + np.sum((out_mod - exp_out_interp) ** 2)
+        )
+        return cost
+
+    def callback(xk, convergence):
+        gen_count[0] += 1
+        elapsed = time.time() - t_start
+        print(
+            f"[transverse-fit] Gen {gen_count[0]}: "
+            f"{fit_param}={xk[0]:.6e}, convergence={convergence:.4e}, "
+            f"elapsed={elapsed:.1f}s"
+        )
+        if progress_callback:
+            progress_callback(
+                {
+                    "type": "progress",
+                    "generation": gen_count[0],
+                    "best_value": float(xk[0]),
+                    "convergence": float(convergence),
+                    "elapsed": round(elapsed, 1),
+                }
+            )
+
+    result = differential_evolution(
+        objective,
+        bounds=[bounds],
+        callback=callback,
+        seed=42,
+        tol=tol,
+        maxiter=maxiter,
+        popsize=popsize,
+    )
+
+    # Run final forward model with best params
+    final_layer2 = copy.deepcopy(layer2)
+    final_layer2[fit_param] = result.x[0]
+
+    Z_pf = compute_surface_displacement(
+        model_freqs,
+        p_vals,
+        a0,
+        params.w_rms,
+        params.g_int,
+        layer1,
+        final_layer2,
+        layer3,
+    )
+    angles = compute_probe_deflection(
+        Z_pf, p_vals, model_freqs, params.w_rms, params.r_0, params.c_probe
+    )
+    in_mod, out_mod, ratio_mod = compute_lockin_signals(
+        angles, params.v_sum_fixed, params.detector_gain
+    )
+
+    total_time = time.time() - t_start
+    print(f"[transverse-fit] DONE in {total_time:.1f}s: {fit_param}={result.x[0]:.6e}")
+
+    return {
+        "type": "result",
+        "fit_param": fit_param,
+        "best_value": float(result.x[0]),
+        "cost": float(result.fun),
+        "success": bool(result.success),
+        "generations": gen_count[0],
+        "elapsed": round(total_time, 1),
         "plot_data": {
             "model_freqs": model_freqs.tolist(),
             "in_model": in_mod.tolist(),

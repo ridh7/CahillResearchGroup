@@ -852,14 +852,103 @@ def main():
         Vout_exp,
         ratio_mod_initial,
         ratio_exp,
-        title_suffix=" (Forward Model Benchmark)",
+        title_suffix=" (Initial Parameters)",
     )
 
-    # --- Differential Evolution COMMENTED OUT for benchmarking ---
-    # print(
-    #     f"\n--- Starting Global Fit (Differential Evolution) for: {FITTING_CONFIG['parameter_to_fit']} ---"
-    # )
-    # ... (DE code omitted for timing comparison) ...
+    # 3) Perform Fitting using Differential Evolution ---
+    print(
+        f"\n--- Starting Global Fit (Differential Evolution) for: {FITTING_CONFIG['parameter_to_fit']} ---"
+    )
+    param_to_fit_name = FITTING_CONFIG["parameter_to_fit"]
+    de_bounds = [FITTING_CONFIG["bounds"]]
+
+    iteration_count_global = 0
+    overall_start_time = time.time()
+    last_time_global = overall_start_time
+
+    base_layer2_for_objective = copy.deepcopy(LAYER2)
+    base_layer2_for_objective[param_to_fit_name] = FITTING_CONFIG["initial_guess"]
+    for key, value in FITTING_CONFIG["fixed_values"].items():
+        base_layer2_for_objective[key] = value
+
+    de_args = (
+        param_to_fit_name,
+        FITTING_CONFIG["fixed_values"],
+        EXP_DATA_STORAGE,
+        P_VALS_GLOBAL,
+        PSI_VALS_GLOBAL,
+        LAYER1,
+        base_layer2_for_objective,
+        LAYER3,
+        A0,
+        W_RMS,
+        R_0,
+        PHI,
+        C_PROBE,
+        DETECTOR_GAIN,
+        G_int,
+    )
+
+    optimization_result = differential_evolution(
+        objective_function,
+        bounds=de_bounds,
+        args=de_args,
+        disp=True,
+        strategy="best1bin",
+        maxiter=20,
+        popsize=8,
+        tol=1e-3,
+        mutation=(0.5, 1),
+        recombination=0.7,
+        callback=de_callback,
+        workers=-1,
+        updating="deferred",
+    )
+
+    overall_end_time = time.time()
+    total_fitting_duration = overall_end_time - overall_start_time
+
+    fitted_param_value = optimization_result.x[0]
+    print("\n--- Global Fitting Complete ---")
+    print(f"Fitted {param_to_fit_name}: {fitted_param_value:.4e}")
+    if hasattr(optimization_result, "message"):
+        print(f"Optimization message: {optimization_result.message}")
+    print(f"Final cost: {optimization_result.fun:.4e}")
+    print(f"Total fitting time: {total_fitting_duration:.2f} seconds")
+
+    LAYER2[param_to_fit_name] = fitted_param_value
+
+    # --- Final Model Run (After Fitting) ---
+    print("\n--- Running Model with Fitted Parameter ---")
+    Z_fitted = compute_surface_displacement(MODEL_FREQS, P_VALS_GLOBAL, PSI_VALS_GLOBAL)
+    pbd_angles_fitted = compute_probe_deflection(
+        Z_fitted, P_VALS_GLOBAL, PSI_VALS_GLOBAL, MODEL_FREQS
+    )
+    in_mod_fitted, out_mod_fitted, ratio_mod_fitted = compute_lockin_signals(
+        pbd_angles_fitted, v_sum_avg
+    )
+
+    f_peak_fitted, ratio_at_peak_fitted = fit_rough_analysis(
+        MODEL_FREQS, out_mod_fitted, ratio_mod_fitted
+    )
+    print(
+        f"After fit: Peak out-of-phase at {f_peak_fitted if not np.isnan(f_peak_fitted) else 'N/A'} Hz"
+    )
+    print(
+        f"After fit: Ratio at peak: {ratio_at_peak_fitted if not np.isnan(ratio_at_peak_fitted) else 'N/A'}"
+    )
+
+    plot_results(
+        MODEL_FREQS,
+        in_mod_fitted,
+        out_mod_fitted,
+        Fexp,
+        Vin_exp,
+        Vout_exp,
+        ratio_mod_fitted,
+        ratio_exp,
+        title_suffix=f" (Fitted {param_to_fit_name} = {fitted_param_value:.2e})",
+    )
 
 
 if __name__ == "__main__":

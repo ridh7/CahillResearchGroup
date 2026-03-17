@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { FormData } from '../app/page';
+import { FormData, Settings } from '../app/page';
 
 type DeviceControlsProps = {
   formData: FormData;
@@ -26,6 +26,7 @@ type DeviceControlsProps = {
   changeMultimeterAperture: (nplc: number) => void;
   changeMultimeterTerminal: (terminal: string) => void;
   multimeterConnected: boolean;
+  settings: Settings;
 };
 
 const initialFormData: FormData = {
@@ -41,7 +42,7 @@ const initialFormData: FormData = {
   xStepSize: '',
   yStepSize: '',
   movementMode: 'steps',
-  delay: '',
+  delay: '1',
   motionType: 'step_and_measure',
   scanPattern: 'bidirectional',
   recordRetrace: false,
@@ -68,6 +69,7 @@ export default function DeviceControls({
   changeMultimeterTerminal,
   fetchMultimeterSettings,
   multimeterConnected,
+  settings,
 }: DeviceControlsProps) {
   const [activeTab, setActiveTab] = useState<'stage' | 'lockin' | 'multimeter'>('stage');
   const [freqInput, setFreqInput] = useState('');
@@ -147,9 +149,9 @@ export default function DeviceControls({
       return coordsValid && xStepValid && yStepValid;
     }
 
-    // Step-and-measure mode
+    // Step-and-measure mode: delay is required
     const delayValid =
-      formData.delay === '' || (Number(formData.delay) >= 0 && !isNaN(Number(formData.delay)));
+      formData.delay !== '' && Number(formData.delay) >= 0 && !isNaN(Number(formData.delay));
 
     if (formData.movementMode === 'steps') {
       const xStepsValid =
@@ -167,6 +169,110 @@ export default function DeviceControls({
       return coordsValid && xStepSizeValid && yStepSizeValid && delayValid;
     }
   }, [formData]);
+
+  const estimatedTime = useMemo(() => {
+    if (!isFormValid) return null;
+
+    const x1 = parseFloat(formData.x1);
+    const x2 = parseFloat(formData.x2);
+    const y1 = parseFloat(formData.y1);
+    const y2 = parseFloat(formData.y2);
+    const xDist = Math.abs(x2 - x1);
+    const yDist = Math.abs(y2 - y1);
+
+    // Determine fast/slow axis distances
+    const fastDist = formData.fastAxis === 'x' ? xDist : yDist;
+    const slowDist = formData.fastAxis === 'x' ? yDist : xDist;
+
+    // Get velocity/acceleration for each axis (channel1=X, channel2=Y)
+    const fastSettings = formData.fastAxis === 'x' ? settings.channel1 : settings.channel2;
+    const slowSettings = formData.fastAxis === 'x' ? settings.channel2 : settings.channel1;
+    const fastVel = parseFloat(fastSettings.maxVelocity);
+    const fastAcc = parseFloat(fastSettings.acceleration);
+    const slowVel = parseFloat(slowSettings.maxVelocity);
+    const slowAcc = parseFloat(slowSettings.acceleration);
+
+    if (!fastVel || !fastAcc || !slowVel || !slowAcc) return null;
+
+    // Trapezoidal motion time: time to travel distance d with max velocity v and acceleration a
+    const motionTime = (d: number, v: number, a: number) => {
+      if (d <= 0) return 0;
+      const tAccel = v / a;
+      const dAccel = v * tAccel; // distance during accel+decel phases
+      if (d < dAccel) {
+        // Never reaches max velocity: t = 2 * sqrt(d/a)
+        return 2 * Math.sqrt(d / a);
+      }
+      // Reaches max velocity: accel + cruise + decel
+      return d / v + v / a;
+    };
+
+    // Compute number of slow axis steps
+    let numSlowSteps: number;
+    let slowStepSize: number;
+    if (formData.movementMode === 'steps') {
+      const fastSteps =
+        formData.fastAxis === 'x' ? parseInt(formData.xSteps) : parseInt(formData.ySteps);
+      const slowSteps =
+        formData.fastAxis === 'x' ? parseInt(formData.ySteps) : parseInt(formData.xSteps);
+      numSlowSteps = slowSteps;
+      slowStepSize = numSlowSteps > 0 ? slowDist / numSlowSteps : 0;
+      // fastSteps used only for step_and_measure
+      void fastSteps;
+    } else {
+      const fastStepSz =
+        formData.fastAxis === 'x' ? parseFloat(formData.xStepSize) : parseFloat(formData.yStepSize);
+      slowStepSize =
+        formData.fastAxis === 'x' ? parseFloat(formData.yStepSize) : parseFloat(formData.xStepSize);
+      numSlowSteps = slowStepSize > 0 ? Math.ceil(slowDist / slowStepSize) : 0;
+      void fastStepSz;
+    }
+
+    const numSweeps = numSlowSteps + 1;
+    const sweepTime = motionTime(fastDist, fastVel, fastAcc);
+    const slowStepTime = motionTime(slowStepSize, slowVel, slowAcc);
+
+    let totalSeconds: number;
+
+    if (formData.motionType === 'continuous') {
+      // Continuous scan
+      const retraceTime =
+        formData.scanPattern === 'unidirectional'
+          ? motionTime(fastDist, 100, 1000) // fast retrace: 100 mm/s, 1000 mm/s²
+          : 0;
+      // Each sweep: move fast axis + step slow axis (+ retrace if unidirectional)
+      totalSeconds = numSweeps * sweepTime + numSlowSteps * (slowStepTime + retraceTime);
+    } else {
+      // Step & measure
+      let numFastSteps: number;
+      if (formData.movementMode === 'steps') {
+        numFastSteps =
+          formData.fastAxis === 'x' ? parseInt(formData.xSteps) : parseInt(formData.ySteps);
+      } else {
+        const fastStepSz =
+          formData.fastAxis === 'x'
+            ? parseFloat(formData.xStepSize)
+            : parseFloat(formData.yStepSize);
+        numFastSteps = fastStepSz > 0 ? Math.ceil(fastDist / fastStepSz) : 0;
+      }
+      const fastStepSzActual = numFastSteps > 0 ? fastDist / numFastSteps : 0;
+      const totalPoints = (numFastSteps + 1) * (numSlowSteps + 1);
+      const delay = parseFloat(formData.delay) || 0;
+      const readTime = 0.15; // ~150ms per instrument read
+      const stepMoveTime = motionTime(fastStepSzActual, fastVel, fastAcc);
+      totalSeconds = totalPoints * (stepMoveTime + delay + readTime) + numSlowSteps * slowStepTime; // slow axis stepping between rows
+    }
+
+    if (!isFinite(totalSeconds) || totalSeconds <= 0) return null;
+
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = Math.round(totalSeconds % 60);
+
+    if (hours > 0) return `~${hours}h ${minutes}m ${seconds}s`;
+    if (minutes > 0) return `~${minutes}m ${seconds}s`;
+    return `~${seconds}s`;
+  }, [formData, settings, isFormValid]);
 
   return (
     <div className="flex-1 rounded-lg bg-gray-800 p-4 shadow-lg">
@@ -571,6 +677,14 @@ export default function DeviceControls({
               </label>
             )}
           </div>
+
+          {/* Estimated Time */}
+          {estimatedTime && (
+            <div className="mb-2 text-center text-sm text-gray-300">
+              Estimated scan time:{' '}
+              <span className="font-semibold text-teal-400">{estimatedTime}</span>
+            </div>
+          )}
 
           {/* Action Buttons */}
           <div className="flex space-x-2">

@@ -199,6 +199,26 @@ export default function FDPBDPage() {
   const [status, setStatus] = useState<string>('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [timeTaken, setTimeTaken] = useState<number | null>(null);
+  const [isFitting, setIsFitting] = useState(false);
+  const [fitParam, setFitParam] = useState('');
+  const [fitBoundsMin, setFitBoundsMin] = useState('');
+  const [fitBoundsMax, setFitBoundsMax] = useState('');
+  const [fitMaxIter, setFitMaxIter] = useState('20');
+  const [fitPopSize, setFitPopSize] = useState('8');
+  const [fitTol, setFitTol] = useState('1e-3');
+  const [fitProgress, setFitProgress] = useState<{
+    generation: number;
+    best_value: number;
+    convergence: number;
+    elapsed: number;
+  } | null>(null);
+  const [fitResult, setFitResult] = useState<{
+    best_value: number;
+    cost: number;
+    generations: number;
+    elapsed: number;
+    fit_param: string;
+  } | null>(null);
   const [lensOption, setLensOption] = useState<'5x' | '10x' | '20x' | 'custom'>('5x');
   const [mediumOption, setMediumOption] = useState<'air' | 'custom'>('air');
   const [isotropyOption, setIsotropyOption] = useState<
@@ -802,6 +822,171 @@ export default function FDPBDPage() {
       setStatus('Error occurred during analysis');
     } finally {
       setIsProcessing(false);
+    }
+  };
+
+  const anisotropicFitParams = [
+    { value: 'sigma_x', label: 'Thermal Conductivity X (σx)' },
+    { value: 'sigma_y', label: 'Thermal Conductivity Y (σy)' },
+    { value: 'sigma_z', label: 'Thermal Conductivity Z (σz)' },
+    { value: 'alphaT_perp', label: 'CTE Perpendicular (αT⊥)' },
+    { value: 'alphaT_para', label: 'CTE Parallel (αT∥)' },
+  ];
+  const transverseFitParams = [
+    { value: 'sigma_r', label: 'Thermal Conductivity In-plane (σr)' },
+    { value: 'sigma_z', label: 'Thermal Conductivity Through-plane (σz)' },
+    { value: 'alphaT_perp', label: 'CTE Perpendicular (αT⊥)' },
+    { value: 'alphaT_para', label: 'CTE Parallel (αT∥)' },
+  ];
+  const currentFitParams =
+    isotropyOption === 'anisotropy' ? anisotropicFitParams : transverseFitParams;
+
+  const handleFit = async () => {
+    if (!file || !fitParam || !fitBoundsMin || !fitBoundsMax) {
+      setStatus('Please fill in all fitting fields');
+      return;
+    }
+    setIsFitting(true);
+    setFitProgress(null);
+    setFitResult(null);
+    setStatus('Fitting...');
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    let endpoint: string;
+
+    if (isotropyOption === 'transverse_anisotropy') {
+      const transverseParams = {
+        f_rolloff: parseFloat(params.f_rolloff),
+        delay_1: parseFloat(params.delay_1),
+        delay_2: parseFloat(params.delay_2),
+        incident_pump: parseFloat(params.incident_pump) * 1e-3,
+        v_sum_fixed: parseFloat(params.v_sum_fixed),
+        w_rms: parseFloat(params.w_rms) * 1e-6,
+        r_0: parseFloat(params.x_offset) * 1e-6,
+        lens_transmittance: parseFloat(params.lens_transmittance),
+        detector_gain: parseFloat(params.detector_factor),
+        c_probe: parseFloat(params.c_probe),
+        n_al: parseFloat(params.n_al),
+        k_al: parseFloat(params.k_al),
+        g_int: parseFloat(params.g_int),
+        layer1_thickness: parseFloat(params.h_down[0]) * 1e-6,
+        layer1_sigma: parseFloat(params.lambda_down[0]),
+        layer1_capac: parseFloat(params.c_down[0]) * 1e6,
+        layer1_rho: parseFloat(params.rho) * 1e3,
+        layer1_alphaT: parseFloat(params.alphaT),
+        layer1_C11_0: parseFloat(params.C11_0) * 1e9,
+        layer1_C12_0: parseFloat(params.C12_0) * 1e9,
+        layer1_C44_0: parseFloat(params.C44_0) * 1e9,
+        layer2_sigma_r: parseFloat(params.lambda_down_x_sample),
+        layer2_sigma_z: parseFloat(params.lambda_down_z_sample),
+        layer2_capac: parseFloat(params.c_down[2]) * 1e6,
+        layer2_rho: parseFloat(params.rho_sample) * 1e3,
+        layer2_alphaT_perp: parseFloat(params.alphaT_perp),
+        layer2_alphaT_para: parseFloat(params.alphaT_para),
+        layer2_C11_0: parseFloat(params.C11_0_sample) * 1e9,
+        layer2_C12_0: parseFloat(params.C12_0_sample) * 1e9,
+        layer2_C13_0: parseFloat(params.C13_0_sample) * 1e9,
+        layer2_C33_0: parseFloat(params.C33_0_sample) * 1e9,
+        layer2_C44_0: parseFloat(params.C44_0_sample) * 1e9,
+        layer3_sigma: parseFloat(params.lambda_up),
+        layer3_capac: parseFloat(params.c_up),
+        fit_parameter: fitParam,
+        fit_bounds_min: parseFloat(fitBoundsMin),
+        fit_bounds_max: parseFloat(fitBoundsMax),
+        fit_maxiter: parseInt(fitMaxIter) || 20,
+        fit_popsize: parseInt(fitPopSize) || 8,
+        fit_tol: parseFloat(fitTol) || 1e-3,
+      };
+      formData.append('params', JSON.stringify(transverseParams));
+      endpoint = `${API_BASE}/fdpbd/fit_transverse`;
+    } else {
+      const anisotropicParams = {
+        ...params,
+        w_rms: (parseFloat(params.w_rms) * 1e-6).toString(),
+        x_offset: (parseFloat(params.x_offset) * 1e-6).toString(),
+        incident_probe: (parseFloat(params.incident_probe) * 1e-3).toString(),
+        incident_pump: (parseFloat(params.incident_pump) * 1e-3).toString(),
+        c_down: params.c_down.map((c) => (parseFloat(c) * 1e6).toString()),
+        rho: (parseFloat(params.rho) * 1e3).toString(),
+        rho_sample: (parseFloat(params.rho_sample) * 1e3).toString(),
+        C11_0: (parseFloat(params.C11_0) * 1e9).toString(),
+        C12_0: (parseFloat(params.C12_0) * 1e9).toString(),
+        C44_0: (parseFloat(params.C44_0) * 1e9).toString(),
+        C11_0_sample: (parseFloat(params.C11_0_sample) * 1e9).toString(),
+        C12_0_sample: (parseFloat(params.C12_0_sample) * 1e9).toString(),
+        C13_0_sample: (parseFloat(params.C13_0_sample) * 1e9).toString(),
+        C33_0_sample: (parseFloat(params.C33_0_sample) * 1e9).toString(),
+        C44_0_sample: (parseFloat(params.C44_0_sample) * 1e9).toString(),
+        eta_up: undefined,
+        h_up: undefined,
+        lambda_down: [params.lambda_down[0]],
+        h_down: [(parseFloat(params.h_down[0]) * 1e-6).toString()],
+        niu: undefined,
+        alpha_t: undefined,
+        fit_parameter: fitParam,
+        fit_bounds_min: parseFloat(fitBoundsMin),
+        fit_bounds_max: parseFloat(fitBoundsMax),
+        fit_maxiter: parseInt(fitMaxIter) || 20,
+        fit_popsize: parseInt(fitPopSize) || 8,
+        fit_tol: parseFloat(fitTol) || 1e-3,
+      };
+      formData.append('params', JSON.stringify(anisotropicParams));
+      endpoint = `${API_BASE}/fdpbd/fit_anisotropy`;
+    }
+
+    try {
+      const response = await fetch(endpoint, { method: 'POST', body: formData });
+      if (!response.ok || !response.body) {
+        const errorData = await response.json().catch(() => ({}));
+        setStatus(`Error: ${errorData.detail || 'Fitting failed'}`);
+        setIsFitting(false);
+        return;
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+
+        for (const rawLine of lines) {
+          const line = rawLine.trim();
+          if (line.startsWith('data: ')) {
+            try {
+              const data = JSON.parse(line.slice(6));
+              console.log('[fit-sse]', data.type, data);
+              if (data.type === 'progress') {
+                setFitProgress(data);
+                setStatus(
+                  `Fitting... Gen ${data.generation} — Best: ${data.best_value.toExponential(4)} — ${data.elapsed}s`
+                );
+              } else if (data.type === 'result') {
+                setFitResult(data);
+                setResult(data);
+                setTimeTaken(data.elapsed);
+                setStatus('Fitting completed');
+              } else if (data.type === 'error') {
+                setStatus(`Error: ${data.message}`);
+              }
+            } catch {
+              // skip malformed JSON
+            }
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Fit error:', error);
+      setStatus('Error occurred during fitting');
+    } finally {
+      setIsFitting(false);
     }
   };
 
@@ -1575,9 +1760,9 @@ export default function FDPBDPage() {
             <div className="flex space-x-4">
               <button
                 onClick={handleSubmit}
-                disabled={isProcessing || !isFormValid()}
+                disabled={isProcessing || isFitting || !isFormValid()}
                 className={`flex-1 rounded py-2 text-white ${
-                  isProcessing || !isFormValid()
+                  isProcessing || isFitting || !isFormValid()
                     ? 'cursor-not-allowed bg-gray-600'
                     : 'bg-teal-500 hover:bg-teal-600'
                 }`}
@@ -1600,6 +1785,131 @@ export default function FDPBDPage() {
               >
                 {status}
               </p>
+            )}
+
+            {/* Fitting Section - only for anisotropy/transverse modes */}
+            {isotropyOption !== 'isotropy' && (
+              <div className="mt-4 rounded-lg border border-gray-600 p-3">
+                <h3 className="mb-3 text-sm font-semibold text-white">
+                  Differential Evolution Fitting
+                </h3>
+                <div className="mb-2 flex flex-col">
+                  <label className="mb-1 text-sm text-gray-300">Parameter to Fit</label>
+                  <select
+                    value={fitParam}
+                    onChange={(e) => setFitParam(e.target.value)}
+                    className="rounded bg-gray-700 px-2 py-1 text-sm text-white"
+                    disabled={isFitting}
+                  >
+                    <option value="">Select parameter...</option>
+                    {currentFitParams.map((p) => (
+                      <option key={p.value} value={p.value}>
+                        {p.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="mb-2 flex space-x-2">
+                  <div className="flex-1">
+                    <label className="mb-1 block text-sm text-gray-300">Min Bound</label>
+                    <input
+                      type="number"
+                      step="any"
+                      value={fitBoundsMin}
+                      onChange={(e) => setFitBoundsMin(e.target.value)}
+                      className="w-full rounded bg-gray-700 px-2 py-1 text-sm text-white"
+                      disabled={isFitting}
+                    />
+                  </div>
+                  <div className="flex-1">
+                    <label className="mb-1 block text-sm text-gray-300">Max Bound</label>
+                    <input
+                      type="number"
+                      step="any"
+                      value={fitBoundsMax}
+                      onChange={(e) => setFitBoundsMax(e.target.value)}
+                      className="w-full rounded bg-gray-700 px-2 py-1 text-sm text-white"
+                      disabled={isFitting}
+                    />
+                  </div>
+                </div>
+                <div className="mb-3 flex space-x-2">
+                  <div className="flex-1">
+                    <label className="mb-1 block text-sm text-gray-300">Max Iter</label>
+                    <input
+                      type="number"
+                      value={fitMaxIter}
+                      onChange={(e) => setFitMaxIter(e.target.value)}
+                      className="w-full rounded bg-gray-700 px-2 py-1 text-sm text-white"
+                      disabled={isFitting}
+                    />
+                  </div>
+                  <div className="flex-1">
+                    <label className="mb-1 block text-sm text-gray-300">Pop Size</label>
+                    <input
+                      type="number"
+                      value={fitPopSize}
+                      onChange={(e) => setFitPopSize(e.target.value)}
+                      className="w-full rounded bg-gray-700 px-2 py-1 text-sm text-white"
+                      disabled={isFitting}
+                    />
+                  </div>
+                  <div className="flex-1">
+                    <label className="mb-1 block text-sm text-gray-300">Tolerance</label>
+                    <input
+                      type="text"
+                      value={fitTol}
+                      onChange={(e) => setFitTol(e.target.value)}
+                      className="w-full rounded bg-gray-700 px-2 py-1 text-sm text-white"
+                      disabled={isFitting}
+                    />
+                  </div>
+                </div>
+                <button
+                  onClick={handleFit}
+                  disabled={
+                    isFitting ||
+                    isProcessing ||
+                    !file ||
+                    !fitParam ||
+                    !fitBoundsMin ||
+                    !fitBoundsMax
+                  }
+                  className={`w-full rounded py-2 text-sm text-white ${
+                    isFitting ||
+                    isProcessing ||
+                    !file ||
+                    !fitParam ||
+                    !fitBoundsMin ||
+                    !fitBoundsMax
+                      ? 'cursor-not-allowed bg-gray-600'
+                      : 'bg-orange-500 hover:bg-orange-600'
+                  }`}
+                >
+                  {isFitting ? 'Fitting...' : 'Run Fit'}
+                </button>
+                {fitProgress && isFitting && (
+                  <div className="mt-2 rounded bg-gray-700 p-2 text-xs text-gray-300">
+                    <p>
+                      Generation {fitProgress.generation} — Best:{' '}
+                      {fitProgress.best_value.toExponential(4)} — Convergence:{' '}
+                      {fitProgress.convergence.toExponential(2)} — {fitProgress.elapsed}s
+                    </p>
+                  </div>
+                )}
+                {fitResult && (
+                  <div className="mt-2 rounded bg-green-900/30 p-2 text-sm text-green-300">
+                    <p>
+                      Fitted <strong>{fitResult.fit_param}</strong> ={' '}
+                      {fitResult.best_value.toExponential(4)}
+                    </p>
+                    <p className="text-xs text-gray-400">
+                      Cost: {fitResult.cost.toExponential(3)} — {fitResult.generations} generations
+                      — {fitResult.elapsed}s
+                    </p>
+                  </div>
+                )}
+              </div>
             )}
           </div>
         </div>
