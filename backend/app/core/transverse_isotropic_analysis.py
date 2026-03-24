@@ -15,7 +15,7 @@ import scipy.special as sp
 from scipy.optimize import differential_evolution
 
 from app.core.fdpbd.data_processing import calculate_leaking, correct_data, load_data
-from app.models.transverse_isotropic import TransverseIsotropicParams
+from app.models.transverse_isotropic import TransverseIsotropicParams  # noqa: E402
 
 TRANSVERSE_FIT_PARAMS = [
     "sigma_r",

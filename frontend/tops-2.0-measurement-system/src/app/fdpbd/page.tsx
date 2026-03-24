@@ -199,6 +199,7 @@ export default function FDPBDPage() {
   const [status, setStatus] = useState<string>('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [timeTaken, setTimeTaken] = useState<number | null>(null);
+  const [resultSource, setResultSource] = useState<'analysis' | 'fit' | null>(null);
   const [isFitting, setIsFitting] = useState(false);
   const [fitParam, setFitParam] = useState('');
   const [fitBoundsMin, setFitBoundsMin] = useState('');
@@ -538,6 +539,7 @@ export default function FDPBDPage() {
   ) => {
     setIsotropyOption(option);
     setResult(null);
+    setResultSource(null);
     if (option === 'isotropy') {
       setParams((prev) => ({
         ...prev,
@@ -733,6 +735,7 @@ export default function FDPBDPage() {
         if (response.ok) {
           setTimeTaken((performance.now() - startTime) / 1000);
           setResult(data);
+          setResultSource('analysis');
           setStatus('Analysis completed');
         } else {
           setStatus(`Error: ${data.detail || 'Unknown error'}`);
@@ -813,6 +816,7 @@ export default function FDPBDPage() {
       if (response.ok) {
         setTimeTaken((performance.now() - startTime) / 1000);
         setResult(data);
+        setResultSource('analysis');
         setStatus('Analysis completed');
       } else {
         setStatus(`Error: ${data.detail || 'Unknown error'}`);
@@ -971,6 +975,7 @@ export default function FDPBDPage() {
               } else if (data.type === 'result') {
                 setFitResult(data);
                 setResult(data);
+                setResultSource('fit');
                 setTimeTaken(data.elapsed);
                 setStatus('Fitting completed');
               } else if (data.type === 'error') {
@@ -1025,7 +1030,7 @@ export default function FDPBDPage() {
                 {[
                   { value: 'isotropy', label: 'Isotropic' },
                   { value: 'anisotropy', label: 'Anisotropic' },
-                  { value: 'transverse_anisotropy', label: 'Transversely Anisotropic' },
+                  { value: 'transverse_anisotropy', label: 'Transversely Isotropic' },
                 ].map((opt) => (
                   <label key={opt.value} className="flex items-center text-white">
                     <input
@@ -1919,7 +1924,32 @@ export default function FDPBDPage() {
           {result && (
             <>
               <div className="rounded-lg bg-gray-800 p-4 shadow-md">
-                <h2 className="mb-4 text-lg font-semibold text-white">Results</h2>
+                <div className="mb-4 flex items-center gap-3">
+                  <h2 className="text-lg font-semibold text-white">Results</h2>
+                  {resultSource && (
+                    <span
+                      className={`rounded-full px-3 py-0.5 text-xs font-medium ${
+                        resultSource === 'fit'
+                          ? 'bg-orange-500/20 text-orange-300 ring-1 ring-orange-500/40'
+                          : 'bg-blue-500/20 text-blue-300 ring-1 ring-blue-500/40'
+                      }`}
+                    >
+                      {resultSource === 'fit' ? 'DE Fit' : 'Forward Model'}
+                    </span>
+                  )}
+                </div>
+                {resultSource === 'fit' && fitResult && (
+                  <div className="mb-3 rounded border border-orange-500/30 bg-orange-500/10 p-3">
+                    <p className="text-sm font-medium text-orange-300">
+                      Fitted <strong>{fitResult.fit_param}</strong> ={' '}
+                      {fitResult.best_value.toExponential(4)}
+                    </p>
+                    <p className="mt-1 text-xs text-gray-400">
+                      Cost: {fitResult.cost.toExponential(3)} | {fitResult.generations} generations
+                      | {fitResult.elapsed}s
+                    </p>
+                  </div>
+                )}
                 {timeTaken !== null && (
                   <p className="mb-2 text-sm text-gray-400">Completed in {timeTaken.toFixed(2)}s</p>
                 )}
@@ -1971,8 +2001,21 @@ export default function FDPBDPage() {
                   </>
                 )}
               </div>
-              <div className="rounded-lg bg-gray-800 p-4 shadow-md">
-                <h2 className="mb-4 text-lg font-semibold text-white">Graphs</h2>
+              <div
+                className={`rounded-lg bg-gray-800 p-4 shadow-md ${
+                  resultSource === 'fit'
+                    ? 'border border-orange-500/30'
+                    : resultSource === 'analysis'
+                      ? 'border border-blue-500/30'
+                      : ''
+                }`}
+              >
+                <div className="mb-4 flex items-center gap-3">
+                  <h2 className="text-lg font-semibold text-white">Graphs</h2>
+                  {resultSource === 'fit' && (
+                    <span className="text-xs text-orange-400">Showing fitted model curves</span>
+                  )}
+                </div>
                 <div className="flex flex-wrap gap-4">
                   {isotropyOption === 'isotropy' && result && (
                     <>
