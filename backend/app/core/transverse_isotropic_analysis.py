@@ -14,6 +14,7 @@ import scipy.linalg as la
 import scipy.special as sp
 from scipy.optimize import differential_evolution
 
+from app.core.anisotropic_analysis import fit_rough_analysis
 from app.core.fdpbd.data_processing import calculate_leaking, correct_data, load_data
 from app.models.transverse_isotropic import TransverseIsotropicParams  # noqa: E402
 
@@ -717,34 +718,38 @@ def run_de_fitting_transverse(
     t_start = time.time()
 
     def objective(x):
-        trial_layer2 = copy.deepcopy(layer2)
-        trial_layer2[fit_param] = x[0]
+        try:
+            trial_layer2 = copy.deepcopy(layer2)
+            trial_layer2[fit_param] = x[0]
 
-        Z_pf = compute_surface_displacement(
-            model_freqs,
-            p_vals,
-            a0,
-            params.w_rms,
-            params.g_int,
-            layer1,
-            trial_layer2,
-            layer3,
-        )
-        angles = compute_probe_deflection(
-            Z_pf, p_vals, model_freqs, params.w_rms, params.r_0, params.c_probe
-        )
-        in_mod, out_mod, _ = compute_lockin_signals(
-            angles, params.v_sum_fixed, params.detector_gain
-        )
+            Z_pf = compute_surface_displacement(
+                model_freqs,
+                p_vals,
+                a0,
+                params.w_rms,
+                params.g_int,
+                layer1,
+                trial_layer2,
+                layer3,
+            )
+            angles = compute_probe_deflection(
+                Z_pf, p_vals, model_freqs, params.w_rms, params.r_0, params.c_probe
+            )
+            in_mod, out_mod, _ = compute_lockin_signals(
+                angles, params.v_sum_fixed, params.detector_gain
+            )
 
-        if np.isnan(in_mod).any() or np.isnan(out_mod).any():
+            if np.isnan(in_mod).any() or np.isnan(out_mod).any():
+                return 1e12
+
+            cost = float(
+                np.sum((in_mod - exp_in_interp) ** 2)
+                + np.sum((out_mod - exp_out_interp) ** 2)
+            )
+            return cost
+        except Exception as e:
+            print(f"[transverse-fit] OBJECTIVE ERROR: {e}")
             return 1e12
-
-        cost = float(
-            np.sum((in_mod - exp_in_interp) ** 2)
-            + np.sum((out_mod - exp_out_interp) ** 2)
-        )
-        return cost
 
     def callback(xk, convergence):
         gen_count[0] += 1
@@ -799,6 +804,8 @@ def run_de_fitting_transverse(
     total_time = time.time() - t_start
     print(f"[transverse-fit] DONE in {total_time:.1f}s: {fit_param}={result.x[0]:.6e}")
 
+    f_peak, ratio_at_peak = fit_rough_analysis(model_freqs, out_mod, ratio_mod)
+
     return {
         "type": "result",
         "fit_param": fit_param,
@@ -807,6 +814,8 @@ def run_de_fitting_transverse(
         "success": bool(result.success),
         "generations": gen_count[0],
         "elapsed": round(total_time, 1),
+        "f_peak": float(f_peak) if not np.isnan(f_peak) else None,
+        "ratio_at_peak": float(ratio_at_peak) if not np.isnan(ratio_at_peak) else None,
         "plot_data": {
             "model_freqs": model_freqs.tolist(),
             "in_model": in_mod.tolist(),
