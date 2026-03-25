@@ -201,6 +201,20 @@ export default function FDPBDPage() {
   const [timeTaken, setTimeTaken] = useState<number | null>(null);
   const [resultSource, setResultSource] = useState<'analysis' | 'fit' | null>(null);
   const [isFitting, setIsFitting] = useState(false);
+  const [activeTab, setActiveTab] = useState<'forward' | 'fitting'>('forward');
+  const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set());
+
+  const toggleSection = (section: string) => {
+    setCollapsedSections((prev) => {
+      const next = new Set(prev);
+      if (next.has(section)) {
+        next.delete(section);
+      } else {
+        next.add(section);
+      }
+      return next;
+    });
+  };
   const [fitParam, setFitParam] = useState('');
   const [fitBoundsMin, setFitBoundsMin] = useState('');
   const [fitBoundsMax, setFitBoundsMax] = useState('');
@@ -541,6 +555,7 @@ export default function FDPBDPage() {
     setResult(null);
     setResultSource(null);
     if (option === 'isotropy') {
+      setActiveTab('forward');
       setParams((prev) => ({
         ...prev,
         eta_down: ['1.0', '1.0', '1.0'],
@@ -996,7 +1011,7 @@ export default function FDPBDPage() {
   };
 
   return (
-    <div className="flex min-h-screen flex-col bg-gray-900">
+    <div className="flex h-screen flex-col overflow-hidden bg-gray-900">
       {/* Header */}
       <header className="flex items-center justify-between bg-gray-800 p-4">
         <h1 className="text-xl font-semibold text-white">Analysis</h1>
@@ -1006,13 +1021,12 @@ export default function FDPBDPage() {
       </header>
 
       {/* Main Layout */}
-      <div className="flex flex-1 space-x-4 p-4">
+      <div className="flex min-h-0 flex-1 space-x-4 p-4">
         {/* Left Panel: Input Form */}
-        <div className="flex w-1/3 flex-col space-y-4">
-          <div className="rounded-lg bg-gray-800 p-4 shadow-md">
-            <h2 className="mb-4 text-lg font-semibold text-white">Parameters</h2>
-            {/* File Upload */}
-            <div className="mb-6">
+        <div className="flex w-1/3 flex-col">
+          {/* Shared: File Upload + Mode Selection */}
+          <div className="rounded-t-lg bg-gray-800 px-4 pt-4">
+            <div className="mb-3">
               <h3 className="text-md mb-2 font-semibold text-white">Data File (.txt)</h3>
               <input
                 type="file"
@@ -1022,17 +1036,15 @@ export default function FDPBDPage() {
                 disabled={isProcessing}
               />
             </div>
-
-            {/* Isotropy Radio - always visible */}
-            <div className="mb-4 rounded-lg bg-gray-700 p-4">
+            <div className="mb-3 rounded-lg bg-gray-700 p-3">
               <h4 className="mb-2 text-sm font-semibold text-white">Analysis Mode</h4>
-              <div className="mb-2 flex flex-wrap gap-4">
+              <div className="mb-1 flex flex-wrap gap-4">
                 {[
                   { value: 'isotropy', label: 'Isotropic' },
                   { value: 'anisotropy', label: 'Anisotropic' },
                   { value: 'transverse_anisotropy', label: 'Transversely Isotropic' },
                 ].map((opt) => (
-                  <label key={opt.value} className="flex items-center text-white">
+                  <label key={opt.value} className="flex items-center text-sm text-white">
                     <input
                       type="radio"
                       name="isotropy"
@@ -1051,753 +1063,967 @@ export default function FDPBDPage() {
                 ))}
               </div>
             </div>
-
-            {/* Isotropy/Anisotropy form fields */}
-            {isotropyOption !== 'transverse_anisotropy' && (
-              <>
-                {/* Experimental Inputs */}
-                <div className="mb-6">
-                  <h3 className="text-md mb-2 font-semibold text-white">Experimental Inputs</h3>
-                  {/* Lens Magnification */}
-                  <div className="mb-4 rounded-lg bg-gray-700 p-4">
-                    <h4 className="mb-2 text-sm font-semibold text-white">Lens Magnification</h4>
-                    <div className="mb-2 flex space-x-4">
-                      {['5x', '10x', '20x', 'custom'].map((opt) => (
-                        <label key={opt} className="flex items-center text-white">
-                          <input
-                            type="radio"
-                            name="lens"
-                            value={opt}
-                            checked={lensOption === opt}
-                            onChange={() =>
-                              handleLensOptionChange(opt as '5x' | '10x' | '20x' | 'custom')
-                            }
-                            className="mr-2"
-                            disabled={isProcessing}
-                          />
-                          {opt}
-                        </label>
-                      ))}
-                    </div>
-                    {[
-                      { field: 'w_rms', label: `W RMS [${fieldUnits.w_rms}]` },
-                      {
-                        field: 'x_offset',
-                        label: `X Offset [${fieldUnits.x_offset}]`,
-                      },
-                      {
-                        field: 'lens_transmittance',
-                        label: `Lens Transmittance ${
-                          fieldUnits.lens_transmittance ? `[${fieldUnits.lens_transmittance}]` : ''
-                        }`,
-                      },
-                      {
-                        field: 'detector_factor',
-                        label: `Detector Factor [${fieldUnits.detector_factor}]`,
-                      },
-                      ...(isotropyOption === 'anisotropy'
-                        ? [{ field: 'phi', label: `Phi [${fieldUnits.phi}]` }]
-                        : []),
-                    ].map((param) => (
-                      <div key={param.field} className="mb-2 flex flex-col">
-                        <label className="mb-1 text-sm text-white">{param.label}</label>
-                        <input
-                          type="number"
-                          step="any"
-                          value={params[param.field as keyof FDPBDParams]}
-                          onChange={(e) => handleInputChange(e, param.field as keyof FDPBDParams)}
-                          className={`rounded border-2 bg-gray-800 p-2 text-white focus:outline-none ${
-                            isValidDecimal(params[param.field as keyof FDPBDParams])
-                              ? 'border-gray-600 focus:border-teal-500'
-                              : 'border-red-500'
-                          }`}
-                          disabled={isProcessing}
-                          required
-                        />
-                      </div>
-                    ))}
-                  </div>
-                  {/* Laser */}
-                  <div className="rounded-lg bg-gray-700 p-4">
-                    <h4 className="mb-2 text-sm font-semibold text-white">Laser</h4>
-                    <div className="mb-2 flex space-x-4">
-                      {['TOPS 1', 'TOPS 2', 'custom'].map((opt) => (
-                        <label key={opt} className="flex items-center text-white">
-                          <input
-                            type="radio"
-                            name="laser"
-                            value={opt}
-                            checked={laserOption === opt}
-                            onChange={() =>
-                              handleLaserOptionChange(opt as 'TOPS 1' | 'TOPS 2' | 'custom')
-                            }
-                            className="mr-2"
-                            disabled={isProcessing}
-                          />
-                          {opt}
-                        </label>
-                      ))}
-                    </div>
-                    {[
-                      {
-                        field: 'f_rolloff',
-                        label: `f Rolloff [${fieldUnits.f_rolloff}]`,
-                      },
-                      {
-                        field: 'delay_1',
-                        label: `Dwell 1 [${fieldUnits.delay_1}]`,
-                      },
-                      {
-                        field: 'delay_2',
-                        label: `Dwell 2 [${fieldUnits.delay_2}]`,
-                      },
-                      {
-                        field: 'incident_pump',
-                        label: `Incident Pump [${fieldUnits.incident_pump}]`,
-                      },
-                      {
-                        field: 'incident_probe',
-                        label: `Incident Probe [${fieldUnits.incident_probe}]`,
-                      },
-                    ].map((param) => (
-                      <div key={param.field} className="mb-2 flex flex-col">
-                        <label className="mb-1 text-sm text-white">{param.label}</label>
-                        <input
-                          type="number"
-                          step="any"
-                          value={params[param.field as keyof FDPBDParams]}
-                          onChange={(e) => handleInputChange(e, param.field as keyof FDPBDParams)}
-                          className={`rounded border-2 bg-gray-800 p-2 text-white focus:outline-none ${
-                            isValidDecimal(params[param.field as keyof FDPBDParams])
-                              ? 'border-gray-600 focus:border-teal-500'
-                              : 'border-red-500'
-                          }`}
-                          disabled={isProcessing}
-                          required
-                        />
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Sample Inputs */}
-                <div className="mb-6">
-                  <h3 className="text-md mb-2 font-semibold text-white">Sample Inputs</h3>
-                  {/* Medium */}
-                  <div className="mb-4 rounded-lg bg-gray-700 p-4">
-                    <h4 className="mb-2 text-sm font-semibold text-white">Medium</h4>
-                    <div className="mb-2 flex space-x-4">
-                      {['air', 'custom'].map((opt) => (
-                        <label key={opt} className="flex items-center text-white">
-                          <input
-                            type="radio"
-                            name="medium"
-                            value={opt}
-                            checked={mediumOption === opt}
-                            onChange={() => handleMediumOptionChange(opt as 'air' | 'custom')}
-                            className="mr-2"
-                            disabled={isProcessing}
-                          />
-                          {opt}
-                        </label>
-                      ))}
-                    </div>
-                    {[
-                      {
-                        field: 'lambda_up',
-                        label: `Lambda Up [${fieldUnits.lambda_up}]`,
-                      },
-                      { field: 'c_up', label: `C Up [${fieldUnits.c_up}]` },
-                      ...(isotropyOption === 'isotropy'
-                        ? [
-                            {
-                              field: 'eta_up',
-                              label: `Eta Up ${fieldUnits.eta_up ? `[${fieldUnits.eta_up}]` : ''}`,
-                            },
-                            { field: 'h_up', label: `H Up [${fieldUnits.h_up}]` },
-                          ]
-                        : []),
-                    ].map((param) => (
-                      <div key={param.field} className="mb-2 flex flex-col">
-                        <label className="mb-1 text-sm text-white">{param.label}</label>
-                        <input
-                          type="number"
-                          step="any"
-                          value={params[param.field as keyof FDPBDParams]}
-                          onChange={(e) => handleInputChange(e, param.field as keyof FDPBDParams)}
-                          className={`rounded border-2 bg-gray-800 p-2 text-white focus:outline-none ${
-                            isValidDecimal(params[param.field as keyof FDPBDParams])
-                              ? 'border-gray-600 focus:border-teal-500'
-                              : 'border-red-500'
-                          }`}
-                          disabled={isProcessing}
-                          required
-                        />
-                      </div>
-                    ))}
-                  </div>
-                  {/* Transducer Layer */}
-                  <div className="mb-4 rounded-lg bg-gray-700 p-4">
-                    <h4 className="mb-2 text-sm font-semibold text-white">Transducer Layer</h4>
-                    {[
-                      {
-                        field: 'lambda_down',
-                        index: 0,
-                        label: `Lambda Down [${fieldUnits.lambda_down}]`,
-                      },
-                      {
-                        field: 'c_down',
-                        index: 0,
-                        label: `C Down [${fieldUnits.c_down}]`,
-                      },
-                      {
-                        field: 'h_down',
-                        index: 0,
-                        label: `h Down [${fieldUnits.h_down}]`,
-                      },
-                      ...(isotropyOption === 'isotropy'
-                        ? [
-                            {
-                              field: 'eta_down',
-                              index: 0,
-                              label: `Eta Down ${
-                                fieldUnits.eta_down ? `[${fieldUnits.eta_down}]` : ''
-                              }`,
-                            },
-                          ]
-                        : []),
-                      {
-                        field: 'n_al',
-                        label: `Refractive Index (n) ${fieldUnits.n_al ? `[${fieldUnits.n_al}]` : ''}`,
-                      },
-                      {
-                        field: 'k_al',
-                        label: `Imaginary Index (k) ${fieldUnits.k_al ? `[${fieldUnits.k_al}]` : ''}`,
-                      },
-                      ...(isotropyOption === 'anisotropy'
-                        ? [
-                            { field: 'rho', label: `Rho [${fieldUnits.rho}]` },
-                            {
-                              field: 'alphaT',
-                              label: `Alpha T [${fieldUnits.alphaT}]`,
-                            },
-                            { field: 'C11_0', label: `C11 [${fieldUnits.C11_0}]` },
-                            { field: 'C12_0', label: `C12 [${fieldUnits.C12_0}]` },
-                            { field: 'C44_0', label: `C44 [${fieldUnits.C44_0}]` },
-                          ]
-                        : []),
-                    ].map((param) => (
-                      <div
-                        key={`${param.field}${param.index ?? ''}`}
-                        className="mb-2 flex flex-col"
-                      >
-                        <label className="mb-1 text-sm text-white">{param.label}</label>
-                        <input
-                          type="number"
-                          step="any"
-                          value={
-                            param.index !== undefined
-                              ? params[param.field as keyof FDPBDParams][param.index]
-                              : params[param.field as keyof FDPBDParams]
-                          }
-                          onChange={(e) =>
-                            handleInputChange(e, param.field as keyof FDPBDParams, param.index)
-                          }
-                          className={`rounded border-2 bg-gray-800 p-2 text-white focus:outline-none ${
-                            isValidDecimal(
-                              param.index !== undefined
-                                ? params[param.field as keyof FDPBDParams][param.index]
-                                : params[param.field as keyof FDPBDParams]
-                            )
-                              ? 'border-gray-600 focus:border-teal-500'
-                              : 'border-red-500'
-                          }`}
-                          disabled={isProcessing}
-                          required
-                        />
-                      </div>
-                    ))}
-                  </div>
-                  {/* Interface Layer */}
-                  {isotropyOption === 'isotropy' && (
-                    <div className="mb-4 rounded-lg bg-gray-700 p-4">
-                      <h4 className="mb-2 text-sm font-semibold text-white">Interface Layer</h4>
-                      {[
-                        {
-                          field: 'lambda_down',
-                          index: 1,
-                          label: `Lambda Down [${fieldUnits.lambda_down}]`,
-                        },
-                        {
-                          field: 'c_down',
-                          index: 1,
-                          label: `C Down [${fieldUnits.c_down}]`,
-                        },
-                        {
-                          field: 'h_down',
-                          index: 1,
-                          label: `h Down [${fieldUnits.h_down}]`,
-                        },
-                        {
-                          field: 'eta_down',
-                          index: 1,
-                          label: `Eta Down ${fieldUnits.eta_down ? `[${fieldUnits.eta_down}]` : ''}`,
-                        },
-                      ].map((param) => (
-                        <div key={`${param.field}${param.index}`} className="mb-2 flex flex-col">
-                          <label className="mb-1 text-sm text-white">{param.label}</label>
-                          <input
-                            type="number"
-                            step="any"
-                            value={params[param.field as keyof FDPBDParams][param.index]}
-                            onChange={(e) =>
-                              handleInputChange(e, param.field as keyof FDPBDParams, param.index)
-                            }
-                            className={`rounded border-2 bg-gray-800 p-2 text-white focus:outline-none ${
-                              isValidDecimal(params[param.field as keyof FDPBDParams][param.index])
-                                ? 'border-gray-600 focus:border-teal-500'
-                                : 'border-red-500'
-                            }`}
-                            disabled={isProcessing}
-                            required
-                          />
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                  {/* Sample Layer */}
-                  <div className="mb-4 rounded-lg bg-gray-700 p-4">
-                    <h4 className="mb-2 text-sm font-semibold text-white">Sample Layer</h4>
-                    {[
-                      ...(isotropyOption === 'isotropy'
-                        ? [
-                            {
-                              field: 'lambda_down',
-                              index: 2,
-                              label: `Lambda Down [${fieldUnits.lambda_down}]`,
-                            },
-                            {
-                              field: 'c_down',
-                              index: 2,
-                              label: `C Down [${fieldUnits.c_down}]`,
-                            },
-                            {
-                              field: 'h_down',
-                              index: 2,
-                              label: `h Down [${fieldUnits.h_down}]`,
-                            },
-                            {
-                              field: 'eta_down',
-                              index: 2,
-                              label: `Eta Down ${
-                                fieldUnits.eta_down ? `[${fieldUnits.eta_down}]` : ''
-                              }`,
-                            },
-                            {
-                              field: 'alpha_t',
-                              label: `Alpha T [${fieldUnits.alpha_t}]`,
-                            },
-                            {
-                              field: 'niu',
-                              label: `Niu ${fieldUnits.niu ? `[${fieldUnits.niu}]` : ''}`,
-                            },
-                          ]
-                        : [
-                            {
-                              field: 'lambda_down_x_sample',
-                              label: `Lambda Down X [${fieldUnits.lambda_down_x_sample}]`,
-                            },
-                            {
-                              field: 'lambda_down_y_sample',
-                              label: `Lambda Down Y [${fieldUnits.lambda_down_y_sample}]`,
-                            },
-                            {
-                              field: 'lambda_down_z_sample',
-                              label: `Lambda Down Z [${fieldUnits.lambda_down_z_sample}]`,
-                            },
-                            {
-                              field: 'c_down',
-                              index: 2,
-                              label: `C Down [${fieldUnits.c_down}]`,
-                            },
-                            {
-                              field: 'rho_sample',
-                              label: `Rho [${fieldUnits.rho_sample}]`,
-                            },
-                            {
-                              field: 'C11_0_sample',
-                              label: `C11 [${fieldUnits.C11_0_sample}]`,
-                            },
-                            {
-                              field: 'C12_0_sample',
-                              label: `C12 [${fieldUnits.C12_0_sample}]`,
-                            },
-                            {
-                              field: 'C13_0_sample',
-                              label: `C13 [${fieldUnits.C13_0_sample}]`,
-                            },
-                            {
-                              field: 'C33_0_sample',
-                              label: `C33 [${fieldUnits.C33_0_sample}]`,
-                            },
-                            {
-                              field: 'C44_0_sample',
-                              label: `C44 [${fieldUnits.C44_0_sample}]`,
-                            },
-                            {
-                              field: 'alphaT_perp',
-                              label: `Alpha T Perpendicular [${fieldUnits.alphaT_perp}]`,
-                            },
-                            {
-                              field: 'alphaT_para',
-                              label: `Alpha T Parallel [${fieldUnits.alphaT_para}]`,
-                            },
-                          ]),
-                    ].map((param) => (
-                      <div
-                        key={`${param.field}${param.index ?? ''}`}
-                        className="mb-2 flex flex-col"
-                      >
-                        <label className="mb-1 text-sm text-white">{param.label}</label>
-                        <input
-                          type="number"
-                          step="any"
-                          value={
-                            param.index !== undefined
-                              ? params[param.field as keyof FDPBDParams][param.index]
-                              : params[param.field as keyof FDPBDParams]
-                          }
-                          onChange={(e) =>
-                            handleInputChange(e, param.field as keyof FDPBDParams, param.index)
-                          }
-                          className={`rounded border-2 bg-gray-800 p-2 text-white focus:outline-none ${
-                            isValidDecimal(
-                              param.index !== undefined
-                                ? params[param.field as keyof FDPBDParams][param.index]
-                                : params[param.field as keyof FDPBDParams]
-                            )
-                              ? 'border-gray-600 focus:border-teal-500'
-                              : 'border-red-500'
-                          }`}
-                          disabled={isProcessing}
-                          required
-                        />
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </>
-            )}
-
-            {/* Transverse Anisotropy form fields */}
-            {isotropyOption === 'transverse_anisotropy' && (
-              <>
-                <div className="mb-6">
-                  <h3 className="text-md mb-2 font-semibold text-white">Experimental Inputs</h3>
-                  {/* Lens Magnification */}
-                  <div className="mb-4 rounded-lg bg-gray-700 p-4">
-                    <h4 className="mb-2 text-sm font-semibold text-white">Lens Magnification</h4>
-                    <div className="mb-2 flex space-x-4">
-                      {['5x', '10x', '20x', 'custom'].map((opt) => (
-                        <label key={opt} className="flex items-center text-white">
-                          <input
-                            type="radio"
-                            name="lens_transverse"
-                            value={opt}
-                            checked={lensOption === opt}
-                            onChange={() =>
-                              handleLensOptionChange(opt as '5x' | '10x' | '20x' | 'custom')
-                            }
-                            className="mr-2"
-                            disabled={isProcessing}
-                          />
-                          {opt}
-                        </label>
-                      ))}
-                    </div>
-                    {[
-                      { field: 'w_rms', label: `W RMS [${fieldUnits.w_rms}]` },
-                      { field: 'x_offset', label: `X Offset [${fieldUnits.x_offset}]` },
-                      { field: 'lens_transmittance', label: 'Lens Transmittance' },
-                      {
-                        field: 'detector_factor',
-                        label: `Detector Factor [${fieldUnits.detector_factor}]`,
-                      },
-                      { field: 'v_sum_fixed', label: `V Sum Fixed [${fieldUnits.v_sum_fixed}]` },
-                      { field: 'c_probe', label: 'C Probe' },
-                    ].map((param) => (
-                      <div key={param.field} className="mb-2 flex flex-col">
-                        <label className="mb-1 text-sm text-white">{param.label}</label>
-                        <input
-                          type="number"
-                          step="any"
-                          value={params[param.field as keyof FDPBDParams]}
-                          onChange={(e) => handleInputChange(e, param.field as keyof FDPBDParams)}
-                          className={`rounded border-2 bg-gray-800 p-2 text-white focus:outline-none ${
-                            isValidDecimal(params[param.field as keyof FDPBDParams])
-                              ? 'border-gray-600 focus:border-teal-500'
-                              : 'border-red-500'
-                          }`}
-                          disabled={isProcessing}
-                          required
-                        />
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* Laser */}
-                  <div className="mb-4 rounded-lg bg-gray-700 p-4">
-                    <h4 className="mb-2 text-sm font-semibold text-white">Laser</h4>
-                    <div className="mb-2 flex space-x-4">
-                      {['TOPS 1', 'TOPS 2', 'custom'].map((opt) => (
-                        <label key={opt} className="flex items-center text-white">
-                          <input
-                            type="radio"
-                            name="laser_transverse"
-                            value={opt}
-                            checked={laserOption === opt}
-                            onChange={() =>
-                              handleLaserOptionChange(opt as 'TOPS 1' | 'TOPS 2' | 'custom')
-                            }
-                            className="mr-2"
-                            disabled={isProcessing}
-                          />
-                          {opt}
-                        </label>
-                      ))}
-                    </div>
-                    {[
-                      { field: 'f_rolloff', label: `f Rolloff [${fieldUnits.f_rolloff}]` },
-                      { field: 'delay_1', label: `Dwell 1 [${fieldUnits.delay_1}]` },
-                      { field: 'delay_2', label: `Dwell 2 [${fieldUnits.delay_2}]` },
-                      {
-                        field: 'incident_pump',
-                        label: `Incident Pump [${fieldUnits.incident_pump}]`,
-                      },
-                    ].map((param) => (
-                      <div key={param.field} className="mb-2 flex flex-col">
-                        <label className="mb-1 text-sm text-white">{param.label}</label>
-                        <input
-                          type="number"
-                          step="any"
-                          value={params[param.field as keyof FDPBDParams]}
-                          onChange={(e) => handleInputChange(e, param.field as keyof FDPBDParams)}
-                          className={`rounded border-2 bg-gray-800 p-2 text-white focus:outline-none ${
-                            isValidDecimal(params[param.field as keyof FDPBDParams])
-                              ? 'border-gray-600 focus:border-teal-500'
-                              : 'border-red-500'
-                          }`}
-                          disabled={isProcessing}
-                          required
-                        />
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Sample Inputs */}
-                <div className="mb-6">
-                  <h3 className="text-md mb-2 font-semibold text-white">Sample Inputs</h3>
-
-                  {/* Medium (Air / Layer 3) */}
-                  <div className="mb-4 rounded-lg bg-gray-700 p-4">
-                    <h4 className="mb-2 text-sm font-semibold text-white">Medium</h4>
-                    <div className="mb-2 flex space-x-4">
-                      {['air', 'custom'].map((opt) => (
-                        <label key={opt} className="flex items-center text-white">
-                          <input
-                            type="radio"
-                            name="medium_transverse"
-                            value={opt}
-                            checked={mediumOption === opt}
-                            onChange={() => handleMediumOptionChange(opt as 'air' | 'custom')}
-                            className="mr-2"
-                            disabled={isProcessing}
-                          />
-                          {opt}
-                        </label>
-                      ))}
-                    </div>
-                    {[
-                      {
-                        field: 'lambda_up',
-                        label: `Thermal Conductivity [${fieldUnits.lambda_up}]`,
-                      },
-                      { field: 'c_up', label: `Heat Capacity [${fieldUnits.c_up}]` },
-                    ].map((param) => (
-                      <div key={param.field} className="mb-2 flex flex-col">
-                        <label className="mb-1 text-sm text-white">{param.label}</label>
-                        <input
-                          type="number"
-                          step="any"
-                          value={params[param.field as keyof FDPBDParams]}
-                          onChange={(e) => handleInputChange(e, param.field as keyof FDPBDParams)}
-                          className={`rounded border-2 bg-gray-800 p-2 text-white focus:outline-none ${
-                            isValidDecimal(params[param.field as keyof FDPBDParams])
-                              ? 'border-gray-600 focus:border-teal-500'
-                              : 'border-red-500'
-                          }`}
-                          disabled={isProcessing}
-                          required
-                        />
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* Transducer Layer (Al Film / Layer 1) */}
-                  <div className="mb-4 rounded-lg bg-gray-700 p-4">
-                    <h4 className="mb-2 text-sm font-semibold text-white">
-                      Transducer Layer (Al Film)
-                    </h4>
-                    {[
-                      {
-                        field: 'lambda_down',
-                        index: 0,
-                        label: `Thermal Conductivity [${fieldUnits.lambda_down}]`,
-                      },
-                      { field: 'c_down', index: 0, label: `Heat Capacity [${fieldUnits.c_down}]` },
-                      { field: 'h_down', index: 0, label: `Thickness [${fieldUnits.h_down}]` },
-                      { field: 'n_al', label: 'Refractive Index (n)' },
-                      { field: 'k_al', label: 'Imaginary Index (k)' },
-                      { field: 'rho', label: `Density [${fieldUnits.rho}]` },
-                      { field: 'alphaT', label: `CTE [${fieldUnits.alphaT}]` },
-                      { field: 'C11_0', label: `C11 [${fieldUnits.C11_0}]` },
-                      { field: 'C12_0', label: `C12 [${fieldUnits.C12_0}]` },
-                      { field: 'C44_0', label: `C44 [${fieldUnits.C44_0}]` },
-                      {
-                        field: 'g_int',
-                        label: `Thermal Boundary Conductance [${fieldUnits.g_int}]`,
-                      },
-                    ].map((param) => (
-                      <div
-                        key={`${param.field}${param.index ?? ''}`}
-                        className="mb-2 flex flex-col"
-                      >
-                        <label className="mb-1 text-sm text-white">{param.label}</label>
-                        <input
-                          type="number"
-                          step="any"
-                          value={
-                            param.index !== undefined
-                              ? params[param.field as keyof FDPBDParams][param.index]
-                              : params[param.field as keyof FDPBDParams]
-                          }
-                          onChange={(e) =>
-                            handleInputChange(e, param.field as keyof FDPBDParams, param.index)
-                          }
-                          className={`rounded border-2 bg-gray-800 p-2 text-white focus:outline-none ${
-                            isValidDecimal(
-                              param.index !== undefined
-                                ? params[param.field as keyof FDPBDParams][param.index]
-                                : params[param.field as keyof FDPBDParams]
-                            )
-                              ? 'border-gray-600 focus:border-teal-500'
-                              : 'border-red-500'
-                          }`}
-                          disabled={isProcessing}
-                          required
-                        />
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* Sample Layer (Bulk / Layer 2) */}
-                  <div className="mb-4 rounded-lg bg-gray-700 p-4">
-                    <h4 className="mb-2 text-sm font-semibold text-white">Sample Layer (Bulk)</h4>
-                    {[
-                      {
-                        field: 'lambda_down_x_sample',
-                        label: `In-plane Conductivity [${fieldUnits.lambda_down_x_sample}]`,
-                      },
-                      {
-                        field: 'lambda_down_z_sample',
-                        label: `Through-plane Conductivity [${fieldUnits.lambda_down_z_sample}]`,
-                      },
-                      { field: 'c_down', index: 2, label: `Heat Capacity [${fieldUnits.c_down}]` },
-                      { field: 'rho_sample', label: `Density [${fieldUnits.rho_sample}]` },
-                      { field: 'alphaT_perp', label: `CTE In-plane [${fieldUnits.alphaT_perp}]` },
-                      {
-                        field: 'alphaT_para',
-                        label: `CTE Through-plane [${fieldUnits.alphaT_para}]`,
-                      },
-                      { field: 'C11_0_sample', label: `C11 [${fieldUnits.C11_0_sample}]` },
-                      { field: 'C12_0_sample', label: `C12 [${fieldUnits.C12_0_sample}]` },
-                      { field: 'C13_0_sample', label: `C13 [${fieldUnits.C13_0_sample}]` },
-                      { field: 'C33_0_sample', label: `C33 [${fieldUnits.C33_0_sample}]` },
-                      { field: 'C44_0_sample', label: `C44 [${fieldUnits.C44_0_sample}]` },
-                    ].map((param) => (
-                      <div
-                        key={`${param.field}${param.index ?? ''}`}
-                        className="mb-2 flex flex-col"
-                      >
-                        <label className="mb-1 text-sm text-white">{param.label}</label>
-                        <input
-                          type="number"
-                          step="any"
-                          value={
-                            param.index !== undefined
-                              ? params[param.field as keyof FDPBDParams][param.index]
-                              : params[param.field as keyof FDPBDParams]
-                          }
-                          onChange={(e) =>
-                            handleInputChange(e, param.field as keyof FDPBDParams, param.index)
-                          }
-                          className={`rounded border-2 bg-gray-800 p-2 text-white focus:outline-none ${
-                            isValidDecimal(
-                              param.index !== undefined
-                                ? params[param.field as keyof FDPBDParams][param.index]
-                                : params[param.field as keyof FDPBDParams]
-                            )
-                              ? 'border-gray-600 focus:border-teal-500'
-                              : 'border-red-500'
-                          }`}
-                          disabled={isProcessing}
-                          required
-                        />
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </>
-            )}
-
-            {/* Buttons */}
-            <div className="flex space-x-4">
+            {/* Tab Bar */}
+            <div className="flex border-b border-gray-600">
               <button
-                onClick={handleSubmit}
-                disabled={isProcessing || isFitting || !isFormValid()}
-                className={`flex-1 rounded py-2 text-white ${
-                  isProcessing || isFitting || !isFormValid()
-                    ? 'cursor-not-allowed bg-gray-600'
-                    : 'bg-teal-500 hover:bg-teal-600'
+                onClick={() => setActiveTab('forward')}
+                className={`flex-1 py-2 text-sm font-medium transition-colors ${
+                  activeTab === 'forward'
+                    ? 'border-b-2 border-teal-500 text-teal-400'
+                    : 'text-gray-400 hover:text-gray-200'
                 }`}
               >
-                {isProcessing ? 'Processing...' : 'Run Analysis'}
+                Forward Model
               </button>
-              <button
-                onClick={handleClear}
-                className="flex-1 rounded bg-gray-500 py-2 text-white hover:bg-gray-600"
-                disabled={isProcessing}
-              >
-                Clear
-              </button>
+              {isotropyOption !== 'isotropy' && (
+                <button
+                  onClick={() => setActiveTab('fitting')}
+                  className={`flex-1 py-2 text-sm font-medium transition-colors ${
+                    activeTab === 'fitting'
+                      ? 'border-b-2 border-orange-500 text-orange-400'
+                      : 'text-gray-400 hover:text-gray-200'
+                  }`}
+                >
+                  DE Fitting
+                </button>
+              )}
             </div>
-            {status && (
-              <p
-                className={`mt-2 text-sm ${
-                  status.includes('Error') ? 'text-red-400' : 'text-green-400'
-                }`}
-              >
-                {status}
-              </p>
+          </div>
+
+          {/* Scrollable Content Area */}
+          <div className="flex-1 overflow-y-auto bg-gray-800 px-4 pb-2">
+            {/* Forward Model Tab */}
+            {activeTab === 'forward' && (
+              <div className="pt-4">
+                {/* Isotropy/Anisotropy form fields */}
+                {isotropyOption !== 'transverse_anisotropy' && (
+                  <>
+                    {/* Experimental Inputs */}
+                    <div className="mb-6">
+                      <h3 className="text-md mb-2 font-semibold text-white">Experimental Inputs</h3>
+                      {/* Lens Magnification */}
+                      <div className="mb-4 rounded-lg bg-gray-700">
+                        <button
+                          onClick={() => toggleSection('lens')}
+                          className="flex w-full items-center justify-between p-4 text-left"
+                        >
+                          <h4 className="text-sm font-semibold text-white">Lens Magnification</h4>
+                          <span
+                            className={`text-gray-400 transition-transform ${collapsedSections.has('lens') ? '' : 'rotate-180'}`}
+                          >
+                            &#9650;
+                          </span>
+                        </button>
+                        {!collapsedSections.has('lens') && (
+                          <div className="px-4 pb-4">
+                            <div className="mb-2 flex space-x-4">
+                              {['5x', '10x', '20x', 'custom'].map((opt) => (
+                                <label key={opt} className="flex items-center text-white">
+                                  <input
+                                    type="radio"
+                                    name="lens"
+                                    value={opt}
+                                    checked={lensOption === opt}
+                                    onChange={() =>
+                                      handleLensOptionChange(opt as '5x' | '10x' | '20x' | 'custom')
+                                    }
+                                    className="mr-2"
+                                    disabled={isProcessing}
+                                  />
+                                  {opt}
+                                </label>
+                              ))}
+                            </div>
+                            {[
+                              { field: 'w_rms', label: `W RMS [${fieldUnits.w_rms}]` },
+                              {
+                                field: 'x_offset',
+                                label: `X Offset [${fieldUnits.x_offset}]`,
+                              },
+                              {
+                                field: 'lens_transmittance',
+                                label: `Lens Transmittance ${
+                                  fieldUnits.lens_transmittance
+                                    ? `[${fieldUnits.lens_transmittance}]`
+                                    : ''
+                                }`,
+                              },
+                              {
+                                field: 'detector_factor',
+                                label: `Detector Factor [${fieldUnits.detector_factor}]`,
+                              },
+                              ...(isotropyOption === 'anisotropy'
+                                ? [{ field: 'phi', label: `Phi [${fieldUnits.phi}]` }]
+                                : []),
+                            ].map((param) => (
+                              <div key={param.field} className="mb-2 flex flex-col">
+                                <label className="mb-1 text-sm text-white">{param.label}</label>
+                                <input
+                                  type="number"
+                                  step="any"
+                                  value={params[param.field as keyof FDPBDParams]}
+                                  onChange={(e) =>
+                                    handleInputChange(e, param.field as keyof FDPBDParams)
+                                  }
+                                  className={`rounded border-2 bg-gray-800 p-2 text-white focus:outline-none ${
+                                    isValidDecimal(params[param.field as keyof FDPBDParams])
+                                      ? 'border-gray-600 focus:border-teal-500'
+                                      : 'border-red-500'
+                                  }`}
+                                  disabled={isProcessing}
+                                  required
+                                />
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                      {/* Laser */}
+                      <div className="rounded-lg bg-gray-700">
+                        <button
+                          onClick={() => toggleSection('laser')}
+                          className="flex w-full items-center justify-between p-4 text-left"
+                        >
+                          <h4 className="text-sm font-semibold text-white">Laser</h4>
+                          <span
+                            className={`text-gray-400 transition-transform ${collapsedSections.has('laser') ? '' : 'rotate-180'}`}
+                          >
+                            &#9650;
+                          </span>
+                        </button>
+                        {!collapsedSections.has('laser') && (
+                          <div className="px-4 pb-4">
+                            <div className="mb-2 flex space-x-4">
+                              {['TOPS 1', 'TOPS 2', 'custom'].map((opt) => (
+                                <label key={opt} className="flex items-center text-white">
+                                  <input
+                                    type="radio"
+                                    name="laser"
+                                    value={opt}
+                                    checked={laserOption === opt}
+                                    onChange={() =>
+                                      handleLaserOptionChange(opt as 'TOPS 1' | 'TOPS 2' | 'custom')
+                                    }
+                                    className="mr-2"
+                                    disabled={isProcessing}
+                                  />
+                                  {opt}
+                                </label>
+                              ))}
+                            </div>
+                            {[
+                              {
+                                field: 'f_rolloff',
+                                label: `f Rolloff [${fieldUnits.f_rolloff}]`,
+                              },
+                              {
+                                field: 'delay_1',
+                                label: `Dwell 1 [${fieldUnits.delay_1}]`,
+                              },
+                              {
+                                field: 'delay_2',
+                                label: `Dwell 2 [${fieldUnits.delay_2}]`,
+                              },
+                              {
+                                field: 'incident_pump',
+                                label: `Incident Pump [${fieldUnits.incident_pump}]`,
+                              },
+                              {
+                                field: 'incident_probe',
+                                label: `Incident Probe [${fieldUnits.incident_probe}]`,
+                              },
+                            ].map((param) => (
+                              <div key={param.field} className="mb-2 flex flex-col">
+                                <label className="mb-1 text-sm text-white">{param.label}</label>
+                                <input
+                                  type="number"
+                                  step="any"
+                                  value={params[param.field as keyof FDPBDParams]}
+                                  onChange={(e) =>
+                                    handleInputChange(e, param.field as keyof FDPBDParams)
+                                  }
+                                  className={`rounded border-2 bg-gray-800 p-2 text-white focus:outline-none ${
+                                    isValidDecimal(params[param.field as keyof FDPBDParams])
+                                      ? 'border-gray-600 focus:border-teal-500'
+                                      : 'border-red-500'
+                                  }`}
+                                  disabled={isProcessing}
+                                  required
+                                />
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Sample Inputs */}
+                    <div className="mb-6">
+                      <h3 className="text-md mb-2 font-semibold text-white">Sample Inputs</h3>
+                      {/* Medium */}
+                      <div className="mb-4 rounded-lg bg-gray-700">
+                        <button
+                          onClick={() => toggleSection('medium')}
+                          className="flex w-full items-center justify-between p-4 text-left"
+                        >
+                          <h4 className="text-sm font-semibold text-white">Medium</h4>
+                          <span
+                            className={`text-gray-400 transition-transform ${collapsedSections.has('medium') ? '' : 'rotate-180'}`}
+                          >
+                            &#9650;
+                          </span>
+                        </button>
+                        {!collapsedSections.has('medium') && (
+                          <div className="px-4 pb-4">
+                            <div className="mb-2 flex space-x-4">
+                              {['air', 'custom'].map((opt) => (
+                                <label key={opt} className="flex items-center text-white">
+                                  <input
+                                    type="radio"
+                                    name="medium"
+                                    value={opt}
+                                    checked={mediumOption === opt}
+                                    onChange={() =>
+                                      handleMediumOptionChange(opt as 'air' | 'custom')
+                                    }
+                                    className="mr-2"
+                                    disabled={isProcessing}
+                                  />
+                                  {opt}
+                                </label>
+                              ))}
+                            </div>
+                            {[
+                              {
+                                field: 'lambda_up',
+                                label: `Lambda Up [${fieldUnits.lambda_up}]`,
+                              },
+                              { field: 'c_up', label: `C Up [${fieldUnits.c_up}]` },
+                              ...(isotropyOption === 'isotropy'
+                                ? [
+                                    {
+                                      field: 'eta_up',
+                                      label: `Eta Up ${fieldUnits.eta_up ? `[${fieldUnits.eta_up}]` : ''}`,
+                                    },
+                                    { field: 'h_up', label: `H Up [${fieldUnits.h_up}]` },
+                                  ]
+                                : []),
+                            ].map((param) => (
+                              <div key={param.field} className="mb-2 flex flex-col">
+                                <label className="mb-1 text-sm text-white">{param.label}</label>
+                                <input
+                                  type="number"
+                                  step="any"
+                                  value={params[param.field as keyof FDPBDParams]}
+                                  onChange={(e) =>
+                                    handleInputChange(e, param.field as keyof FDPBDParams)
+                                  }
+                                  className={`rounded border-2 bg-gray-800 p-2 text-white focus:outline-none ${
+                                    isValidDecimal(params[param.field as keyof FDPBDParams])
+                                      ? 'border-gray-600 focus:border-teal-500'
+                                      : 'border-red-500'
+                                  }`}
+                                  disabled={isProcessing}
+                                  required
+                                />
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                      {/* Transducer Layer */}
+                      <div className="mb-4 rounded-lg bg-gray-700">
+                        <button
+                          onClick={() => toggleSection('transducer')}
+                          className="flex w-full items-center justify-between p-4 text-left"
+                        >
+                          <h4 className="text-sm font-semibold text-white">Transducer Layer</h4>
+                          <span
+                            className={`text-gray-400 transition-transform ${collapsedSections.has('transducer') ? '' : 'rotate-180'}`}
+                          >
+                            &#9650;
+                          </span>
+                        </button>
+                        {!collapsedSections.has('transducer') && (
+                          <div className="px-4 pb-4">
+                            {[
+                              {
+                                field: 'lambda_down',
+                                index: 0,
+                                label: `Lambda Down [${fieldUnits.lambda_down}]`,
+                              },
+                              {
+                                field: 'c_down',
+                                index: 0,
+                                label: `C Down [${fieldUnits.c_down}]`,
+                              },
+                              {
+                                field: 'h_down',
+                                index: 0,
+                                label: `h Down [${fieldUnits.h_down}]`,
+                              },
+                              ...(isotropyOption === 'isotropy'
+                                ? [
+                                    {
+                                      field: 'eta_down',
+                                      index: 0,
+                                      label: `Eta Down ${
+                                        fieldUnits.eta_down ? `[${fieldUnits.eta_down}]` : ''
+                                      }`,
+                                    },
+                                  ]
+                                : []),
+                              {
+                                field: 'n_al',
+                                label: `Refractive Index (n) ${fieldUnits.n_al ? `[${fieldUnits.n_al}]` : ''}`,
+                              },
+                              {
+                                field: 'k_al',
+                                label: `Imaginary Index (k) ${fieldUnits.k_al ? `[${fieldUnits.k_al}]` : ''}`,
+                              },
+                              ...(isotropyOption === 'anisotropy'
+                                ? [
+                                    { field: 'rho', label: `Rho [${fieldUnits.rho}]` },
+                                    {
+                                      field: 'alphaT',
+                                      label: `Alpha T [${fieldUnits.alphaT}]`,
+                                    },
+                                    { field: 'C11_0', label: `C11 [${fieldUnits.C11_0}]` },
+                                    { field: 'C12_0', label: `C12 [${fieldUnits.C12_0}]` },
+                                    { field: 'C44_0', label: `C44 [${fieldUnits.C44_0}]` },
+                                  ]
+                                : []),
+                            ].map((param) => (
+                              <div
+                                key={`${param.field}${param.index ?? ''}`}
+                                className="mb-2 flex flex-col"
+                              >
+                                <label className="mb-1 text-sm text-white">{param.label}</label>
+                                <input
+                                  type="number"
+                                  step="any"
+                                  value={
+                                    param.index !== undefined
+                                      ? params[param.field as keyof FDPBDParams][param.index]
+                                      : params[param.field as keyof FDPBDParams]
+                                  }
+                                  onChange={(e) =>
+                                    handleInputChange(
+                                      e,
+                                      param.field as keyof FDPBDParams,
+                                      param.index
+                                    )
+                                  }
+                                  className={`rounded border-2 bg-gray-800 p-2 text-white focus:outline-none ${
+                                    isValidDecimal(
+                                      param.index !== undefined
+                                        ? params[param.field as keyof FDPBDParams][param.index]
+                                        : params[param.field as keyof FDPBDParams]
+                                    )
+                                      ? 'border-gray-600 focus:border-teal-500'
+                                      : 'border-red-500'
+                                  }`}
+                                  disabled={isProcessing}
+                                  required
+                                />
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                      {/* Interface Layer */}
+                      {isotropyOption === 'isotropy' && (
+                        <div className="mb-4 rounded-lg bg-gray-700">
+                          <button
+                            onClick={() => toggleSection('interface')}
+                            className="flex w-full items-center justify-between p-4 text-left"
+                          >
+                            <h4 className="text-sm font-semibold text-white">Interface Layer</h4>
+                            <span
+                              className={`text-gray-400 transition-transform ${collapsedSections.has('interface') ? '' : 'rotate-180'}`}
+                            >
+                              &#9650;
+                            </span>
+                          </button>
+                          {!collapsedSections.has('interface') && (
+                            <div className="px-4 pb-4">
+                              {[
+                                {
+                                  field: 'lambda_down',
+                                  index: 1,
+                                  label: `Lambda Down [${fieldUnits.lambda_down}]`,
+                                },
+                                {
+                                  field: 'c_down',
+                                  index: 1,
+                                  label: `C Down [${fieldUnits.c_down}]`,
+                                },
+                                {
+                                  field: 'h_down',
+                                  index: 1,
+                                  label: `h Down [${fieldUnits.h_down}]`,
+                                },
+                                {
+                                  field: 'eta_down',
+                                  index: 1,
+                                  label: `Eta Down ${fieldUnits.eta_down ? `[${fieldUnits.eta_down}]` : ''}`,
+                                },
+                              ].map((param) => (
+                                <div
+                                  key={`${param.field}${param.index}`}
+                                  className="mb-2 flex flex-col"
+                                >
+                                  <label className="mb-1 text-sm text-white">{param.label}</label>
+                                  <input
+                                    type="number"
+                                    step="any"
+                                    value={params[param.field as keyof FDPBDParams][param.index]}
+                                    onChange={(e) =>
+                                      handleInputChange(
+                                        e,
+                                        param.field as keyof FDPBDParams,
+                                        param.index
+                                      )
+                                    }
+                                    className={`rounded border-2 bg-gray-800 p-2 text-white focus:outline-none ${
+                                      isValidDecimal(
+                                        params[param.field as keyof FDPBDParams][param.index]
+                                      )
+                                        ? 'border-gray-600 focus:border-teal-500'
+                                        : 'border-red-500'
+                                    }`}
+                                    disabled={isProcessing}
+                                    required
+                                  />
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                      {/* Sample Layer */}
+                      <div className="mb-4 rounded-lg bg-gray-700">
+                        <button
+                          onClick={() => toggleSection('sample')}
+                          className="flex w-full items-center justify-between p-4 text-left"
+                        >
+                          <h4 className="text-sm font-semibold text-white">Sample Layer</h4>
+                          <span
+                            className={`text-gray-400 transition-transform ${collapsedSections.has('sample') ? '' : 'rotate-180'}`}
+                          >
+                            &#9650;
+                          </span>
+                        </button>
+                        {!collapsedSections.has('sample') && (
+                          <div className="px-4 pb-4">
+                            {[
+                              ...(isotropyOption === 'isotropy'
+                                ? [
+                                    {
+                                      field: 'lambda_down',
+                                      index: 2,
+                                      label: `Lambda Down [${fieldUnits.lambda_down}]`,
+                                    },
+                                    {
+                                      field: 'c_down',
+                                      index: 2,
+                                      label: `C Down [${fieldUnits.c_down}]`,
+                                    },
+                                    {
+                                      field: 'h_down',
+                                      index: 2,
+                                      label: `h Down [${fieldUnits.h_down}]`,
+                                    },
+                                    {
+                                      field: 'eta_down',
+                                      index: 2,
+                                      label: `Eta Down ${
+                                        fieldUnits.eta_down ? `[${fieldUnits.eta_down}]` : ''
+                                      }`,
+                                    },
+                                    {
+                                      field: 'alpha_t',
+                                      label: `Alpha T [${fieldUnits.alpha_t}]`,
+                                    },
+                                    {
+                                      field: 'niu',
+                                      label: `Niu ${fieldUnits.niu ? `[${fieldUnits.niu}]` : ''}`,
+                                    },
+                                  ]
+                                : [
+                                    {
+                                      field: 'lambda_down_x_sample',
+                                      label: `Lambda Down X [${fieldUnits.lambda_down_x_sample}]`,
+                                    },
+                                    {
+                                      field: 'lambda_down_y_sample',
+                                      label: `Lambda Down Y [${fieldUnits.lambda_down_y_sample}]`,
+                                    },
+                                    {
+                                      field: 'lambda_down_z_sample',
+                                      label: `Lambda Down Z [${fieldUnits.lambda_down_z_sample}]`,
+                                    },
+                                    {
+                                      field: 'c_down',
+                                      index: 2,
+                                      label: `C Down [${fieldUnits.c_down}]`,
+                                    },
+                                    {
+                                      field: 'rho_sample',
+                                      label: `Rho [${fieldUnits.rho_sample}]`,
+                                    },
+                                    {
+                                      field: 'C11_0_sample',
+                                      label: `C11 [${fieldUnits.C11_0_sample}]`,
+                                    },
+                                    {
+                                      field: 'C12_0_sample',
+                                      label: `C12 [${fieldUnits.C12_0_sample}]`,
+                                    },
+                                    {
+                                      field: 'C13_0_sample',
+                                      label: `C13 [${fieldUnits.C13_0_sample}]`,
+                                    },
+                                    {
+                                      field: 'C33_0_sample',
+                                      label: `C33 [${fieldUnits.C33_0_sample}]`,
+                                    },
+                                    {
+                                      field: 'C44_0_sample',
+                                      label: `C44 [${fieldUnits.C44_0_sample}]`,
+                                    },
+                                    {
+                                      field: 'alphaT_perp',
+                                      label: `Alpha T Perpendicular [${fieldUnits.alphaT_perp}]`,
+                                    },
+                                    {
+                                      field: 'alphaT_para',
+                                      label: `Alpha T Parallel [${fieldUnits.alphaT_para}]`,
+                                    },
+                                  ]),
+                            ].map((param) => (
+                              <div
+                                key={`${param.field}${param.index ?? ''}`}
+                                className="mb-2 flex flex-col"
+                              >
+                                <label className="mb-1 text-sm text-white">{param.label}</label>
+                                <input
+                                  type="number"
+                                  step="any"
+                                  value={
+                                    param.index !== undefined
+                                      ? params[param.field as keyof FDPBDParams][param.index]
+                                      : params[param.field as keyof FDPBDParams]
+                                  }
+                                  onChange={(e) =>
+                                    handleInputChange(
+                                      e,
+                                      param.field as keyof FDPBDParams,
+                                      param.index
+                                    )
+                                  }
+                                  className={`rounded border-2 bg-gray-800 p-2 text-white focus:outline-none ${
+                                    isValidDecimal(
+                                      param.index !== undefined
+                                        ? params[param.field as keyof FDPBDParams][param.index]
+                                        : params[param.field as keyof FDPBDParams]
+                                    )
+                                      ? 'border-gray-600 focus:border-teal-500'
+                                      : 'border-red-500'
+                                  }`}
+                                  disabled={isProcessing}
+                                  required
+                                />
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                {/* Transverse Anisotropy form fields */}
+                {isotropyOption === 'transverse_anisotropy' && (
+                  <>
+                    <div className="mb-6">
+                      <h3 className="text-md mb-2 font-semibold text-white">Experimental Inputs</h3>
+                      {/* Lens Magnification */}
+                      <div className="mb-4 rounded-lg bg-gray-700">
+                        <button
+                          onClick={() => toggleSection('t_lens')}
+                          className="flex w-full items-center justify-between p-4 text-left"
+                        >
+                          <h4 className="text-sm font-semibold text-white">Lens Magnification</h4>
+                          <span
+                            className={`text-gray-400 transition-transform ${collapsedSections.has('t_lens') ? '' : 'rotate-180'}`}
+                          >
+                            &#9650;
+                          </span>
+                        </button>
+                        {!collapsedSections.has('t_lens') && (
+                          <div className="px-4 pb-4">
+                            <div className="mb-2 flex space-x-4">
+                              {['5x', '10x', '20x', 'custom'].map((opt) => (
+                                <label key={opt} className="flex items-center text-white">
+                                  <input
+                                    type="radio"
+                                    name="lens_transverse"
+                                    value={opt}
+                                    checked={lensOption === opt}
+                                    onChange={() =>
+                                      handleLensOptionChange(opt as '5x' | '10x' | '20x' | 'custom')
+                                    }
+                                    className="mr-2"
+                                    disabled={isProcessing}
+                                  />
+                                  {opt}
+                                </label>
+                              ))}
+                            </div>
+                            {[
+                              { field: 'w_rms', label: `W RMS [${fieldUnits.w_rms}]` },
+                              { field: 'x_offset', label: `X Offset [${fieldUnits.x_offset}]` },
+                              { field: 'lens_transmittance', label: 'Lens Transmittance' },
+                              {
+                                field: 'detector_factor',
+                                label: `Detector Factor [${fieldUnits.detector_factor}]`,
+                              },
+                              {
+                                field: 'v_sum_fixed',
+                                label: `V Sum Fixed [${fieldUnits.v_sum_fixed}]`,
+                              },
+                              { field: 'c_probe', label: 'C Probe' },
+                            ].map((param) => (
+                              <div key={param.field} className="mb-2 flex flex-col">
+                                <label className="mb-1 text-sm text-white">{param.label}</label>
+                                <input
+                                  type="number"
+                                  step="any"
+                                  value={params[param.field as keyof FDPBDParams]}
+                                  onChange={(e) =>
+                                    handleInputChange(e, param.field as keyof FDPBDParams)
+                                  }
+                                  className={`rounded border-2 bg-gray-800 p-2 text-white focus:outline-none ${
+                                    isValidDecimal(params[param.field as keyof FDPBDParams])
+                                      ? 'border-gray-600 focus:border-teal-500'
+                                      : 'border-red-500'
+                                  }`}
+                                  disabled={isProcessing}
+                                  required
+                                />
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Laser */}
+                      <div className="mb-4 rounded-lg bg-gray-700">
+                        <button
+                          onClick={() => toggleSection('t_laser')}
+                          className="flex w-full items-center justify-between p-4 text-left"
+                        >
+                          <h4 className="text-sm font-semibold text-white">Laser</h4>
+                          <span
+                            className={`text-gray-400 transition-transform ${collapsedSections.has('t_laser') ? '' : 'rotate-180'}`}
+                          >
+                            &#9650;
+                          </span>
+                        </button>
+                        {!collapsedSections.has('t_laser') && (
+                          <div className="px-4 pb-4">
+                            <div className="mb-2 flex space-x-4">
+                              {['TOPS 1', 'TOPS 2', 'custom'].map((opt) => (
+                                <label key={opt} className="flex items-center text-white">
+                                  <input
+                                    type="radio"
+                                    name="laser_transverse"
+                                    value={opt}
+                                    checked={laserOption === opt}
+                                    onChange={() =>
+                                      handleLaserOptionChange(opt as 'TOPS 1' | 'TOPS 2' | 'custom')
+                                    }
+                                    className="mr-2"
+                                    disabled={isProcessing}
+                                  />
+                                  {opt}
+                                </label>
+                              ))}
+                            </div>
+                            {[
+                              { field: 'f_rolloff', label: `f Rolloff [${fieldUnits.f_rolloff}]` },
+                              { field: 'delay_1', label: `Dwell 1 [${fieldUnits.delay_1}]` },
+                              { field: 'delay_2', label: `Dwell 2 [${fieldUnits.delay_2}]` },
+                              {
+                                field: 'incident_pump',
+                                label: `Incident Pump [${fieldUnits.incident_pump}]`,
+                              },
+                            ].map((param) => (
+                              <div key={param.field} className="mb-2 flex flex-col">
+                                <label className="mb-1 text-sm text-white">{param.label}</label>
+                                <input
+                                  type="number"
+                                  step="any"
+                                  value={params[param.field as keyof FDPBDParams]}
+                                  onChange={(e) =>
+                                    handleInputChange(e, param.field as keyof FDPBDParams)
+                                  }
+                                  className={`rounded border-2 bg-gray-800 p-2 text-white focus:outline-none ${
+                                    isValidDecimal(params[param.field as keyof FDPBDParams])
+                                      ? 'border-gray-600 focus:border-teal-500'
+                                      : 'border-red-500'
+                                  }`}
+                                  disabled={isProcessing}
+                                  required
+                                />
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Sample Inputs */}
+                    <div className="mb-6">
+                      <h3 className="text-md mb-2 font-semibold text-white">Sample Inputs</h3>
+
+                      {/* Medium (Air / Layer 3) */}
+                      <div className="mb-4 rounded-lg bg-gray-700">
+                        <button
+                          onClick={() => toggleSection('t_medium')}
+                          className="flex w-full items-center justify-between p-4 text-left"
+                        >
+                          <h4 className="text-sm font-semibold text-white">Medium</h4>
+                          <span
+                            className={`text-gray-400 transition-transform ${collapsedSections.has('t_medium') ? '' : 'rotate-180'}`}
+                          >
+                            &#9650;
+                          </span>
+                        </button>
+                        {!collapsedSections.has('t_medium') && (
+                          <div className="px-4 pb-4">
+                            <div className="mb-2 flex space-x-4">
+                              {['air', 'custom'].map((opt) => (
+                                <label key={opt} className="flex items-center text-white">
+                                  <input
+                                    type="radio"
+                                    name="medium_transverse"
+                                    value={opt}
+                                    checked={mediumOption === opt}
+                                    onChange={() =>
+                                      handleMediumOptionChange(opt as 'air' | 'custom')
+                                    }
+                                    className="mr-2"
+                                    disabled={isProcessing}
+                                  />
+                                  {opt}
+                                </label>
+                              ))}
+                            </div>
+                            {[
+                              {
+                                field: 'lambda_up',
+                                label: `Thermal Conductivity [${fieldUnits.lambda_up}]`,
+                              },
+                              { field: 'c_up', label: `Heat Capacity [${fieldUnits.c_up}]` },
+                            ].map((param) => (
+                              <div key={param.field} className="mb-2 flex flex-col">
+                                <label className="mb-1 text-sm text-white">{param.label}</label>
+                                <input
+                                  type="number"
+                                  step="any"
+                                  value={params[param.field as keyof FDPBDParams]}
+                                  onChange={(e) =>
+                                    handleInputChange(e, param.field as keyof FDPBDParams)
+                                  }
+                                  className={`rounded border-2 bg-gray-800 p-2 text-white focus:outline-none ${
+                                    isValidDecimal(params[param.field as keyof FDPBDParams])
+                                      ? 'border-gray-600 focus:border-teal-500'
+                                      : 'border-red-500'
+                                  }`}
+                                  disabled={isProcessing}
+                                  required
+                                />
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Transducer Layer (Al Film / Layer 1) */}
+                      <div className="mb-4 rounded-lg bg-gray-700">
+                        <button
+                          onClick={() => toggleSection('t_transducer')}
+                          className="flex w-full items-center justify-between p-4 text-left"
+                        >
+                          <h4 className="text-sm font-semibold text-white">
+                            Transducer Layer (Al Film)
+                          </h4>
+                          <span
+                            className={`text-gray-400 transition-transform ${collapsedSections.has('t_transducer') ? '' : 'rotate-180'}`}
+                          >
+                            &#9650;
+                          </span>
+                        </button>
+                        {!collapsedSections.has('t_transducer') && (
+                          <div className="px-4 pb-4">
+                            {[
+                              {
+                                field: 'lambda_down',
+                                index: 0,
+                                label: `Thermal Conductivity [${fieldUnits.lambda_down}]`,
+                              },
+                              {
+                                field: 'c_down',
+                                index: 0,
+                                label: `Heat Capacity [${fieldUnits.c_down}]`,
+                              },
+                              {
+                                field: 'h_down',
+                                index: 0,
+                                label: `Thickness [${fieldUnits.h_down}]`,
+                              },
+                              { field: 'n_al', label: 'Refractive Index (n)' },
+                              { field: 'k_al', label: 'Imaginary Index (k)' },
+                              { field: 'rho', label: `Density [${fieldUnits.rho}]` },
+                              { field: 'alphaT', label: `CTE [${fieldUnits.alphaT}]` },
+                              { field: 'C11_0', label: `C11 [${fieldUnits.C11_0}]` },
+                              { field: 'C12_0', label: `C12 [${fieldUnits.C12_0}]` },
+                              { field: 'C44_0', label: `C44 [${fieldUnits.C44_0}]` },
+                              {
+                                field: 'g_int',
+                                label: `Thermal Boundary Conductance [${fieldUnits.g_int}]`,
+                              },
+                            ].map((param) => (
+                              <div
+                                key={`${param.field}${param.index ?? ''}`}
+                                className="mb-2 flex flex-col"
+                              >
+                                <label className="mb-1 text-sm text-white">{param.label}</label>
+                                <input
+                                  type="number"
+                                  step="any"
+                                  value={
+                                    param.index !== undefined
+                                      ? params[param.field as keyof FDPBDParams][param.index]
+                                      : params[param.field as keyof FDPBDParams]
+                                  }
+                                  onChange={(e) =>
+                                    handleInputChange(
+                                      e,
+                                      param.field as keyof FDPBDParams,
+                                      param.index
+                                    )
+                                  }
+                                  className={`rounded border-2 bg-gray-800 p-2 text-white focus:outline-none ${
+                                    isValidDecimal(
+                                      param.index !== undefined
+                                        ? params[param.field as keyof FDPBDParams][param.index]
+                                        : params[param.field as keyof FDPBDParams]
+                                    )
+                                      ? 'border-gray-600 focus:border-teal-500'
+                                      : 'border-red-500'
+                                  }`}
+                                  disabled={isProcessing}
+                                  required
+                                />
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Sample Layer (Bulk / Layer 2) */}
+                      <div className="mb-4 rounded-lg bg-gray-700">
+                        <button
+                          onClick={() => toggleSection('t_sample')}
+                          className="flex w-full items-center justify-between p-4 text-left"
+                        >
+                          <h4 className="text-sm font-semibold text-white">Sample Layer (Bulk)</h4>
+                          <span
+                            className={`text-gray-400 transition-transform ${collapsedSections.has('t_sample') ? '' : 'rotate-180'}`}
+                          >
+                            &#9650;
+                          </span>
+                        </button>
+                        {!collapsedSections.has('t_sample') && (
+                          <div className="px-4 pb-4">
+                            {[
+                              {
+                                field: 'lambda_down_x_sample',
+                                label: `In-plane Conductivity [${fieldUnits.lambda_down_x_sample}]`,
+                              },
+                              {
+                                field: 'lambda_down_z_sample',
+                                label: `Through-plane Conductivity [${fieldUnits.lambda_down_z_sample}]`,
+                              },
+                              {
+                                field: 'c_down',
+                                index: 2,
+                                label: `Heat Capacity [${fieldUnits.c_down}]`,
+                              },
+                              { field: 'rho_sample', label: `Density [${fieldUnits.rho_sample}]` },
+                              {
+                                field: 'alphaT_perp',
+                                label: `CTE In-plane [${fieldUnits.alphaT_perp}]`,
+                              },
+                              {
+                                field: 'alphaT_para',
+                                label: `CTE Through-plane [${fieldUnits.alphaT_para}]`,
+                              },
+                              { field: 'C11_0_sample', label: `C11 [${fieldUnits.C11_0_sample}]` },
+                              { field: 'C12_0_sample', label: `C12 [${fieldUnits.C12_0_sample}]` },
+                              { field: 'C13_0_sample', label: `C13 [${fieldUnits.C13_0_sample}]` },
+                              { field: 'C33_0_sample', label: `C33 [${fieldUnits.C33_0_sample}]` },
+                              { field: 'C44_0_sample', label: `C44 [${fieldUnits.C44_0_sample}]` },
+                            ].map((param) => (
+                              <div
+                                key={`${param.field}${param.index ?? ''}`}
+                                className="mb-2 flex flex-col"
+                              >
+                                <label className="mb-1 text-sm text-white">{param.label}</label>
+                                <input
+                                  type="number"
+                                  step="any"
+                                  value={
+                                    param.index !== undefined
+                                      ? params[param.field as keyof FDPBDParams][param.index]
+                                      : params[param.field as keyof FDPBDParams]
+                                  }
+                                  onChange={(e) =>
+                                    handleInputChange(
+                                      e,
+                                      param.field as keyof FDPBDParams,
+                                      param.index
+                                    )
+                                  }
+                                  className={`rounded border-2 bg-gray-800 p-2 text-white focus:outline-none ${
+                                    isValidDecimal(
+                                      param.index !== undefined
+                                        ? params[param.field as keyof FDPBDParams][param.index]
+                                        : params[param.field as keyof FDPBDParams]
+                                    )
+                                      ? 'border-gray-600 focus:border-teal-500'
+                                      : 'border-red-500'
+                                  }`}
+                                  disabled={isProcessing}
+                                  required
+                                />
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
             )}
 
-            {/* Fitting Section - only for anisotropy/transverse modes */}
-            {isotropyOption !== 'isotropy' && (
-              <div className="mt-4 rounded-lg border border-gray-600 p-3">
-                <h3 className="mb-3 text-sm font-semibold text-white">
-                  Differential Evolution Fitting
-                </h3>
+            {/* DE Fitting Tab */}
+            {activeTab === 'fitting' && isotropyOption !== 'isotropy' && (
+              <div className="pt-4">
                 <div className="mb-2 flex flex-col">
                   <label className="mb-1 text-sm text-gray-300">Parameter to Fit</label>
                   <select
@@ -1870,31 +2096,8 @@ export default function FDPBDPage() {
                     />
                   </div>
                 </div>
-                <button
-                  onClick={handleFit}
-                  disabled={
-                    isFitting ||
-                    isProcessing ||
-                    !file ||
-                    !fitParam ||
-                    !fitBoundsMin ||
-                    !fitBoundsMax
-                  }
-                  className={`w-full rounded py-2 text-sm text-white ${
-                    isFitting ||
-                    isProcessing ||
-                    !file ||
-                    !fitParam ||
-                    !fitBoundsMin ||
-                    !fitBoundsMax
-                      ? 'cursor-not-allowed bg-gray-600'
-                      : 'bg-orange-500 hover:bg-orange-600'
-                  }`}
-                >
-                  {isFitting ? 'Fitting...' : 'Run Fit'}
-                </button>
                 {fitProgress && isFitting && (
-                  <div className="mt-2 rounded bg-gray-700 p-2 text-xs text-gray-300">
+                  <div className="mb-2 rounded bg-gray-700 p-2 text-xs text-gray-300">
                     <p>
                       Generation {fitProgress.generation} — Best:{' '}
                       {fitProgress.best_value.toExponential(4)} — Convergence:{' '}
@@ -1903,7 +2106,7 @@ export default function FDPBDPage() {
                   </div>
                 )}
                 {fitResult && (
-                  <div className="mt-2 rounded bg-green-900/30 p-2 text-sm text-green-300">
+                  <div className="mb-2 rounded bg-green-900/30 p-2 text-sm text-green-300">
                     <p>
                       Fitted <strong>{fitResult.fit_param}</strong> ={' '}
                       {fitResult.best_value.toExponential(4)}
@@ -1917,10 +2120,55 @@ export default function FDPBDPage() {
               </div>
             )}
           </div>
+
+          {/* Sticky Action Bar */}
+          <div className="rounded-b-lg border-t border-gray-600 bg-gray-800 px-4 py-3">
+            {activeTab === 'forward' ? (
+              <>
+                <div className="flex space-x-4">
+                  <button
+                    onClick={handleSubmit}
+                    disabled={isProcessing || isFitting || !isFormValid()}
+                    className={`flex-1 rounded py-2 text-white ${
+                      isProcessing || isFitting || !isFormValid()
+                        ? 'cursor-not-allowed bg-gray-600'
+                        : 'bg-teal-500 hover:bg-teal-600'
+                    }`}
+                  >
+                    {isProcessing ? 'Processing...' : 'Run Analysis'}
+                  </button>
+                  <button
+                    onClick={handleClear}
+                    className="flex-1 rounded bg-gray-500 py-2 text-white hover:bg-gray-600"
+                    disabled={isProcessing}
+                  >
+                    Clear
+                  </button>
+                </div>
+              </>
+            ) : (
+              <button
+                onClick={handleFit}
+                disabled={
+                  isFitting || isProcessing || !file || !fitParam || !fitBoundsMin || !fitBoundsMax
+                }
+                className={`w-full rounded py-2 text-sm text-white ${
+                  isFitting || isProcessing || !file || !fitParam || !fitBoundsMin || !fitBoundsMax
+                    ? 'cursor-not-allowed bg-gray-600'
+                    : 'bg-orange-500 hover:bg-orange-600'
+                }`}
+              >
+                {isFitting ? 'Fitting...' : 'Run Fit'}
+              </button>
+            )}
+            {status && status.includes('Error') && (
+              <p className="mt-2 text-sm text-red-400">{status}</p>
+            )}
+          </div>
         </div>
 
         {/* Right Panel: Results and Graphs */}
-        <div className="flex w-2/3 flex-col space-y-4">
+        <div className="flex w-2/3 flex-col space-y-4 overflow-y-auto">
           {result && (
             <>
               <div className="rounded-lg bg-gray-800 p-4 shadow-md">
@@ -1931,7 +2179,7 @@ export default function FDPBDPage() {
                       className={`rounded-full px-3 py-0.5 text-xs font-medium ${
                         resultSource === 'fit'
                           ? 'bg-orange-500/20 text-orange-300 ring-1 ring-orange-500/40'
-                          : 'bg-blue-500/20 text-blue-300 ring-1 ring-blue-500/40'
+                          : 'bg-teal-500/20 text-teal-300 ring-1 ring-teal-500/40'
                       }`}
                     >
                       {resultSource === 'fit' ? 'DE Fit' : 'Forward Model'}
@@ -2006,7 +2254,7 @@ export default function FDPBDPage() {
                   resultSource === 'fit'
                     ? 'border border-orange-500/30'
                     : resultSource === 'analysis'
-                      ? 'border border-blue-500/30'
+                      ? 'border border-teal-500/30'
                       : ''
                 }`}
               >
