@@ -120,7 +120,7 @@ For frontend development with live reloading:
 │   │   │   ├── stage.py      Stage control (10 endpoints)
 │   │   │   ├── lockin.py     Lock-in amplifier (5 endpoints)
 │   │   │   ├── multimeter.py Multimeter (3 endpoints)
-│   │   │   ├── analysis.py   FD-PBD analysis (2 endpoints)
+│   │   │   ├── analysis.py   FD-PBD analysis (5 endpoints)
 │   │   │   └── sse.py          SSE streaming (4 endpoints)
 │   │   └── utils/         File I/O helpers
 │   ├── myenv/             Python virtual environment (not committed)
