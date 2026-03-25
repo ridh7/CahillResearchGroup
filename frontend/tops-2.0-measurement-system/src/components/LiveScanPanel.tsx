@@ -35,7 +35,28 @@ function buildAxis(start: number, end: number, step: number): number[] {
 
 type BinAccum = { sum: number; count: number };
 
+function parseTimestamp(ts: string): number {
+  return new Date(ts).getTime();
+}
+
 export default function LiveScanPanel({ scanData, formData, isProcessing }: LiveScanPanelProps) {
+  const { currentRate, avgRate, elapsedSec } = useMemo(() => {
+    const n = scanData.length;
+    if (n < 2) return { currentRate: 0, avgRate: 0, elapsedSec: 0 };
+
+    const tFirst = parseTimestamp(scanData[0].timestamp);
+    const tLast = parseTimestamp(scanData[n - 1].timestamp);
+    const totalSec = (tLast - tFirst) / 1000;
+    const avg = totalSec > 0 ? (n - 1) / totalSec : 0;
+
+    const window = Math.min(10, n - 1);
+    const tWindow = parseTimestamp(scanData[n - 1 - window].timestamp);
+    const windowSec = (tLast - tWindow) / 1000;
+    const current = windowSec > 0 ? window / windowSec : 0;
+
+    return { currentRate: current, avgRate: avg, elapsedSec: totalSec };
+  }, [scanData]);
+
   // Parse coordinates
   const x1 = parseFloat(formData.x1) || 0;
   const x2 = parseFloat(formData.x2) || 0;
@@ -156,8 +177,8 @@ export default function LiveScanPanel({ scanData, formData, isProcessing }: Live
   const heatmapLayout: Partial<Plotly.Layout> = {
     title: isProcessing ? 'Live Scan' : 'Scan Complete',
     // Row 1: X(V), Y(V)
-    xaxis: { domain: [0.05, 0.38], anchor: 'y1', showgrid: true, gridcolor: 'white' },
-    yaxis: { domain: [0.73, 1], anchor: 'x1', showgrid: true, gridcolor: 'white' },
+    xaxis: { domain: [0.05, 0.38], anchor: 'y' as const, showgrid: true, gridcolor: 'white' },
+    yaxis: { domain: [0.73, 1], anchor: 'x' as const, showgrid: true, gridcolor: 'white' },
     xaxis2: { domain: [0.62, 0.95], anchor: 'y2', showgrid: true, gridcolor: 'white' },
     yaxis2: { domain: [0.73, 1], anchor: 'x2', showgrid: true, gridcolor: 'white' },
     // Row 2: R, X/Y
@@ -236,7 +257,12 @@ export default function LiveScanPanel({ scanData, formData, isProcessing }: Live
         <h2 className="text-lg font-semibold text-white">
           {isProcessing ? 'Live Scan' : 'Scan Results'}
         </h2>
-        <span className="text-sm text-gray-400">{scanData.length} points</span>
+        <span className="text-sm text-gray-400">
+          {scanData.length} points
+          {isProcessing && currentRate > 0 && ` | ${currentRate.toFixed(1)} pts/sec`}
+          {avgRate > 0 && ` | avg: ${avgRate.toFixed(1)} pts/sec`}
+          {elapsedSec > 0 && ` | ${elapsedSec.toFixed(1)}s`}
+        </span>
       </div>
 
       {/* Heatmaps — fixed height container to prevent layout shift */}

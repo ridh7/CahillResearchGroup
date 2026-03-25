@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { FormData } from '../app/page';
+import { FormData, Settings } from '../app/page';
 
 type DeviceControlsProps = {
   formData: FormData;
@@ -26,11 +26,13 @@ type DeviceControlsProps = {
   changeMultimeterAperture: (nplc: number) => void;
   changeMultimeterTerminal: (terminal: string) => void;
   multimeterConnected: boolean;
+  settings: Settings;
 };
 
 const initialFormData: FormData = {
   sampleId: '',
   comments: '',
+  saveDir: '',
   x1: '',
   x2: '',
   y1: '',
@@ -40,7 +42,7 @@ const initialFormData: FormData = {
   xStepSize: '',
   yStepSize: '',
   movementMode: 'steps',
-  delay: '',
+  delay: '1',
   motionType: 'step_and_measure',
   scanPattern: 'bidirectional',
   recordRetrace: false,
@@ -67,12 +69,29 @@ export default function DeviceControls({
   changeMultimeterTerminal,
   fetchMultimeterSettings,
   multimeterConnected,
+  settings,
 }: DeviceControlsProps) {
   const [activeTab, setActiveTab] = useState<'stage' | 'lockin' | 'multimeter'>('stage');
   const [freqInput, setFreqInput] = useState('');
   const [moveX, setMoveX] = useState('');
   const [moveY, setMoveY] = useState('');
   const [isMoving, setIsMoving] = useState(false);
+
+  const fetchCurrentPosition = async (field: 'x1' | 'y1' | 'x2' | 'y2') => {
+    try {
+      const res = await fetch('http://localhost:8000/get_current_position');
+      const data = await res.json();
+      if (data.status === 'success') {
+        const value =
+          field === 'x1' || field === 'x2'
+            ? parseFloat(data.x).toFixed(4)
+            : parseFloat(data.y).toFixed(4);
+        setFormData((prev) => ({ ...prev, [field]: value }));
+      }
+    } catch (e) {
+      console.error('Failed to fetch position:', e);
+    }
+  };
 
   const handleMoveTo = async () => {
     const x = parseFloat(moveX);
@@ -130,9 +149,9 @@ export default function DeviceControls({
       return coordsValid && xStepValid && yStepValid;
     }
 
-    // Step-and-measure mode
+    // Step-and-measure mode: delay is required
     const delayValid =
-      formData.delay === '' || (Number(formData.delay) >= 0 && !isNaN(Number(formData.delay)));
+      formData.delay !== '' && Number(formData.delay) >= 0 && !isNaN(Number(formData.delay));
 
     if (formData.movementMode === 'steps') {
       const xStepsValid =
@@ -150,6 +169,110 @@ export default function DeviceControls({
       return coordsValid && xStepSizeValid && yStepSizeValid && delayValid;
     }
   }, [formData]);
+
+  const estimatedTime = useMemo(() => {
+    if (!isFormValid) return null;
+
+    const x1 = parseFloat(formData.x1);
+    const x2 = parseFloat(formData.x2);
+    const y1 = parseFloat(formData.y1);
+    const y2 = parseFloat(formData.y2);
+    const xDist = Math.abs(x2 - x1);
+    const yDist = Math.abs(y2 - y1);
+
+    // Determine fast/slow axis distances
+    const fastDist = formData.fastAxis === 'x' ? xDist : yDist;
+    const slowDist = formData.fastAxis === 'x' ? yDist : xDist;
+
+    // Get velocity/acceleration for each axis (channel1=X, channel2=Y)
+    const fastSettings = formData.fastAxis === 'x' ? settings.channel1 : settings.channel2;
+    const slowSettings = formData.fastAxis === 'x' ? settings.channel2 : settings.channel1;
+    const fastVel = parseFloat(fastSettings.maxVelocity);
+    const fastAcc = parseFloat(fastSettings.acceleration);
+    const slowVel = parseFloat(slowSettings.maxVelocity);
+    const slowAcc = parseFloat(slowSettings.acceleration);
+
+    if (!fastVel || !fastAcc || !slowVel || !slowAcc) return null;
+
+    // Trapezoidal motion time: time to travel distance d with max velocity v and acceleration a
+    const motionTime = (d: number, v: number, a: number) => {
+      if (d <= 0) return 0;
+      const tAccel = v / a;
+      const dAccel = v * tAccel; // distance during accel+decel phases
+      if (d < dAccel) {
+        // Never reaches max velocity: t = 2 * sqrt(d/a)
+        return 2 * Math.sqrt(d / a);
+      }
+      // Reaches max velocity: accel + cruise + decel
+      return d / v + v / a;
+    };
+
+    // Compute number of slow axis steps
+    let numSlowSteps: number;
+    let slowStepSize: number;
+    if (formData.movementMode === 'steps') {
+      const fastSteps =
+        formData.fastAxis === 'x' ? parseInt(formData.xSteps) : parseInt(formData.ySteps);
+      const slowSteps =
+        formData.fastAxis === 'x' ? parseInt(formData.ySteps) : parseInt(formData.xSteps);
+      numSlowSteps = slowSteps;
+      slowStepSize = numSlowSteps > 0 ? slowDist / numSlowSteps : 0;
+      // fastSteps used only for step_and_measure
+      void fastSteps;
+    } else {
+      const fastStepSz =
+        formData.fastAxis === 'x' ? parseFloat(formData.xStepSize) : parseFloat(formData.yStepSize);
+      slowStepSize =
+        formData.fastAxis === 'x' ? parseFloat(formData.yStepSize) : parseFloat(formData.xStepSize);
+      numSlowSteps = slowStepSize > 0 ? Math.ceil(slowDist / slowStepSize) : 0;
+      void fastStepSz;
+    }
+
+    const numSweeps = numSlowSteps + 1;
+    const sweepTime = motionTime(fastDist, fastVel, fastAcc);
+    const slowStepTime = motionTime(slowStepSize, slowVel, slowAcc);
+
+    let totalSeconds: number;
+
+    if (formData.motionType === 'continuous') {
+      // Continuous scan
+      const retraceTime =
+        formData.scanPattern === 'unidirectional'
+          ? motionTime(fastDist, 100, 1000) // fast retrace: 100 mm/s, 1000 mm/s²
+          : 0;
+      // Each sweep: move fast axis + step slow axis (+ retrace if unidirectional)
+      totalSeconds = numSweeps * sweepTime + numSlowSteps * (slowStepTime + retraceTime);
+    } else {
+      // Step & measure
+      let numFastSteps: number;
+      if (formData.movementMode === 'steps') {
+        numFastSteps =
+          formData.fastAxis === 'x' ? parseInt(formData.xSteps) : parseInt(formData.ySteps);
+      } else {
+        const fastStepSz =
+          formData.fastAxis === 'x'
+            ? parseFloat(formData.xStepSize)
+            : parseFloat(formData.yStepSize);
+        numFastSteps = fastStepSz > 0 ? Math.ceil(fastDist / fastStepSz) : 0;
+      }
+      const fastStepSzActual = numFastSteps > 0 ? fastDist / numFastSteps : 0;
+      const totalPoints = (numFastSteps + 1) * (numSlowSteps + 1);
+      const delay = parseFloat(formData.delay) || 0;
+      const readTime = 0.15; // ~150ms per instrument read
+      const stepMoveTime = motionTime(fastStepSzActual, fastVel, fastAcc);
+      totalSeconds = totalPoints * (stepMoveTime + delay + readTime) + numSlowSteps * slowStepTime; // slow axis stepping between rows
+    }
+
+    if (!isFinite(totalSeconds) || totalSeconds <= 0) return null;
+
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = Math.round(totalSeconds % 60);
+
+    if (hours > 0) return `~${hours}h ${minutes}m ${seconds}s`;
+    if (minutes > 0) return `~${minutes}m ${seconds}s`;
+    return `~${seconds}s`;
+  }, [formData, settings, isFormValid]);
 
   return (
     <div className="flex-1 rounded-lg bg-gray-800 p-4 shadow-lg">
@@ -189,11 +312,11 @@ export default function DeviceControls({
       {activeTab === 'stage' && (
         <div className="space-y-3">
           {/* Move to Position */}
-          <div className="flex items-center space-x-2">
+          <div className="grid grid-cols-4 gap-2">
             <input
               type="number"
-              placeholder="X (0-110)"
-              className={`w-24 rounded border bg-gray-700 p-2 text-sm text-white ${
+              placeholder="x (0-110) (mm)"
+              className={`rounded border bg-gray-700 p-2 text-sm text-white ${
                 moveX !== '' && (Number(moveX) < 0 || Number(moveX) > 110)
                   ? 'border-red-500'
                   : 'border-gray-600 focus:border-teal-500'
@@ -203,8 +326,8 @@ export default function DeviceControls({
             />
             <input
               type="number"
-              placeholder="Y (0-75)"
-              className={`w-24 rounded border bg-gray-700 p-2 text-sm text-white ${
+              placeholder="y (0-75) (mm)"
+              className={`rounded border bg-gray-700 p-2 text-sm text-white ${
                 moveY !== '' && (Number(moveY) < 0 || Number(moveY) > 75)
                   ? 'border-red-500'
                   : 'border-gray-600 focus:border-teal-500'
@@ -215,7 +338,7 @@ export default function DeviceControls({
             <button
               onClick={handleMoveTo}
               disabled={!isMoveValid || isMoving || isProcessing}
-              className={`flex-1 rounded py-2 text-sm text-white transition-colors ${
+              className={`col-span-2 rounded py-2 text-sm text-white transition-colors ${
                 isMoveValid && !isMoving && !isProcessing
                   ? 'bg-teal-600 hover:bg-teal-700'
                   : 'cursor-not-allowed bg-gray-600'
@@ -295,36 +418,56 @@ export default function DeviceControls({
 
           {/* Coordinate Inputs */}
           <div className="grid grid-cols-2 gap-2">
-            {['x1', 'y1', 'x2', 'y2'].map((key) => (
-              <input
-                key={key}
-                type="number"
-                placeholder={`${key} (${key === 'x1' || key === 'x2' ? '0-110' : '0-75'}) (mm)`}
-                className={`rounded border bg-gray-700 p-2 text-white ${
-                  formData[key as keyof FormData] === '' ||
-                  ((key === 'x1' || key === 'x2') &&
-                    (Number(formData[key as keyof FormData]) < 0 ||
-                      Number(formData[key as keyof FormData]) > 110)) ||
-                  ((key === 'y1' || key === 'y2') &&
-                    (Number(formData[key as keyof FormData]) < 0 ||
-                      Number(formData[key as keyof FormData]) > 75))
-                    ? 'border-red-500'
-                    : 'border-gray-600 focus:border-teal-500'
-                } focus:outline-none`}
-                value={formData[key as keyof FormData] as string}
-                onChange={(e) => {
-                  const value = e.target.value;
-                  if (
-                    ((key === 'x1' || key === 'x2') &&
-                      (value === '' || (Number(value) >= 0 && Number(value) <= 110))) ||
-                    ((key === 'y1' || key === 'y2') &&
-                      (value === '' || (Number(value) >= 0 && Number(value) <= 75)))
-                  ) {
-                    setFormData({ ...formData, [key]: value });
-                  }
-                }}
-              />
-            ))}
+            {['x1', 'y1', 'x2', 'y2'].map((key) => {
+              const isX = key === 'x1' || key === 'x2';
+              const max = isX ? 110 : 75;
+              const val = formData[key as keyof FormData] as string;
+              const invalid = val === '' || Number(val) < 0 || Number(val) > max;
+              return (
+                <div key={key} className="flex items-stretch gap-1">
+                  <input
+                    type="number"
+                    placeholder={`${key} (0-${max}) (mm)`}
+                    className={`min-w-0 flex-1 rounded border bg-gray-700 p-2 text-white ${
+                      invalid ? 'border-red-500' : 'border-gray-600 focus:border-teal-500'
+                    } focus:outline-none`}
+                    value={val}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      if (v === '' || (Number(v) >= 0 && Number(v) <= max)) {
+                        setFormData({ ...formData, [key]: v });
+                      }
+                    }}
+                  />
+                  <button
+                    type="button"
+                    title="Use current stage position"
+                    disabled={isProcessing}
+                    onClick={() => fetchCurrentPosition(key as 'x1' | 'y1' | 'x2' | 'y2')}
+                    className="flex-shrink-0 rounded border border-gray-600 bg-gray-700 px-2 text-teal-400 hover:bg-gray-600 hover:text-teal-300 disabled:opacity-50"
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="18"
+                      height="18"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <circle cx="12" cy="12" r="10" />
+                      <circle cx="12" cy="12" r="2" />
+                      <line x1="12" y1="2" x2="12" y2="6" />
+                      <line x1="12" y1="18" x2="12" y2="22" />
+                      <line x1="2" y1="12" x2="6" y2="12" />
+                      <line x1="18" y1="12" x2="22" y2="12" />
+                    </svg>
+                  </button>
+                </div>
+              );
+            })}
           </div>
 
           {/* Step Inputs — conditional on motion type and movement mode */}
@@ -333,7 +476,7 @@ export default function DeviceControls({
               <div className="grid grid-cols-2 gap-2">
                 <input
                   type="number"
-                  placeholder={`X steps ${formData.fastAxis === 'x' ? '(fast)' : '(slow)'} (int >0)`}
+                  placeholder={`x steps ${formData.fastAxis === 'x' ? '(fast)' : '(slow)'} (int >0)`}
                   className={`rounded border bg-gray-700 p-2 text-white ${
                     formData.xSteps === '' ||
                     Number(formData.xSteps) <= 0 ||
@@ -351,7 +494,7 @@ export default function DeviceControls({
                 />
                 <input
                   type="number"
-                  placeholder={`Y steps ${formData.fastAxis === 'y' ? '(fast)' : '(slow)'} (int >0)`}
+                  placeholder={`y steps ${formData.fastAxis === 'y' ? '(fast)' : '(slow)'} (int >0)`}
                   className={`rounded border bg-gray-700 p-2 text-white ${
                     formData.ySteps === '' ||
                     Number(formData.ySteps) <= 0 ||
@@ -372,7 +515,7 @@ export default function DeviceControls({
               <div className="grid grid-cols-2 gap-2">
                 <input
                   type="number"
-                  placeholder={`X step size ${formData.fastAxis === 'x' ? '(fast)' : '(slow)'} (mm)`}
+                  placeholder={`x step size ${formData.fastAxis === 'x' ? '(fast)' : '(slow)'} (mm)`}
                   className={`rounded border bg-gray-700 p-2 text-white ${
                     formData.xStepSize === '' || Number(formData.xStepSize) <= 0
                       ? 'border-red-500'
@@ -383,7 +526,7 @@ export default function DeviceControls({
                 />
                 <input
                   type="number"
-                  placeholder={`Y step size ${formData.fastAxis === 'y' ? '(fast)' : '(slow)'} (mm)`}
+                  placeholder={`y step size ${formData.fastAxis === 'y' ? '(fast)' : '(slow)'} (mm)`}
                   className={`rounded border bg-gray-700 p-2 text-white ${
                     formData.yStepSize === '' || Number(formData.yStepSize) <= 0
                       ? 'border-red-500'
@@ -398,7 +541,7 @@ export default function DeviceControls({
             <div className="grid grid-cols-2 gap-2">
               <input
                 type="number"
-                placeholder="xSteps (int >0)"
+                placeholder={`x steps ${formData.fastAxis === 'x' ? '(fast)' : '(slow)'} (int >0)`}
                 className={`rounded border bg-gray-700 p-2 text-white ${
                   formData.xSteps === '' ||
                   Number(formData.xSteps) <= 0 ||
@@ -416,7 +559,7 @@ export default function DeviceControls({
               />
               <input
                 type="number"
-                placeholder="ySteps (int >0)"
+                placeholder={`y steps ${formData.fastAxis === 'y' ? '(fast)' : '(slow)'} (int >0)`}
                 className={`rounded border bg-gray-700 p-2 text-white ${
                   formData.ySteps === '' ||
                   Number(formData.ySteps) <= 0 ||
@@ -437,7 +580,7 @@ export default function DeviceControls({
             <div className="grid grid-cols-2 gap-2">
               <input
                 type="number"
-                placeholder="xStepSize (>0) (mm)"
+                placeholder={`x step size ${formData.fastAxis === 'x' ? '(fast)' : '(slow)'} (mm)`}
                 className={`rounded border bg-gray-700 p-2 text-white ${
                   formData.xStepSize === '' || Number(formData.xStepSize) <= 0
                     ? 'border-red-500'
@@ -448,7 +591,7 @@ export default function DeviceControls({
               />
               <input
                 type="number"
-                placeholder="yStepSize (>0) (mm)"
+                placeholder={`y step size ${formData.fastAxis === 'y' ? '(fast)' : '(slow)'} (mm)`}
                 className={`rounded border bg-gray-700 p-2 text-white ${
                   formData.yStepSize === '' || Number(formData.yStepSize) <= 0
                     ? 'border-red-500'
@@ -535,6 +678,14 @@ export default function DeviceControls({
             )}
           </div>
 
+          {/* Estimated Time */}
+          {estimatedTime && (
+            <div className="mb-2 text-center text-sm text-gray-300">
+              Estimated scan time:{' '}
+              <span className="font-semibold text-teal-400">{estimatedTime}</span>
+            </div>
+          )}
+
           {/* Action Buttons */}
           <div className="flex space-x-2">
             <button
@@ -553,24 +704,10 @@ export default function DeviceControls({
               Home XY
             </button>
             <button
-              onClick={() => handleHome('x')}
-              className="flex-1 rounded bg-teal-600 py-2 text-white transition-colors hover:bg-teal-700"
-            >
-              Home X
-            </button>
-            <button
-              onClick={() => handleHome('y')}
-              className="flex-1 rounded bg-teal-600 py-2 text-white transition-colors hover:bg-teal-700"
-            >
-              Home Y
-            </button>
-          </div>
-          <div className="flex space-x-2">
-            <button
               onClick={handleReset}
               className="flex-1 rounded bg-red-600 py-2 text-white transition-colors hover:bg-red-700"
             >
-              Reset Values
+              Clear Values
             </button>
             <button
               onClick={handleStop}

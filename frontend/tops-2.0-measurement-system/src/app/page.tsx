@@ -95,7 +95,7 @@ export default function CalculatePage() {
     xStepSize: '',
     yStepSize: '',
     movementMode: 'steps',
-    delay: '',
+    delay: '1',
     motionType: 'step_and_measure',
     scanPattern: 'bidirectional',
     recordRetrace: false,
@@ -141,30 +141,35 @@ export default function CalculatePage() {
     channel2: { homingVelocity: '', maxVelocity: '', acceleration: '' },
   });
   const [isProcessing, setIsProcessing] = useState(false);
+  const [showRightPanel, setShowRightPanel] = useState(true);
   const [scanData, setScanData] = useState<ScanDataPoint[]>([]);
   const [defaultSaveDir, setDefaultSaveDir] = useState('');
   const [scanFormData, setScanFormData] = useState<FormData | null>(null);
   const scanDataEsRef = useRef<EventSource | null>(null);
   const prevIsProcessingRef = useRef(false);
 
-  // Pre-fill x1, y1 with current stage position on mount
+  // Pre-fill x1, y1 with current stage position and fetch movement params on mount
   useEffect(() => {
     fetch(`${API_BASE}/default-save-dir`)
       .then((res) => res.json())
       .then((data) => setDefaultSaveDir(data.directory))
       .catch(() => {});
-  }, []);
-
-  useEffect(() => {
-    fetch(`${API_BASE}/get_current_position`)
+    fetch(`${API_BASE}/get_movement_params`)
       .then((res) => res.json())
       .then((data) => {
         if (data.status === 'success') {
-          setFormData((prev) => ({
-            ...prev,
-            x1: parseFloat(data.x).toFixed(4),
-            y1: parseFloat(data.y).toFixed(4),
-          }));
+          setSettings({
+            channel1: {
+              homingVelocity: data.homing_velocity_x,
+              maxVelocity: data.max_velocity_x,
+              acceleration: data.acceleration_x,
+            },
+            channel2: {
+              homingVelocity: data.homing_velocity_y,
+              maxVelocity: data.max_velocity_y,
+              acceleration: data.acceleration_y,
+            },
+          });
         }
       })
       .catch(() => {});
@@ -650,7 +655,7 @@ export default function CalculatePage() {
   };
 
   return (
-    <div className="flex min-h-screen flex-col bg-gray-900">
+    <div className="flex h-screen flex-col overflow-hidden bg-gray-900">
       {/* Top Bar */}
       <header className="flex items-center justify-between bg-gray-800 p-4">
         <h1 className="text-xl font-semibold text-white">Experiment Dashboard</h1>
@@ -685,7 +690,7 @@ export default function CalculatePage() {
       </header>
 
       {/* Main Layout */}
-      <div className="flex flex-1 space-x-4 p-4">
+      <div className="relative flex flex-1 space-x-4 p-4">
         {/* Left Panel */}
         <div className="flex w-1/3 flex-col space-y-4">
           <MetadataPanel
@@ -714,11 +719,12 @@ export default function CalculatePage() {
             changeMultimeterAperture={changeMultimeterAperture}
             changeMultimeterTerminal={changeMultimeterTerminal}
             multimeterConnected={multimeterConnected}
+            settings={settings}
           />
         </div>
 
         {/* Center Panel */}
-        <div className="flex w-1/2 flex-col space-y-4">
+        <div className={`flex ${showRightPanel ? 'w-1/2' : 'flex-1'} flex-col space-y-4`}>
           <LiveScanPanel
             scanData={scanData}
             formData={scanFormData ?? formData}
@@ -726,25 +732,36 @@ export default function CalculatePage() {
           />
         </div>
 
+        {/* Right Panel Toggle */}
+        <button
+          onClick={() => setShowRightPanel(!showRightPanel)}
+          className="absolute right-1 top-5 z-10 flex h-6 w-6 items-center justify-center rounded-full bg-gray-700 text-xs text-gray-300 opacity-60 hover:bg-gray-600 hover:text-white hover:opacity-100"
+          title={showRightPanel ? 'Hide live values' : 'Show live values'}
+        >
+          {showRightPanel ? '\u00BB' : '\u00AB'}
+        </button>
+
         {/* Right Panel */}
-        <OutputPanel
-          lockinData={lockinData}
-          multimeterData={multimeterData}
-          stageData={stageData}
-          lockinConnected={lockinConnected}
-          multimeterConnected={multimeterConnected}
-          stageConnected={stageConnected}
-          connectLockin={connectLockin}
-          disconnectLockin={disconnectLockin}
-          connectMultimeter={connectMultimeter}
-          disconnectMultimeter={disconnectMultimeter}
-          connectStage={connectStage}
-          disconnectStage={disconnectStage}
-          resetLockin={resetLockin}
-          resetMultimeter={resetMultimeter}
-          resetStage={resetStage}
-          isProcessing={isProcessing}
-        />
+        {showRightPanel && (
+          <OutputPanel
+            lockinData={lockinData}
+            multimeterData={multimeterData}
+            stageData={stageData}
+            lockinConnected={lockinConnected}
+            multimeterConnected={multimeterConnected}
+            stageConnected={stageConnected}
+            connectLockin={connectLockin}
+            disconnectLockin={disconnectLockin}
+            connectMultimeter={connectMultimeter}
+            disconnectMultimeter={disconnectMultimeter}
+            connectStage={connectStage}
+            disconnectStage={disconnectStage}
+            resetLockin={resetLockin}
+            resetMultimeter={resetMultimeter}
+            resetStage={resetStage}
+            isProcessing={isProcessing}
+          />
+        )}
       </div>
 
       {/* Settings Panel */}
@@ -765,15 +782,6 @@ export default function CalculatePage() {
           />
         )}
       </AnimatePresence>
-
-      {/* Status Bar */}
-      <footer className="flex justify-between bg-gray-800 p-2 text-sm text-white">
-        <div>
-          Stage: Connected | Lock-in: {lockinConnected ? 'Connected' : 'Disconnected'} | Multimeter:{' '}
-          {multimeterConnected ? 'Connected' : 'Disconnected'}
-        </div>
-        <div>{new Date().toLocaleString()}</div>
-      </footer>
     </div>
   );
 }

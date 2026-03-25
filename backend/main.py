@@ -69,7 +69,12 @@ if FRONTEND_DIR.is_dir():
         file_path = FRONTEND_DIR / path
         if file_path.is_file():
             return FileResponse(str(file_path))
-        page_html = FRONTEND_DIR / path / "index.html"
+        # Next.js static export: /fdpbd -> fdpbd.html
+        page_html = FRONTEND_DIR / f"{path}.html"
         if page_html.is_file():
             return FileResponse(str(page_html))
+        # Subfolder style: /fdpbd -> fdpbd/index.html
+        index_html = FRONTEND_DIR / path / "index.html"
+        if index_html.is_file():
+            return FileResponse(str(index_html))
         return FileResponse(str(FRONTEND_DIR / "index.html"))
