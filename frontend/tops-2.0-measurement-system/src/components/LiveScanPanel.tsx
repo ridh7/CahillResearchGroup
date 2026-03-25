@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { ScanDataPoint, FormData } from '../app/page';
 
@@ -34,12 +34,30 @@ function buildAxis(start: number, end: number, step: number): number[] {
 }
 
 type BinAccum = { sum: number; count: number };
+type BinResult = { mean: number; sd: number; combined: number } | null;
 
 function parseTimestamp(ts: string): number {
   return new Date(ts).getTime();
 }
 
+const EXPORT_FORMATS = ['svg', 'png', 'jpeg', 'webp'] as const;
+type ExportFormat = (typeof EXPORT_FORMATS)[number];
+
 export default function LiveScanPanel({ scanData, formData, isProcessing }: LiveScanPanelProps) {
+  const plotRef = useRef<HTMLDivElement>(null);
+  const [exportFormat, setExportFormat] = useState<ExportFormat>('svg');
+
+  const handleExport = async () => {
+    const plotDiv = plotRef.current?.querySelector('.js-plotly-plot') as HTMLElement | null;
+    if (!plotDiv) return;
+    const Plotly = await import('plotly.js');
+    Plotly.downloadImage(plotDiv, {
+      format: exportFormat,
+      filename: `scan_heatmaps_${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}`,
+      width: 1200,
+      height: 800,
+    });
+  };
   const { currentRate, avgRate, elapsedSec } = useMemo(() => {
     const n = scanData.length;
     if (n < 2) return { currentRate: 0, avgRate: 0, elapsedSec: 0 };
@@ -126,47 +144,98 @@ export default function LiveScanPanel({ scanData, formData, isProcessing }: Live
       }
     });
 
-    // Convert accumulator grids to value grids (average or null)
-    const toValueGrid = (bins: BinAccum[][]) =>
+    // Compute per-cell means first
+    const toMeanGrid = (bins: BinAccum[][]): (number | null)[][] =>
       bins.map((row) => row.map((cell) => (cell.count > 0 ? cell.sum / cell.count : null)));
 
-    const voltageGrid = toValueGrid(voltageBins);
-    const xVGrid = toValueGrid(xVBins);
-    const yVGrid = toValueGrid(yVBins);
-    const ratioGrid = toValueGrid(ratioBins);
-    const rGrid = toValueGrid(rBins);
+    const voltageMeans = toMeanGrid(voltageBins);
+    const xVMeans = toMeanGrid(xVBins);
+    const yVMeans = toMeanGrid(yVBins);
+    const ratioMeans = toMeanGrid(ratioBins);
+    const rMeans = toMeanGrid(rBins);
+
+    // Compute global SD across all non-null cell means
+    const globalSD = (means: (number | null)[][]): number => {
+      const vals: number[] = [];
+      means.forEach((row) =>
+        row.forEach((v) => {
+          if (v !== null) vals.push(v);
+        })
+      );
+      if (vals.length < 2) return 0;
+      const avg = vals.reduce((a, b) => a + b, 0) / vals.length;
+      const variance = vals.reduce((a, b) => a + (b - avg) ** 2, 0) / (vals.length - 1);
+      return Math.sqrt(variance);
+    };
+
+    const voltageSD = globalSD(voltageMeans);
+    const xVSD = globalSD(xVMeans);
+    const yVSD = globalSD(yVMeans);
+    const ratioSD = globalSD(ratioMeans);
+    const rSD = globalSD(rMeans);
+
+    // Build result grids: combined = cell_mean + global_SD
+    const toResultGrid = (means: (number | null)[][], sd: number): BinResult[][] =>
+      means.map((row) =>
+        row.map((mean) => {
+          if (mean === null) return null;
+          return { mean, sd, combined: mean + sd };
+        })
+      );
+
+    const voltageResult = toResultGrid(voltageMeans, voltageSD);
+    const xVResult = toResultGrid(xVMeans, xVSD);
+    const yVResult = toResultGrid(yVMeans, yVSD);
+    const ratioResult = toResultGrid(ratioMeans, ratioSD);
+    const rResult = toResultGrid(rMeans, rSD);
+
+    // Extract z (combined = mean + global SD) and customdata for hover
+    const extractGrids = (result: BinResult[][]) => ({
+      z: result.map((row) => row.map((cell) => (cell ? cell.combined : null))),
+      customdata: result.map((row) =>
+        row.map((cell) => (cell ? [cell.mean, cell.sd, cell.combined] : [null, null, null]))
+      ),
+    });
 
     const makeTrace = (
-      grid: (number | null)[][],
+      result: BinResult[][],
       title: string,
       xaxis: string,
       yaxis: string,
       colorbarX: number,
       colorbarY: number,
       reverse?: boolean
-    ): Plotly.Data => ({
-      z: grid,
-      x: gridX,
-      y: gridY,
-      type: 'heatmap',
-      colorscale: 'Greys',
-      reversescale: reverse,
-      zsmooth: false,
-      showscale: true,
-      connectgaps: false,
-      hovertemplate: `X: %{x}<br>Y: %{y}<br>${title}: %{z}<extra></extra>`,
-      xaxis,
-      yaxis,
-      colorbar: { title, x: colorbarX, y: colorbarY, len: 0.25, thickness: 15 },
-    });
+    ): Plotly.Data => {
+      const { z, customdata } = extractGrids(result);
+      return {
+        z,
+        x: gridX,
+        y: gridY,
+        customdata: customdata as unknown as Plotly.Datum[][],
+        type: 'heatmap',
+        colorscale: 'Greys',
+        reversescale: reverse,
+        zsmooth: false,
+        showscale: true,
+        connectgaps: false,
+        hovertemplate:
+          `X: %{x}<br>Y: %{y}<br>` +
+          `${title} (mean): %{customdata[0]:.4e}<br>` +
+          `SD: %{customdata[1]:.4e}<br>` +
+          `Mean+SD: %{customdata[2]:.4e}<extra></extra>`,
+        xaxis,
+        yaxis,
+        colorbar: { title: `${title}`, x: colorbarX, y: colorbarY, len: 0.25, thickness: 15 },
+      };
+    };
 
     // Row 1: X(V), Y(V) | Row 2: R, X/Y | Row 3: Voltage (centered)
     return [
-      makeTrace(xVGrid, 'X(V)', 'x1', 'y1', 0.43, 0.87),
-      makeTrace(yVGrid, 'Y(V)', 'x2', 'y2', 1.0, 0.87),
-      makeTrace(rGrid, 'R (V)', 'x3', 'y3', 0.43, 0.53),
-      makeTrace(ratioGrid, 'X/Y', 'x4', 'y4', 1.0, 0.53, true),
-      makeTrace(voltageGrid, 'Voltage (V)', 'x5', 'y5', 0.72, 0.17),
+      makeTrace(xVResult, 'X(V)', 'x1', 'y1', 0.43, 0.87),
+      makeTrace(yVResult, 'Y(V)', 'x2', 'y2', 1.0, 0.87),
+      makeTrace(rResult, 'R (V)', 'x3', 'y3', 0.43, 0.53),
+      makeTrace(ratioResult, 'X/Y', 'x4', 'y4', 1.0, 0.53, true),
+      makeTrace(voltageResult, 'Voltage (V)', 'x5', 'y5', 0.72, 0.17),
     ];
   }, [scanData, gridX, gridY, xStepSigned, yStepSigned]);
 
@@ -257,16 +326,39 @@ export default function LiveScanPanel({ scanData, formData, isProcessing }: Live
         <h2 className="text-lg font-semibold text-white">
           {isProcessing ? 'Live Scan' : 'Scan Results'}
         </h2>
-        <span className="text-sm text-gray-400">
-          {scanData.length} points
-          {isProcessing && currentRate > 0 && ` | ${currentRate.toFixed(1)} pts/sec`}
-          {avgRate > 0 && ` | avg: ${avgRate.toFixed(1)} pts/sec`}
-          {elapsedSec > 0 && ` | ${elapsedSec.toFixed(1)}s`}
-        </span>
+        <div className="flex items-center gap-3">
+          <span className="text-sm text-gray-400">
+            {scanData.length} points
+            {isProcessing && currentRate > 0 && ` | ${currentRate.toFixed(1)} pts/sec`}
+            {avgRate > 0 && ` | avg: ${avgRate.toFixed(1)} pts/sec`}
+            {elapsedSec > 0 && ` | ${elapsedSec.toFixed(1)}s`}
+          </span>
+          {heatmapTraces.length > 0 && (
+            <div className="flex items-center gap-1">
+              <select
+                value={exportFormat}
+                onChange={(e) => setExportFormat(e.target.value as ExportFormat)}
+                className="rounded bg-gray-700 px-2 py-1 text-xs text-white"
+              >
+                {EXPORT_FORMATS.map((fmt) => (
+                  <option key={fmt} value={fmt}>
+                    {fmt.toUpperCase()}
+                  </option>
+                ))}
+              </select>
+              <button
+                onClick={handleExport}
+                className="rounded bg-teal-600 px-2 py-1 text-xs text-white hover:bg-teal-500"
+              >
+                Export
+              </button>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Heatmaps — fixed height container to prevent layout shift */}
-      <div style={{ height: 800, minHeight: 800 }}>
+      <div ref={plotRef} style={{ height: 800, minHeight: 800 }}>
         {heatmapTraces.length > 0 ? (
           <Plot
             data={heatmapTraces}
