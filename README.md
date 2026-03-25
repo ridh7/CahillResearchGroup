@@ -33,6 +33,51 @@ A full-stack measurement system for controlling laboratory instruments, performi
 
 3. **Stop the application**: Close the terminal window or press `Ctrl+C`.
 
+## Analysis-Only Mode (macOS/Linux)
+
+The backend can run without hardware instruments for FD-PBD analysis work (forward model + DE fitting). This is useful for running analysis on a laptop without Thorlabs/VISA hardware attached.
+
+1. **Install backend** (no hardware dependencies):
+
+   ```bash
+   cd backend
+   python3 -m venv myenv
+   source myenv/bin/activate
+   pip install -e .
+   ```
+
+   > On Windows with hardware, use `pip install -e ".[hardware]"` to include pythonnet and PyVISA.
+
+2. **Configure environment**:
+
+   Create `backend/.env`:
+   ```
+   TOPS_CORS_ORIGINS=http://localhost:3000
+   ```
+
+   Create `frontend/tops-2.0-measurement-system/.env.local`:
+   ```
+   NEXT_PUBLIC_API_URL=http://localhost:8000
+   ```
+
+3. **Ensure data directory exists**:
+   ```bash
+   mkdir -p backend/data
+   ```
+
+4. **Start both servers** (two terminals):
+   ```bash
+   # Terminal 1: Backend
+   cd backend && source myenv/bin/activate
+   uvicorn main:app --reload
+
+   # Terminal 2: Frontend
+   cd frontend/tops-2.0-measurement-system
+   npm install && npm run dev
+   ```
+
+The server starts with only analysis and SSE routes. Hardware endpoints (stage, lock-in, multimeter) are skipped. Check `http://localhost:8000/docs` to see available endpoints.
+
 ## Development (two servers with hot reload)
 
 For frontend development with live reloading:
@@ -75,7 +120,7 @@ For frontend development with live reloading:
 │   │   │   ├── stage.py      Stage control (10 endpoints)
 │   │   │   ├── lockin.py     Lock-in amplifier (5 endpoints)
 │   │   │   ├── multimeter.py Multimeter (3 endpoints)
-│   │   │   ├── analysis.py   FD-PBD analysis (2 endpoints)
+│   │   │   ├── analysis.py   FD-PBD analysis (5 endpoints)
 │   │   │   └── sse.py          SSE streaming (4 endpoints)
 │   │   └── utils/         File I/O helpers
 │   ├── myenv/             Python virtual environment (not committed)

@@ -35,6 +35,10 @@ This backend provides:
 ### Prerequisites
 
 - **Python 3.10 or higher**
+
+For **analysis-only mode** (macOS/Linux — no hardware needed), that's all you need.
+
+For **full mode with hardware instruments** (Windows), you also need:
 - **Hardware Instruments** (see Configuration section to customize):
   - SR865A Lock-in Amplifier (default USB Product ID: 3769)
   - BK Precision 5493C Multimeter (default serial: W114239033)
@@ -62,9 +66,14 @@ myenv\Scripts\activate
 # Unix/MacOS:
 source myenv/bin/activate
 
-# Install dependencies (production and development)
+# Analysis-only mode (no hardware dependencies):
 pip install -e .
+
+# Full mode with hardware (Windows only):
+pip install -e ".[hardware]"
 ```
+
+> **Note**: The `[hardware]` extra installs `pythonnet` (for Thorlabs .NET SDK) and `PyVISA` (for GPIB/USB instruments). These are not needed for FD-PBD analysis. If hardware packages are not installed, the server starts in analysis-only mode — analysis and SSE endpoints are available, hardware endpoints are skipped.
 
 ### Running the Server
 
@@ -356,27 +365,51 @@ Frequency-Domain Photothermal Beam Deflection (FD-PBD) measures thermal properti
 - **Beam Profiles**: Gaussian pump/probe overlap in Fourier space
 - **Output**: Complex deflection angle θ(ω) = amplitude × e^(iφ)
 
-**Fitting Pipeline** (`fdpbd_analysis.py`):
+**Analysis Modes**:
+
+| Mode | Module | Endpoint |
+|------|--------|----------|
+| **Isotropic** | `fdpbd/thermal_model.py` | `POST /fdpbd/analyze` |
+| **Anisotropic** | `anisotropic_analysis.py` | `POST /fdpbd/analyze_anisotropy` |
+| **Transversely Isotropic** | `transverse_isotropic_analysis.py` | `POST /fdpbd/analyze_transverse` |
+
+**Forward Model Pipeline**:
 
 1. Load experimental data (in-phase, out-of-phase, frequency, sum voltage)
 2. Apply leaking correction (frequency rolloff and phase delay compensation)
-3. Nonlinear least-squares fit to extract:
-   - Thermal conductivity (λ)
-   - Thermo-optic coefficient (dn/dT)
-4. Compute confidence intervals (95%)
-5. Generate fit quality plots
+3. Compute model response using transfer matrix method + Hankel transform
+4. For isotropic mode: nonlinear least-squares fit to extract thermal conductivity (λ) and thermo-optic coefficient (dn/dT)
+5. Generate fit quality plots (in-phase, out-of-phase, ratio)
 
-**Endpoint**: `POST /fdpbd/analyze`
+**DE Fitting** (anisotropic and transverse isotropic modes):
+
+Single-parameter global optimization using `scipy.optimize.differential_evolution`:
+
+1. User selects one parameter to fit and provides bounds (e.g., σx ∈ [1, 100])
+2. DE explores the parameter space, evaluating the forward model at each candidate
+3. Progress is streamed to the frontend via SSE (generation, best value, convergence)
+4. Configurable hyperparameters from the UI:
+   - **maxiter** (default 20): Maximum generations
+   - **popsize** (default 8): Population size multiplier
+   - **tol** (default 1e-3): Convergence tolerance
+
+**Endpoints**: `POST /fdpbd/fit_anisotropy`, `POST /fdpbd/fit_transverse`
+
+Available fit parameters:
+- **Anisotropic**: σx, σy, σz, αT⊥, αT∥
+- **Transversely Isotropic**: σr, σz, αT⊥, αT∥
+
+**Error Handling**: The objective function is wrapped in try/except to gracefully handle linalg errors (overflows in sinh/cosh/exp during extreme parameter exploration). Failed candidates return a penalty cost of 1e12. NaN/inf checks are applied before BCM solve.
 
 **Input**:
 
 - Text file with columns: `in`, `out`, `freq`, `vSum`
-- Material parameters (Poisson ratio, layer properties, beam radii)
+- Material parameters (layer properties, beam radii, lens/laser settings)
 
 **Output**:
 
-- Fitted parameters with uncertainties
-- Plots: in-phase fit, out-of-phase fit, combined fit
+- Model curves (in-phase, out-of-phase, ratio) overlaid on experimental data
+- For DE fitting: best parameter value, cost, convergence info, f_peak, ratio_at_peak
 
 ## Development Workflow
 
@@ -530,8 +563,11 @@ All endpoints are organized by domain in separate routers. Visit http://localhos
 
 ### Analysis ([routers/analysis.py](app/routers/analysis.py))
 
-- **`POST /fdpbd/analyze`**: FD-PBD thermal property extraction
-- **`POST /fdpbd/analyze_anisotropy`**: Anisotropic FD-PBD analysis
+- **`POST /fdpbd/analyze`**: Isotropic FD-PBD thermal property extraction
+- **`POST /fdpbd/analyze_anisotropy`**: Anisotropic FD-PBD forward model analysis
+- **`POST /fdpbd/analyze_transverse`**: Transversely isotropic FD-PBD forward model analysis
+- **`POST /fdpbd/fit_anisotropy`**: DE fitting for anisotropic mode (SSE streaming)
+- **`POST /fdpbd/fit_transverse`**: DE fitting for transverse isotropic mode (SSE streaming)
 
 ### SSE Streams ([routers/sse.py](app/routers/sse.py))
 

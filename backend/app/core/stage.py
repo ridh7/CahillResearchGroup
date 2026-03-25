@@ -5,20 +5,24 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from threading import Thread
 
-import clr
+try:
+    import clr
 
-from app.config import settings
+    from app.config import settings
+
+    clr.AddReference(settings.kinesis_device_manager_dll)
+    clr.AddReference(settings.kinesis_generic_motor_dll)
+    clr.AddReference(settings.kinesis_brushless_motor_dll)
+
+    from System import Decimal
+    from Thorlabs.MotionControl.Benchtop.BrushlessMotorCLI import *
+    from Thorlabs.MotionControl.DeviceManagerCLI import *
+    from Thorlabs.MotionControl.GenericMotorCLI import *
+except Exception as e:
+    raise ImportError(f"Thorlabs SDK not available: {e}") from e
+
 from app.models.state import global_state
 from app.utils.file_utils import save_to_file
-
-clr.AddReference(settings.kinesis_device_manager_dll)
-clr.AddReference(settings.kinesis_generic_motor_dll)
-clr.AddReference(settings.kinesis_brushless_motor_dll)
-
-from System import Decimal
-from Thorlabs.MotionControl.Benchtop.BrushlessMotorCLI import *
-from Thorlabs.MotionControl.DeviceManagerCLI import *
-from Thorlabs.MotionControl.GenericMotorCLI import *
 
 
 class ThorlabsBBD302:
