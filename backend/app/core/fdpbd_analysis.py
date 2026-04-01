@@ -33,6 +33,8 @@ def run_fdpbd_analysis(params: FDPBDParams, data_filename: str) -> dict:
     k_al = params.k_al
     lens_transmittance = params.lens_transmittance
     detector_factor = params.detector_factor
+    include_air_deflection = params.include_air_deflection
+    dndt_up = params.dndt_up
 
     # Derived parameters
     refl_al = abs(n_al - 1 + 1j * k_al) ** 2 / abs(n_al + 1 + 1j * k_al) ** 2
@@ -101,6 +103,8 @@ def run_fdpbd_analysis(params: FDPBDParams, data_filename: str) -> dict:
         x_offset,
         lb,
         ub,
+        include_air_deflection,
+        dndt_up,
     )
     lambda_measure = x_sol[0]
     coef_fitted = x_sol[1]
@@ -123,6 +127,8 @@ def run_fdpbd_analysis(params: FDPBDParams, data_filename: str) -> dict:
         r_probe,
         a_pump,
         x_offset,
+        include_air_deflection,
+        dndt_up,
     )
     delta_in = np.real(delta_theta)
     delta_out = np.imag(delta_theta)

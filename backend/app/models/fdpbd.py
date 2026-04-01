@@ -23,6 +23,8 @@ class FDPBDParams(BaseModel):
     k_al: float
     lens_transmittance: float
     detector_factor: float
+    include_air_deflection: bool = False
+    dndt_up: float = -8.9e-7
 
 
 class PlotData(BaseModel):

@@ -102,6 +102,8 @@ type FDPBDParams = {
   v_sum_fixed: string;
   c_probe: string;
   g_int: string;
+  include_air_deflection: boolean;
+  dndt_up: string;
 };
 
 export default function FDPBDPage() {
@@ -148,6 +150,8 @@ export default function FDPBDPage() {
     v_sum_fixed: '0.18',
     c_probe: '0.65',
     g_int: '100e6',
+    include_air_deflection: false,
+    dndt_up: '-8.9e-7',
   });
   const fieldUnits: Record<string, string> = {
     f_rolloff: 'Hz',
@@ -796,6 +800,8 @@ export default function FDPBDPage() {
             h_down: [modifiedParams.h_down[0]],
             niu: undefined,
             alpha_t: undefined,
+            include_air_deflection: undefined,
+            dndt_up: undefined,
           }
         : {
             phi: undefined,
@@ -1329,6 +1335,53 @@ export default function FDPBDPage() {
                                 />
                               </div>
                             ))}
+                            {isotropyOption === 'isotropy' && (
+                              <>
+                                <div className="mb-2 mt-3 flex items-center">
+                                  <input
+                                    type="checkbox"
+                                    id="include_air_deflection"
+                                    checked={params.include_air_deflection}
+                                    onChange={(e) =>
+                                      setParams((prev) => ({
+                                        ...prev,
+                                        include_air_deflection: e.target.checked,
+                                      }))
+                                    }
+                                    className="mr-2 accent-teal-500"
+                                    disabled={isProcessing}
+                                  />
+                                  <label
+                                    htmlFor="include_air_deflection"
+                                    className="text-sm text-white"
+                                  >
+                                    Include air deflection (mirage effect)
+                                  </label>
+                                </div>
+                                {params.include_air_deflection && (
+                                  <div className="mb-2 flex flex-col">
+                                    <label className="mb-1 text-sm text-white">
+                                      dn/dT [1/K]
+                                    </label>
+                                    <input
+                                      type="number"
+                                      step="any"
+                                      value={params.dndt_up}
+                                      onChange={(e) =>
+                                        handleInputChange(e, 'dndt_up' as keyof FDPBDParams)
+                                      }
+                                      className={`rounded border-2 bg-gray-800 p-2 text-white focus:outline-none ${
+                                        isValidDecimal(params.dndt_up)
+                                          ? 'border-gray-600 focus:border-teal-500'
+                                          : 'border-red-500'
+                                      }`}
+                                      disabled={isProcessing}
+                                      required
+                                    />
+                                  </div>
+                                )}
+                              </>
+                            )}
                           </div>
                         )}
                       </div>

@@ -27,6 +27,8 @@ def fit_in_out(
     x_offset: float,
     lb: list,
     ub: list,
+    include_air_deflection: bool = False,
+    dndt_up: float = -8.9e-7,
 ) -> tuple[np.ndarray, np.ndarray]:
     """
     Fit in-phase and out-of-phase signals to the FD-PBD model.
@@ -65,6 +67,8 @@ def fit_in_out(
             r_probe,
             a_pump,
             x_offset,
+            include_air_deflection,
+            dndt_up,
         )
         delta_out = np.imag(delta_theta)
         delta_in = np.real(delta_theta)

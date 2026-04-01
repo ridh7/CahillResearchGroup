@@ -190,6 +190,8 @@ def delta_bo_theta(
     r_probe: float,
     a_pump: float,
     x_offset: float,
+    include_air_deflection: bool = False,
+    dndt_up: float = -8.9e-7,
 ) -> np.ndarray:
     """
     Compute photothermal beam deflection (PBD) signal vs frequency.
@@ -215,6 +217,8 @@ def delta_bo_theta(
         r_pump, r_probe: Beam radii (meters)
         a_pump: Pump power (Watts)
         x_offset: Lateral pump-probe offset (meters)
+        include_air_deflection: If True, add mirage-effect deflection from air above sample.
+        dndt_up: dn/dT for air (1/K). Default -8.9e-7.
 
     Returns:
         Complex deflection angle at each frequency (radians)
@@ -244,6 +248,13 @@ def delta_bo_theta(
         # Deflection susceptibility: combines thermo-optic effect and thermal penetration
         # Factor (1+ν) accounts for thermal expansion contribution to refractive index
         defl = (2 * (1 + niu) * coef) / (qk + 2 * np.pi * k)
+
+        # Optional: add mirage-effect deflection from thermally perturbed air above sample
+        if include_air_deflection:
+            alpha_up = lambda_up / c_up
+            q2_up = 1j * ω / alpha_up
+            qk_up = np.sqrt(4 * np.pi**2 * eta_up * k**2 + q2_up)
+            defl = defl - dndt_up / qk_up
 
         # Get temperature field G(k,f)*S(k)*P(k) from multilayer thermal model
         temp = bi_fdtr_bo_temp(
