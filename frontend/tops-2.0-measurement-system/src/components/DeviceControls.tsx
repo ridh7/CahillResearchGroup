@@ -697,13 +697,19 @@ export default function DeviceControls({
             </button>
             <button
               onClick={() => handleHome('')}
-              className="flex-1 rounded bg-teal-600 py-2 text-white transition-colors hover:bg-teal-700"
+              disabled={isProcessing}
+              className={`flex-1 rounded py-2 text-white transition-colors ${
+                isProcessing ? 'cursor-not-allowed bg-gray-600' : 'bg-teal-600 hover:bg-teal-700'
+              }`}
             >
               Home XY
             </button>
             <button
               onClick={handleReset}
-              className="flex-1 rounded bg-red-600 py-2 text-white transition-colors hover:bg-red-700"
+              disabled={isProcessing}
+              className={`flex-1 rounded py-2 text-white transition-colors ${
+                isProcessing ? 'cursor-not-allowed bg-gray-600' : 'bg-red-600 hover:bg-red-700'
+              }`}
             >
               Clear Values
             </button>
