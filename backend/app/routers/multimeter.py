@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends
 from app.core.multimeter import BKPrecision5493C
 from app.dependencies import get_executor, get_multimeter
 from app.models.multimeter import MultimeterApertureRequest, MultimeterTerminalRequest
+from app.models.state import global_state
 
 router = APIRouter()
 
@@ -41,6 +42,7 @@ async def set_multimeter_aperture(
     executor: ThreadPoolExecutor = Depends(get_executor),
 ):
     try:
+        global_state.pause_multimeter_reading.set()
         success = await asyncio.get_running_loop().run_in_executor(
             executor, lambda: multimeter.set_aperture(params.nplc)
         )
@@ -50,6 +52,8 @@ async def set_multimeter_aperture(
             return {"status": "error", "message": "Failed to set aperture"}
     except Exception as e:
         return {"status": "error", "message": str(e)}
+    finally:
+        global_state.pause_multimeter_reading.clear()
 
 
 @router.post("/multimeter/terminal")
@@ -59,6 +63,7 @@ async def set_multimeter_terminal(
     executor: ThreadPoolExecutor = Depends(get_executor),
 ):
     try:
+        global_state.pause_multimeter_reading.set()
         success = await asyncio.get_running_loop().run_in_executor(
             executor, lambda: multimeter.set_terminal(params.terminal)
         )
@@ -68,3 +73,5 @@ async def set_multimeter_terminal(
             return {"status": "error", "message": "Failed to set terminal"}
     except Exception as e:
         return {"status": "error", "message": str(e)}
+    finally:
+        global_state.pause_multimeter_reading.clear()
