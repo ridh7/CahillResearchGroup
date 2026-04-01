@@ -201,6 +201,7 @@ export default function FDPBDPage() {
   const [timeTaken, setTimeTaken] = useState<number | null>(null);
   const [resultSource, setResultSource] = useState<'analysis' | 'fit' | null>(null);
   const [isFitting, setIsFitting] = useState(false);
+  const [plotExportFormat, setPlotExportFormat] = useState<'svg' | 'png' | 'jpeg' | 'webp'>('svg');
   const [activeTab, setActiveTab] = useState<'forward' | 'fitting'>('forward');
   const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set());
 
@@ -2263,6 +2264,22 @@ export default function FDPBDPage() {
                   {resultSource === 'fit' && (
                     <span className="text-xs text-orange-400">Showing fitted model curves</span>
                   )}
+                  <div className="ml-auto flex items-center gap-2">
+                    <span className="text-xs text-gray-400">Export format</span>
+                    <select
+                      value={plotExportFormat}
+                      onChange={(e) =>
+                        setPlotExportFormat(e.target.value as typeof plotExportFormat)
+                      }
+                      className="rounded bg-gray-700 px-2 py-1 text-xs text-white"
+                    >
+                      {(['svg', 'png', 'jpeg', 'webp'] as const).map((fmt) => (
+                        <option key={fmt} value={fmt}>
+                          {fmt.toUpperCase()}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
                 <div className="flex flex-wrap gap-4">
                   {isotropyOption === 'isotropy' && result && (
@@ -2353,6 +2370,7 @@ export default function FDPBDPage() {
                             },
                           ],
                         }}
+                        config={{ toImageButtonOptions: { format: plotExportFormat } }}
                       />
                       <Plot
                         data={[
@@ -2423,6 +2441,7 @@ export default function FDPBDPage() {
                             },
                           ],
                         }}
+                        config={{ toImageButtonOptions: { format: plotExportFormat } }}
                       />
                     </>
                   )}
@@ -2514,6 +2533,7 @@ export default function FDPBDPage() {
                             },
                           ],
                         }}
+                        config={{ toImageButtonOptions: { format: plotExportFormat } }}
                       />
                       <Plot
                         data={[
@@ -2584,6 +2604,7 @@ export default function FDPBDPage() {
                             },
                           ],
                         }}
+                        config={{ toImageButtonOptions: { format: plotExportFormat } }}
                       />
                     </>
                   )}
@@ -2671,6 +2692,7 @@ export default function FDPBDPage() {
                             },
                           ],
                         }}
+                        config={{ toImageButtonOptions: { format: plotExportFormat } }}
                       />
                       <Plot
                         data={[
@@ -2737,6 +2759,7 @@ export default function FDPBDPage() {
                             },
                           ],
                         }}
+                        config={{ toImageButtonOptions: { format: plotExportFormat } }}
                       />
                     </>
                   )}

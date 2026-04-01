@@ -660,7 +660,12 @@ export default function CalculatePage() {
       <header className="flex items-center justify-between bg-gray-800 p-4">
         <h1 className="text-xl font-semibold text-white">Experiment Dashboard</h1>
         <div className="flex space-x-4">
-          <Link href="/fdpbd" className="text-white hover:text-teal-400">
+          <Link
+            href="/fdpbd"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-white hover:text-teal-400"
+          >
             Analysis
           </Link>
           <button
