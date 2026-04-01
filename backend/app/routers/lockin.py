@@ -13,6 +13,7 @@ from app.models.lockin import (
     LockinSensitivityRequest,
     LockinTimeConstantRequest,
 )
+from app.models.state import global_state
 
 router = APIRouter()
 
@@ -50,6 +51,7 @@ async def change_lockin_sensitivity(
     executor: ThreadPoolExecutor = Depends(get_executor),
 ):
     try:
+        global_state.pause_lockin_reading.set()
         current_sensitivity = await asyncio.get_running_loop().run_in_executor(
             executor, lambda: lockin.get_sensitivity()
         )
@@ -63,6 +65,8 @@ async def change_lockin_sensitivity(
             return {"status": "error", "message": "Sensitivity out of range"}
     except Exception as e:
         return {"status": "error", "message": str(e)}
+    finally:
+        global_state.pause_lockin_reading.clear()
 
 
 @router.post("/lockin/time_constant")
@@ -72,6 +76,7 @@ async def change_lockin_time_constant(
     executor: ThreadPoolExecutor = Depends(get_executor),
 ):
     try:
+        global_state.pause_lockin_reading.set()
         current_time_constant = await asyncio.get_running_loop().run_in_executor(
             executor, lambda: lockin.get_time_constant()
         )
@@ -86,6 +91,8 @@ async def change_lockin_time_constant(
             return {"status": "error", "message": "Time constant out of range"}
     except Exception as e:
         return {"status": "error", "message": str(e)}
+    finally:
+        global_state.pause_lockin_reading.clear()
 
 
 @router.post("/lockin/frequency")
@@ -95,12 +102,15 @@ async def set_lockin_frequency(
     executor: ThreadPoolExecutor = Depends(get_executor),
 ):
     try:
+        global_state.pause_lockin_reading.set()
         await asyncio.get_running_loop().run_in_executor(
             executor, lambda: lockin.set_frequency(params.frequency)
         )
         return {"status": "success", "frequency": params.frequency}
     except Exception as e:
         return {"status": "error", "message": str(e)}
+    finally:
+        global_state.pause_lockin_reading.clear()
 
 
 @router.post("/lockin/filter_slope")
@@ -110,9 +120,12 @@ async def set_lockin_filter_slope(
     executor: ThreadPoolExecutor = Depends(get_executor),
 ):
     try:
+        global_state.pause_lockin_reading.set()
         await asyncio.get_running_loop().run_in_executor(
             executor, lambda: lockin.set_filter_slope(params.code)
         )
         return {"status": "success", "filter_slope": params.code}
     except Exception as e:
         return {"status": "error", "message": str(e)}
+    finally:
+        global_state.pause_lockin_reading.clear()

@@ -85,7 +85,6 @@ src/
 │   ├── OutputPanel.tsx         # Device status displays and manual controls
 │   ├── RealTimeGraphs.tsx      # Live line charts (Recharts)
 │   ├── GraphsPanel.tsx         # Wrapper for RealTimeGraphs
-│   ├── HeatmapPanel.tsx        # 2D heatmap generation from CSV (Plotly)
 │   └── SettingsPanel.tsx       # Animated modal for stage motor configuration
 │
 ├── next.config.ts             # Next.js configuration
@@ -118,12 +117,6 @@ src/
 │  • /sse/scan_data streams live measurements                 │
 │  • LiveScanPanel renders real-time heatmap                  │
 │  • POST /stop aborts scan + halts stage motion              │
-│         ↓                                                   │
-│  User uploads CSV for post-processing                       │
-│  • PapaParse extracts data                                  │
-│  • HeatmapPanel generates 2D grids                          │
-│  • Plotly renders 4 heatmaps (Voltage, X, Y, Ratio)         │
-│                                                             │
 └─────────────────────────────────────────────────────────────┘
 
 ┌─────────────────────────────────────────────────────────────┐
@@ -170,15 +163,6 @@ Displays real-time status for each instrument:
 - Connection indicators (green = connected, red = disconnected)
 - Current readings from Lock-in (X, Y, Frequency) and Multimeter (Voltage)
 - Connect/Disconnect buttons for each SSE stream
-
-### HeatmapPanel
-
-Generates 2D spatial heatmaps from uploaded CSV files:
-
-- Algorithm: Converts 1D CSV data (X, Y, Z columns) to 2D grids
-- Creates 4 simultaneous heatmaps: Voltage, X-Voltage, Y-Voltage, X/Y Ratio
-- Uses Plotly for interactive visualization (zoom, pan, hover tooltips)
-- Handles floating-point precision issues with coordinate rounding
 
 ### SettingsPanel
 

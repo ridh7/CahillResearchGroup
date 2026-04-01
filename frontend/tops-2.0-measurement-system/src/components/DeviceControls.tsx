@@ -63,12 +63,10 @@ export default function DeviceControls({
   changeLockinFrequency,
   changeLockinFilterSlope,
   fetchLockinSettings,
-  lockinConnected,
   multimeterSettings,
   changeMultimeterAperture,
   changeMultimeterTerminal,
   fetchMultimeterSettings,
-  multimeterConnected,
   settings,
 }: DeviceControlsProps) {
   const [activeTab, setActiveTab] = useState<'stage' | 'lockin' | 'multimeter'>('stage');
@@ -699,13 +697,19 @@ export default function DeviceControls({
             </button>
             <button
               onClick={() => handleHome('')}
-              className="flex-1 rounded bg-teal-600 py-2 text-white transition-colors hover:bg-teal-700"
+              disabled={isProcessing}
+              className={`flex-1 rounded py-2 text-white transition-colors ${
+                isProcessing ? 'cursor-not-allowed bg-gray-600' : 'bg-teal-600 hover:bg-teal-700'
+              }`}
             >
               Home XY
             </button>
             <button
               onClick={handleReset}
-              className="flex-1 rounded bg-red-600 py-2 text-white transition-colors hover:bg-red-700"
+              disabled={isProcessing}
+              className={`flex-1 rounded py-2 text-white transition-colors ${
+                isProcessing ? 'cursor-not-allowed bg-gray-600' : 'bg-red-600 hover:bg-red-700'
+              }`}
             >
               Clear Values
             </button>
@@ -729,7 +733,7 @@ export default function DeviceControls({
             <label className="w-24 text-white">Sensitivity</label>
             <button
               onClick={() => changeLockinSensitivity(true)}
-              disabled={lockinSettings.sensitivity === 27 || lockinConnected}
+              disabled={lockinSettings.sensitivity === 27}
               className="rounded bg-gray-700 p-2 text-white hover:bg-gray-600 disabled:opacity-50"
             >
               <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -780,7 +784,7 @@ export default function DeviceControls({
             />
             <button
               onClick={() => changeLockinSensitivity(false)}
-              disabled={lockinSettings.sensitivity === 0 || lockinConnected}
+              disabled={lockinSettings.sensitivity === 0}
               className="rounded bg-gray-700 p-2 text-white hover:bg-gray-600 disabled:opacity-50"
             >
               <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -799,7 +803,7 @@ export default function DeviceControls({
             <label className="w-24 text-white">Time Constant</label>
             <button
               onClick={() => changeLockinTimeConstant(false)}
-              disabled={lockinSettings.timeConstant === 0 || lockinConnected}
+              disabled={lockinSettings.timeConstant === 0}
               className="rounded bg-gray-700 p-2 text-white hover:bg-gray-600 disabled:opacity-50"
             >
               <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -846,7 +850,7 @@ export default function DeviceControls({
             />
             <button
               onClick={() => changeLockinTimeConstant(true)}
-              disabled={lockinSettings.timeConstant === 23 || lockinConnected} // Adjust to 30 if extending time constant map
+              disabled={lockinSettings.timeConstant === 23} // Adjust to 30 if extending time constant map
               className="rounded bg-gray-700 p-2 text-white hover:bg-gray-600 disabled:opacity-50"
             >
               <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -869,7 +873,6 @@ export default function DeviceControls({
               className="w-28 rounded border border-gray-600 bg-gray-700 p-2 text-center text-sm text-white focus:border-teal-500 focus:outline-none"
               value={freqInput}
               onChange={(e) => setFreqInput(e.target.value)}
-              disabled={lockinConnected}
             />
             <span className="text-sm text-gray-400">Hz</span>
             <button
@@ -880,12 +883,7 @@ export default function DeviceControls({
                   setFreqInput('');
                 }
               }}
-              disabled={
-                lockinConnected ||
-                freqInput === '' ||
-                isNaN(Number(freqInput)) ||
-                Number(freqInput) <= 0
-              }
+              disabled={freqInput === '' || isNaN(Number(freqInput)) || Number(freqInput) <= 0}
               className="rounded bg-teal-600 px-3 py-2 text-sm text-white hover:bg-teal-700 disabled:cursor-not-allowed disabled:opacity-50"
             >
               Set
@@ -905,12 +903,11 @@ export default function DeviceControls({
                 <button
                   key={opt.code}
                   onClick={() => changeLockinFilterSlope(opt.code)}
-                  disabled={lockinConnected}
                   className={`rounded px-2 py-1.5 text-xs text-white transition-colors ${
                     lockinSettings.filterSlope === opt.code
                       ? 'bg-teal-600'
                       : 'bg-gray-700 hover:bg-gray-600'
-                  } disabled:cursor-not-allowed disabled:opacity-50`}
+                  }`}
                 >
                   {opt.label}
                 </button>
@@ -932,7 +929,7 @@ export default function DeviceControls({
                   changeMultimeterAperture(validNPLC[currentIndex - 1]);
                 }
               }}
-              disabled={multimeterSettings.aperture === 0.02 || multimeterConnected}
+              disabled={multimeterSettings.aperture === 0.02}
               className="rounded bg-gray-700 p-2 text-white hover:bg-gray-600 disabled:opacity-50"
             >
               <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -958,7 +955,7 @@ export default function DeviceControls({
                   changeMultimeterAperture(validNPLC[currentIndex + 1]);
                 }
               }}
-              disabled={multimeterSettings.aperture === 100 || multimeterConnected}
+              disabled={multimeterSettings.aperture === 100}
               className="rounded bg-gray-700 p-2 text-white hover:bg-gray-600 disabled:opacity-50"
             >
               <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -984,7 +981,6 @@ export default function DeviceControls({
                   checked={multimeterSettings.terminal === 'fron'}
                   onChange={() => changeMultimeterTerminal('fron')}
                   className="mr-2 text-teal-600 focus:ring-teal-500"
-                  disabled={multimeterConnected}
                 />
                 Front
               </label>
@@ -996,7 +992,6 @@ export default function DeviceControls({
                   checked={multimeterSettings.terminal === 'rear'}
                   onChange={() => changeMultimeterTerminal('rear')}
                   className="mr-2 text-teal-600 focus:ring-teal-500"
-                  disabled={multimeterConnected}
                 />
                 Rear
               </label>
