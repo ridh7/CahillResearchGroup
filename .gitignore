@@ -1,6 +1,7 @@
 .DS_Store
 .idea
 backend/static/
+fdpbd-analysis/
 
 # Environment files
 .env
