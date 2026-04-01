@@ -2,6 +2,7 @@
 
 import { useMemo, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
+import type Plotly from 'plotly.js';
 import { ScanDataPoint, FormData } from '../app/page';
 
 const Plot = dynamic(() => import('react-plotly.js'), { ssr: false });
@@ -34,7 +35,6 @@ function buildAxis(start: number, end: number, step: number): number[] {
 }
 
 type BinAccum = { sum: number; count: number };
-type BinResult = { mean: number; sd: number; combined: number } | null;
 
 function parseTimestamp(ts: string): number {
   return new Date(ts).getTime();
@@ -47,15 +47,18 @@ export default function LiveScanPanel({ scanData, formData, isProcessing }: Live
   const plotRef = useRef<HTMLDivElement>(null);
   const [exportFormat, setExportFormat] = useState<ExportFormat>('svg');
 
-  const handleExport = async () => {
+  const handleExport = () => {
     const plotDiv = plotRef.current?.querySelector('.js-plotly-plot') as HTMLElement | null;
     if (!plotDiv) return;
-    const Plotly = await import('plotly.js');
-    Plotly.downloadImage(plotDiv, {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const PlotlyRuntime = (window as any).Plotly as typeof Plotly;
+    if (!PlotlyRuntime) return;
+    const { width, height } = plotDiv.getBoundingClientRect();
+    PlotlyRuntime.downloadImage(plotDiv, {
       format: exportFormat,
       filename: `scan_heatmaps_${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}`,
-      width: 1200,
-      height: 800,
+      width: Math.round(width),
+      height: Math.round(height),
     });
   };
   const { currentRate, avgRate, elapsedSec } = useMemo(() => {
@@ -174,68 +177,59 @@ export default function LiveScanPanel({ scanData, formData, isProcessing }: Live
     const ratioSD = globalSD(ratioMeans);
     const rSD = globalSD(rMeans);
 
-    // Build result grids: combined = cell_mean + global_SD
-    const toResultGrid = (means: (number | null)[][], sd: number): BinResult[][] =>
-      means.map((row) =>
-        row.map((mean) => {
-          if (mean === null) return null;
-          return { mean, sd, combined: mean + sd };
+    // Compute global mean of all cell means
+    const globalMean = (means: (number | null)[][]): number => {
+      const vals: number[] = [];
+      means.forEach((row) =>
+        row.forEach((v) => {
+          if (v !== null) vals.push(v);
         })
       );
+      if (vals.length === 0) return 0;
+      return vals.reduce((a, b) => a + b, 0) / vals.length;
+    };
 
-    const voltageResult = toResultGrid(voltageMeans, voltageSD);
-    const xVResult = toResultGrid(xVMeans, xVSD);
-    const yVResult = toResultGrid(yVMeans, yVSD);
-    const ratioResult = toResultGrid(ratioMeans, ratioSD);
-    const rResult = toResultGrid(rMeans, rSD);
-
-    // Extract z (combined = mean + global SD) and customdata for hover
-    const extractGrids = (result: BinResult[][]) => ({
-      z: result.map((row) => row.map((cell) => (cell ? cell.combined : null))),
-      customdata: result.map((row) =>
-        row.map((cell) => (cell ? [cell.mean, cell.sd, cell.combined] : [null, null, null]))
-      ),
-    });
+    const voltageMean = globalMean(voltageMeans);
+    const xVMean = globalMean(xVMeans);
+    const yVMean = globalMean(yVMeans);
+    const ratioMean = globalMean(ratioMeans);
+    const rMean = globalMean(rMeans);
 
     const makeTrace = (
-      result: BinResult[][],
+      means: (number | null)[][],
+      sd: number,
+      mean: number,
       title: string,
       xaxis: string,
       yaxis: string,
       colorbarX: number,
       colorbarY: number,
       reverse?: boolean
-    ): Plotly.Data => {
-      const { z, customdata } = extractGrids(result);
-      return {
-        z,
-        x: gridX,
-        y: gridY,
-        customdata: customdata as unknown as Plotly.Datum[][],
-        type: 'heatmap',
-        colorscale: 'Greys',
-        reversescale: reverse,
-        zsmooth: false,
-        showscale: true,
-        connectgaps: false,
-        hovertemplate:
-          `X: %{x}<br>Y: %{y}<br>` +
-          `${title} (mean): %{customdata[0]:.4e}<br>` +
-          `SD: %{customdata[1]:.4e}<br>` +
-          `Mean+SD: %{customdata[2]:.4e}<extra></extra>`,
-        xaxis,
-        yaxis,
-        colorbar: { title: `${title}`, x: colorbarX, y: colorbarY, len: 0.25, thickness: 15 },
-      };
-    };
+    ): Plotly.Data => ({
+      z: means,
+      x: gridX,
+      y: gridY,
+      type: 'heatmap',
+      colorscale: 'Greys',
+      reversescale: reverse,
+      zsmooth: false,
+      showscale: true,
+      connectgaps: false,
+      zmin: mean - 2 * sd,
+      zmax: mean + 2 * sd,
+      hovertemplate: `X: %{x}<br>Y: %{y}<br>${title}: %{z:.4e}<extra></extra>`,
+      xaxis,
+      yaxis,
+      colorbar: { title, x: colorbarX, y: colorbarY, len: 0.25, thickness: 15 },
+    });
 
     // Row 1: X(V), Y(V) | Row 2: R, X/Y | Row 3: Voltage (centered)
     return [
-      makeTrace(xVResult, 'X(V)', 'x1', 'y1', 0.43, 0.87),
-      makeTrace(yVResult, 'Y(V)', 'x2', 'y2', 1.0, 0.87),
-      makeTrace(rResult, 'R (V)', 'x3', 'y3', 0.43, 0.53),
-      makeTrace(ratioResult, 'X/Y', 'x4', 'y4', 1.0, 0.53, true),
-      makeTrace(voltageResult, 'Voltage (V)', 'x5', 'y5', 0.72, 0.17),
+      makeTrace(xVMeans, xVSD, xVMean, 'X(V)', 'x1', 'y1', 0.43, 0.87),
+      makeTrace(yVMeans, yVSD, yVMean, 'Y(V)', 'x2', 'y2', 1.0, 0.87),
+      makeTrace(rMeans, rSD, rMean, 'R (V)', 'x3', 'y3', 0.43, 0.53),
+      makeTrace(ratioMeans, ratioSD, ratioMean, 'X/Y', 'x4', 'y4', 1.0, 0.53, true),
+      makeTrace(voltageMeans, voltageSD, voltageMean, 'Voltage (V)', 'x5', 'y5', 0.72, 0.17),
     ];
   }, [scanData, gridX, gridY, xStepSigned, yStepSigned]);
 
