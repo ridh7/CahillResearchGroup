@@ -357,7 +357,7 @@ export default function FDPBDPage() {
     const value = e.target.value;
     setParams((prev) => {
       if (index !== undefined && ['lambda_down', 'c_down', 'h_down'].includes(field)) {
-        const updatedArray = [...prev[field]];
+        const updatedArray = [...(prev[field] as string[])];
         updatedArray[index] = value;
         return { ...prev, [field]: updatedArray };
       }
@@ -422,7 +422,11 @@ export default function FDPBDPage() {
         index !== undefined
           ? {
               ...params,
-              [field]: [...params[field].slice(0, index), value, ...params[field].slice(index + 1)],
+              [field]: [
+                ...(params[field] as string[]).slice(0, index),
+                value,
+                ...(params[field] as string[]).slice(index + 1),
+              ],
             }
           : { ...params, [field]: value };
       if (
@@ -670,6 +674,8 @@ export default function FDPBDPage() {
       v_sum_fixed: '',
       c_probe: '',
       g_int: '',
+      include_air_deflection: false,
+      dndt_up: '',
     });
     setFile(null);
     setLensOption('custom');
@@ -1168,12 +1174,14 @@ export default function FDPBDPage() {
                                 <input
                                   type="number"
                                   step="any"
-                                  value={params[param.field as keyof FDPBDParams]}
+                                  value={params[param.field as keyof FDPBDParams] as string}
                                   onChange={(e) =>
                                     handleInputChange(e, param.field as keyof FDPBDParams)
                                   }
                                   className={`rounded border-2 bg-gray-800 p-2 text-white focus:outline-none ${
-                                    isValidDecimal(params[param.field as keyof FDPBDParams])
+                                    isValidDecimal(
+                                      params[param.field as keyof FDPBDParams] as string
+                                    )
                                       ? 'border-gray-600 focus:border-teal-500'
                                       : 'border-red-500'
                                   }`}
@@ -1245,12 +1253,14 @@ export default function FDPBDPage() {
                                 <input
                                   type="number"
                                   step="any"
-                                  value={params[param.field as keyof FDPBDParams]}
+                                  value={params[param.field as keyof FDPBDParams] as string}
                                   onChange={(e) =>
                                     handleInputChange(e, param.field as keyof FDPBDParams)
                                   }
                                   className={`rounded border-2 bg-gray-800 p-2 text-white focus:outline-none ${
-                                    isValidDecimal(params[param.field as keyof FDPBDParams])
+                                    isValidDecimal(
+                                      params[param.field as keyof FDPBDParams] as string
+                                    )
                                       ? 'border-gray-600 focus:border-teal-500'
                                       : 'border-red-500'
                                   }`}
@@ -1321,12 +1331,14 @@ export default function FDPBDPage() {
                                 <input
                                   type="number"
                                   step="any"
-                                  value={params[param.field as keyof FDPBDParams]}
+                                  value={params[param.field as keyof FDPBDParams] as string}
                                   onChange={(e) =>
                                     handleInputChange(e, param.field as keyof FDPBDParams)
                                   }
                                   className={`rounded border-2 bg-gray-800 p-2 text-white focus:outline-none ${
-                                    isValidDecimal(params[param.field as keyof FDPBDParams])
+                                    isValidDecimal(
+                                      params[param.field as keyof FDPBDParams] as string
+                                    )
                                       ? 'border-gray-600 focus:border-teal-500'
                                       : 'border-red-500'
                                   }`}
@@ -1360,9 +1372,7 @@ export default function FDPBDPage() {
                                 </div>
                                 {params.include_air_deflection && (
                                   <div className="mb-2 flex flex-col">
-                                    <label className="mb-1 text-sm text-white">
-                                      dn/dT [1/K]
-                                    </label>
+                                    <label className="mb-1 text-sm text-white">dn/dT [1/K]</label>
                                     <input
                                       type="number"
                                       step="any"
@@ -1458,8 +1468,10 @@ export default function FDPBDPage() {
                                   step="any"
                                   value={
                                     param.index !== undefined
-                                      ? params[param.field as keyof FDPBDParams][param.index]
-                                      : params[param.field as keyof FDPBDParams]
+                                      ? (params[param.field as keyof FDPBDParams] as string[])[
+                                          param.index
+                                        ]
+                                      : (params[param.field as keyof FDPBDParams] as string)
                                   }
                                   onChange={(e) =>
                                     handleInputChange(
@@ -1471,8 +1483,10 @@ export default function FDPBDPage() {
                                   className={`rounded border-2 bg-gray-800 p-2 text-white focus:outline-none ${
                                     isValidDecimal(
                                       param.index !== undefined
-                                        ? params[param.field as keyof FDPBDParams][param.index]
-                                        : params[param.field as keyof FDPBDParams]
+                                        ? (params[param.field as keyof FDPBDParams] as string[])[
+                                            param.index
+                                          ]
+                                        : (params[param.field as keyof FDPBDParams] as string)
                                     )
                                       ? 'border-gray-600 focus:border-teal-500'
                                       : 'border-red-500'
@@ -1531,7 +1545,11 @@ export default function FDPBDPage() {
                                   <input
                                     type="number"
                                     step="any"
-                                    value={params[param.field as keyof FDPBDParams][param.index]}
+                                    value={
+                                      (params[param.field as keyof FDPBDParams] as string[])[
+                                        param.index
+                                      ]
+                                    }
                                     onChange={(e) =>
                                       handleInputChange(
                                         e,
@@ -1541,7 +1559,9 @@ export default function FDPBDPage() {
                                     }
                                     className={`rounded border-2 bg-gray-800 p-2 text-white focus:outline-none ${
                                       isValidDecimal(
-                                        params[param.field as keyof FDPBDParams][param.index]
+                                        (params[param.field as keyof FDPBDParams] as string[])[
+                                          param.index
+                                        ]
                                       )
                                         ? 'border-gray-600 focus:border-teal-500'
                                         : 'border-red-500'
@@ -1666,8 +1686,10 @@ export default function FDPBDPage() {
                                   step="any"
                                   value={
                                     param.index !== undefined
-                                      ? params[param.field as keyof FDPBDParams][param.index]
-                                      : params[param.field as keyof FDPBDParams]
+                                      ? (params[param.field as keyof FDPBDParams] as string[])[
+                                          param.index
+                                        ]
+                                      : (params[param.field as keyof FDPBDParams] as string)
                                   }
                                   onChange={(e) =>
                                     handleInputChange(
@@ -1679,8 +1701,10 @@ export default function FDPBDPage() {
                                   className={`rounded border-2 bg-gray-800 p-2 text-white focus:outline-none ${
                                     isValidDecimal(
                                       param.index !== undefined
-                                        ? params[param.field as keyof FDPBDParams][param.index]
-                                        : params[param.field as keyof FDPBDParams]
+                                        ? (params[param.field as keyof FDPBDParams] as string[])[
+                                            param.index
+                                          ]
+                                        : (params[param.field as keyof FDPBDParams] as string)
                                     )
                                       ? 'border-gray-600 focus:border-teal-500'
                                       : 'border-red-500'
@@ -1754,12 +1778,14 @@ export default function FDPBDPage() {
                                 <input
                                   type="number"
                                   step="any"
-                                  value={params[param.field as keyof FDPBDParams]}
+                                  value={params[param.field as keyof FDPBDParams] as string}
                                   onChange={(e) =>
                                     handleInputChange(e, param.field as keyof FDPBDParams)
                                   }
                                   className={`rounded border-2 bg-gray-800 p-2 text-white focus:outline-none ${
-                                    isValidDecimal(params[param.field as keyof FDPBDParams])
+                                    isValidDecimal(
+                                      params[param.field as keyof FDPBDParams] as string
+                                    )
                                       ? 'border-gray-600 focus:border-teal-500'
                                       : 'border-red-500'
                                   }`}
@@ -1819,12 +1845,14 @@ export default function FDPBDPage() {
                                 <input
                                   type="number"
                                   step="any"
-                                  value={params[param.field as keyof FDPBDParams]}
+                                  value={params[param.field as keyof FDPBDParams] as string}
                                   onChange={(e) =>
                                     handleInputChange(e, param.field as keyof FDPBDParams)
                                   }
                                   className={`rounded border-2 bg-gray-800 p-2 text-white focus:outline-none ${
-                                    isValidDecimal(params[param.field as keyof FDPBDParams])
+                                    isValidDecimal(
+                                      params[param.field as keyof FDPBDParams] as string
+                                    )
                                       ? 'border-gray-600 focus:border-teal-500'
                                       : 'border-red-500'
                                   }`}
@@ -1887,12 +1915,14 @@ export default function FDPBDPage() {
                                 <input
                                   type="number"
                                   step="any"
-                                  value={params[param.field as keyof FDPBDParams]}
+                                  value={params[param.field as keyof FDPBDParams] as string}
                                   onChange={(e) =>
                                     handleInputChange(e, param.field as keyof FDPBDParams)
                                   }
                                   className={`rounded border-2 bg-gray-800 p-2 text-white focus:outline-none ${
-                                    isValidDecimal(params[param.field as keyof FDPBDParams])
+                                    isValidDecimal(
+                                      params[param.field as keyof FDPBDParams] as string
+                                    )
                                       ? 'border-gray-600 focus:border-teal-500'
                                       : 'border-red-500'
                                   }`}
@@ -1960,8 +1990,10 @@ export default function FDPBDPage() {
                                   step="any"
                                   value={
                                     param.index !== undefined
-                                      ? params[param.field as keyof FDPBDParams][param.index]
-                                      : params[param.field as keyof FDPBDParams]
+                                      ? (params[param.field as keyof FDPBDParams] as string[])[
+                                          param.index
+                                        ]
+                                      : (params[param.field as keyof FDPBDParams] as string)
                                   }
                                   onChange={(e) =>
                                     handleInputChange(
@@ -1973,8 +2005,10 @@ export default function FDPBDPage() {
                                   className={`rounded border-2 bg-gray-800 p-2 text-white focus:outline-none ${
                                     isValidDecimal(
                                       param.index !== undefined
-                                        ? params[param.field as keyof FDPBDParams][param.index]
-                                        : params[param.field as keyof FDPBDParams]
+                                        ? (params[param.field as keyof FDPBDParams] as string[])[
+                                            param.index
+                                          ]
+                                        : (params[param.field as keyof FDPBDParams] as string)
                                     )
                                       ? 'border-gray-600 focus:border-teal-500'
                                       : 'border-red-500'
@@ -2042,8 +2076,10 @@ export default function FDPBDPage() {
                                   step="any"
                                   value={
                                     param.index !== undefined
-                                      ? params[param.field as keyof FDPBDParams][param.index]
-                                      : params[param.field as keyof FDPBDParams]
+                                      ? (params[param.field as keyof FDPBDParams] as string[])[
+                                          param.index
+                                        ]
+                                      : (params[param.field as keyof FDPBDParams] as string)
                                   }
                                   onChange={(e) =>
                                     handleInputChange(
@@ -2055,8 +2091,10 @@ export default function FDPBDPage() {
                                   className={`rounded border-2 bg-gray-800 p-2 text-white focus:outline-none ${
                                     isValidDecimal(
                                       param.index !== undefined
-                                        ? params[param.field as keyof FDPBDParams][param.index]
-                                        : params[param.field as keyof FDPBDParams]
+                                        ? (params[param.field as keyof FDPBDParams] as string[])[
+                                            param.index
+                                          ]
+                                        : (params[param.field as keyof FDPBDParams] as string)
                                     )
                                       ? 'border-gray-600 focus:border-teal-500'
                                       : 'border-red-500'
