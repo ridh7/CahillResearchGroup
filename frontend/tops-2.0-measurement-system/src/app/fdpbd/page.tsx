@@ -80,7 +80,8 @@ type FDPBDParams = {
   n_al: string;
   k_al: string;
   lens_transmittance: string;
-  detector_factor: string;
+  focal_length: string;
+  w_probe_det: string;
   phi: string;
   rho: string;
   alphaT: string;
@@ -128,7 +129,8 @@ export default function FDPBDPage() {
     n_al: '2.9',
     k_al: '8.2',
     lens_transmittance: '0.93',
-    detector_factor: '74.0',
+    focal_length: '40',
+    w_probe_det: '0.971',
     phi: '0',
     rho: '2.70',
     alphaT: '23.1e-6',
@@ -156,7 +158,7 @@ export default function FDPBDPage() {
   const fieldUnits: Record<string, string> = {
     f_rolloff: 'Hz',
     delay_1: 's',
-    delay_2: 's',
+    delay_2: 's²',
     lambda_down: 'W/m-K',
     eta_down: '',
     c_down: 'J/cm\u00B3-K',
@@ -174,7 +176,8 @@ export default function FDPBDPage() {
     n_al: '',
     k_al: '',
     lens_transmittance: '',
-    detector_factor: '1/rad',
+    focal_length: 'mm',
+    w_probe_det: 'mm',
     phi: 'degrees',
     rho: 'g/cm\u00B3',
     alphaT: '1/K',
@@ -264,7 +267,8 @@ export default function FDPBDPage() {
         params.w_rms,
         params.x_offset,
         params.lens_transmittance,
-        params.detector_factor,
+        params.focal_length,
+        params.w_probe_det,
         params.c_probe,
         params.n_al,
         params.k_al,
@@ -311,10 +315,9 @@ export default function FDPBDPage() {
       params.c_down[2],
       params.h_down[0],
       params.h_down[1],
-      params.h_down[2],
       ...(isotropyOption === 'isotropy' ? [params.niu, params.alpha_t] : []),
       params.lambda_up,
-      ...(isotropyOption === 'isotropy' ? [params.eta_up, params.h_up] : []),
+      ...(isotropyOption === 'isotropy' ? [params.eta_up] : []),
       params.c_up,
       params.w_rms,
       params.x_offset,
@@ -323,7 +326,8 @@ export default function FDPBDPage() {
       params.n_al,
       params.k_al,
       params.lens_transmittance,
-      params.detector_factor,
+      params.focal_length,
+      params.w_probe_det,
       ...(isotropyOption === 'anisotropy'
         ? [
             params.phi,
@@ -364,27 +368,27 @@ export default function FDPBDPage() {
       return { ...prev, [field]: value };
     });
 
-    if (['w_rms', 'x_offset', 'lens_transmittance', 'detector_factor', 'phi'].includes(field)) {
+    if (['w_rms', 'x_offset', 'lens_transmittance', 'focal_length', 'phi'].includes(field)) {
       const lensValues = {
         '5x': {
           w_rms: '11.20',
           x_offset: '12.60',
           lens_transmittance: '0.93',
-          detector_factor: '74.0',
+          focal_length: '40',
           phi: '0',
         },
         '10x': {
           w_rms: '5.60',
           x_offset: '6.30',
           lens_transmittance: '0.85',
-          detector_factor: '37.0',
+          focal_length: '20',
           phi: '0',
         },
         '20x': {
           w_rms: '2.825',
           x_offset: '3.15',
           lens_transmittance: '0.80',
-          detector_factor: '18.5',
+          focal_length: '10',
           phi: '0',
         },
       };
@@ -395,7 +399,7 @@ export default function FDPBDPage() {
             vals.w_rms === updatedParams.w_rms &&
             vals.x_offset === updatedParams.x_offset &&
             vals.lens_transmittance === updatedParams.lens_transmittance &&
-            vals.detector_factor === updatedParams.detector_factor &&
+            vals.focal_length === updatedParams.focal_length &&
             vals.phi === updatedParams.phi
         )
       ) {
@@ -474,7 +478,11 @@ export default function FDPBDPage() {
         setIsotropyOption('anisotropy');
       }
     }
-    if (['f_rolloff', 'delay_1', 'delay_2', 'incident_pump', 'incident_probe'].includes(field)) {
+    if (
+      ['f_rolloff', 'delay_1', 'delay_2', 'incident_pump', 'incident_probe', 'w_probe_det'].includes(
+        field
+      )
+    ) {
       const laserValues = {
         'TOPS 1': {
           f_rolloff: '95000',
@@ -482,6 +490,7 @@ export default function FDPBDPage() {
           delay_2: '-1.3e-11',
           incident_pump: '1.06',
           incident_probe: '0.85',
+          w_probe_det: '0.971',
         },
         'TOPS 2': {
           f_rolloff: '95000',
@@ -489,6 +498,7 @@ export default function FDPBDPage() {
           delay_2: '-1.3e-11',
           incident_pump: '1.06',
           incident_probe: '0.85',
+          w_probe_det: '0.87',
         },
       };
       const updatedParams = { ...params, [field]: value };
@@ -499,7 +509,8 @@ export default function FDPBDPage() {
             vals.delay_1 === updatedParams.delay_1 &&
             vals.delay_2 === updatedParams.delay_2 &&
             vals.incident_pump === updatedParams.incident_pump &&
-            vals.incident_probe === updatedParams.incident_probe
+            vals.incident_probe === updatedParams.incident_probe &&
+            vals.w_probe_det === updatedParams.w_probe_det
         )
       ) {
         setLaserOption('custom');
@@ -515,21 +526,21 @@ export default function FDPBDPage() {
           w_rms: '11.20',
           x_offset: '12.60',
           lens_transmittance: '0.93',
-          detector_factor: '74.0',
+          focal_length: '40',
           phi: '0',
         },
         '10x': {
           w_rms: '5.60',
           x_offset: '6.30',
           lens_transmittance: '0.85',
-          detector_factor: '37.0',
+          focal_length: '20',
           phi: '0',
         },
         '20x': {
           w_rms: '2.825',
           x_offset: '3.15',
           lens_transmittance: '0.80',
-          detector_factor: '18.5',
+          focal_length: '10',
           phi: '0',
         },
       };
@@ -538,7 +549,7 @@ export default function FDPBDPage() {
         w_rms: values[option].w_rms,
         x_offset: values[option].x_offset,
         lens_transmittance: values[option].lens_transmittance,
-        detector_factor: values[option].detector_factor,
+        focal_length: values[option].focal_length,
         phi: values[option].phi,
       }));
     }
@@ -611,6 +622,7 @@ export default function FDPBDPage() {
           delay_2: '-1.3e-11',
           incident_pump: '1.06',
           incident_probe: '0.85',
+          w_probe_det: '0.971',
         },
         'TOPS 2': {
           f_rolloff: '95000',
@@ -618,6 +630,7 @@ export default function FDPBDPage() {
           delay_2: '-1.3e-11',
           incident_pump: '1.06',
           incident_probe: '0.85',
+          w_probe_det: '0.87',
         },
       };
       setParams((prev) => ({
@@ -627,6 +640,7 @@ export default function FDPBDPage() {
         delay_2: values[option].delay_2,
         incident_pump: values[option].incident_pump,
         incident_probe: values[option].incident_probe,
+        w_probe_det: values[option].w_probe_det,
       }));
     }
   };
@@ -653,7 +667,8 @@ export default function FDPBDPage() {
       n_al: '',
       k_al: '',
       lens_transmittance: '',
-      detector_factor: '',
+      focal_length: '',
+      w_probe_det: '',
       phi: '',
       rho: '',
       alphaT: '',
@@ -720,7 +735,9 @@ export default function FDPBDPage() {
         w_rms: parseFloat(params.w_rms) * 1e-6, // µm -> m
         r_0: parseFloat(params.x_offset) * 1e-6, // µm -> m (x_offset -> r_0)
         lens_transmittance: parseFloat(params.lens_transmittance),
-        detector_gain: parseFloat(params.detector_factor), // detector_factor -> detector_gain
+        // det_factor = sqrt(8/pi) * focal_length / w_1_d; mm/mm cancels to dimensionless 1/rad
+        detector_gain:
+          Math.sqrt(8 / Math.PI) * (parseFloat(params.focal_length) / parseFloat(params.w_probe_det)),
         c_probe: parseFloat(params.c_probe),
         n_al: parseFloat(params.n_al),
         k_al: parseFloat(params.k_al),
@@ -775,6 +792,9 @@ export default function FDPBDPage() {
       return;
     }
 
+    // det_factor = sqrt(8/pi) * focal_length / w_1_d; mm/mm cancels to dimensionless 1/rad
+    const detector_factor =
+      Math.sqrt(8 / Math.PI) * (parseFloat(params.focal_length) / parseFloat(params.w_probe_det));
     const modifiedParams = {
       ...params,
       w_rms: (parseFloat(params.w_rms) * 1e-6).toString(),
@@ -793,6 +813,9 @@ export default function FDPBDPage() {
       C13_0_sample: (parseFloat(params.C13_0_sample) * 1e9).toString(),
       C33_0_sample: (parseFloat(params.C33_0_sample) * 1e9).toString(),
       C44_0_sample: (parseFloat(params.C44_0_sample) * 1e9).toString(),
+      detector_factor: detector_factor.toString(),
+      focal_length: undefined,
+      w_probe_det: undefined,
     };
 
     const visibleParams = {
@@ -898,7 +921,8 @@ export default function FDPBDPage() {
         w_rms: parseFloat(params.w_rms) * 1e-6,
         r_0: parseFloat(params.x_offset) * 1e-6,
         lens_transmittance: parseFloat(params.lens_transmittance),
-        detector_gain: parseFloat(params.detector_factor),
+        detector_gain:
+          Math.sqrt(8 / Math.PI) * (parseFloat(params.focal_length) / parseFloat(params.w_probe_det)),
         c_probe: parseFloat(params.c_probe),
         n_al: parseFloat(params.n_al),
         k_al: parseFloat(params.k_al),
@@ -934,8 +958,13 @@ export default function FDPBDPage() {
       formData.append('params', JSON.stringify(transverseParams));
       endpoint = `${API_BASE}/fdpbd/fit_transverse`;
     } else {
+      const detector_factor =
+        Math.sqrt(8 / Math.PI) * (parseFloat(params.focal_length) / parseFloat(params.w_probe_det));
       const anisotropicParams = {
         ...params,
+        detector_factor: detector_factor.toString(),
+        focal_length: undefined,
+        w_probe_det: undefined,
         w_rms: (parseFloat(params.w_rms) * 1e-6).toString(),
         x_offset: (parseFloat(params.x_offset) * 1e-6).toString(),
         incident_probe: (parseFloat(params.incident_probe) * 1e-3).toString(),
@@ -1148,7 +1177,7 @@ export default function FDPBDPage() {
                               ))}
                             </div>
                             {[
-                              { field: 'w_rms', label: `W RMS [${fieldUnits.w_rms}]` },
+                              { field: 'w_rms', label: `w rms [${fieldUnits.w_rms}]` },
                               {
                                 field: 'x_offset',
                                 label: `X Offset [${fieldUnits.x_offset}]`,
@@ -1162,8 +1191,8 @@ export default function FDPBDPage() {
                                 }`,
                               },
                               {
-                                field: 'detector_factor',
-                                label: `Detector Factor [${fieldUnits.detector_factor}]`,
+                                field: 'focal_length',
+                                label: `Focal Length [${fieldUnits.focal_length}]`,
                               },
                               ...(isotropyOption === 'anisotropy'
                                 ? [{ field: 'phi', label: `Phi [${fieldUnits.phi}]` }]
@@ -1233,11 +1262,11 @@ export default function FDPBDPage() {
                               },
                               {
                                 field: 'delay_1',
-                                label: `Dwell 1 [${fieldUnits.delay_1}]`,
+                                label: `coef 1 [${fieldUnits.delay_1}]`,
                               },
                               {
                                 field: 'delay_2',
-                                label: `Dwell 2 [${fieldUnits.delay_2}]`,
+                                label: `coef 2 [${fieldUnits.delay_2}]`,
                               },
                               {
                                 field: 'incident_pump',
@@ -1246,6 +1275,10 @@ export default function FDPBDPage() {
                               {
                                 field: 'incident_probe',
                                 label: `Incident Probe [${fieldUnits.incident_probe}]`,
+                              },
+                              {
+                                field: 'w_probe_det',
+                                label: `Probe Radius at Detector [${fieldUnits.w_probe_det}]`,
                               },
                             ].map((param) => (
                               <div key={param.field} className="mb-2 flex flex-col">
@@ -1322,7 +1355,6 @@ export default function FDPBDPage() {
                                       field: 'eta_up',
                                       label: `Eta Up ${fieldUnits.eta_up ? `[${fieldUnits.eta_up}]` : ''}`,
                                     },
-                                    { field: 'h_up', label: `H Up [${fieldUnits.h_up}]` },
                                   ]
                                 : []),
                             ].map((param) => (
@@ -1604,11 +1636,6 @@ export default function FDPBDPage() {
                                       label: `C Down [${fieldUnits.c_down}]`,
                                     },
                                     {
-                                      field: 'h_down',
-                                      index: 2,
-                                      label: `h Down [${fieldUnits.h_down}]`,
-                                    },
-                                    {
                                       field: 'eta_down',
                                       index: 2,
                                       label: `Eta Down ${
@@ -1621,7 +1648,7 @@ export default function FDPBDPage() {
                                     },
                                     {
                                       field: 'niu',
-                                      label: `Niu ${fieldUnits.niu ? `[${fieldUnits.niu}]` : ''}`,
+                                      label: `Poisson Ratio ${fieldUnits.niu ? `[${fieldUnits.niu}]` : ''}`,
                                     },
                                   ]
                                 : [
@@ -1760,12 +1787,12 @@ export default function FDPBDPage() {
                               ))}
                             </div>
                             {[
-                              { field: 'w_rms', label: `W RMS [${fieldUnits.w_rms}]` },
+                              { field: 'w_rms', label: `w rms [${fieldUnits.w_rms}]` },
                               { field: 'x_offset', label: `X Offset [${fieldUnits.x_offset}]` },
                               { field: 'lens_transmittance', label: 'Lens Transmittance' },
                               {
-                                field: 'detector_factor',
-                                label: `Detector Factor [${fieldUnits.detector_factor}]`,
+                                field: 'focal_length',
+                                label: `Focal Length [${fieldUnits.focal_length}]`,
                               },
                               {
                                 field: 'v_sum_fixed',
@@ -1833,11 +1860,15 @@ export default function FDPBDPage() {
                             </div>
                             {[
                               { field: 'f_rolloff', label: `f Rolloff [${fieldUnits.f_rolloff}]` },
-                              { field: 'delay_1', label: `Dwell 1 [${fieldUnits.delay_1}]` },
-                              { field: 'delay_2', label: `Dwell 2 [${fieldUnits.delay_2}]` },
+                              { field: 'delay_1', label: `coef 1 [${fieldUnits.delay_1}]` },
+                              { field: 'delay_2', label: `coef 2 [${fieldUnits.delay_2}]` },
                               {
                                 field: 'incident_pump',
                                 label: `Incident Pump [${fieldUnits.incident_pump}]`,
+                              },
+                              {
+                                field: 'w_probe_det',
+                                label: `Probe Radius at Detector [${fieldUnits.w_probe_det}]`,
                               },
                             ].map((param) => (
                               <div key={param.field} className="mb-2 flex flex-col">
