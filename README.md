@@ -15,6 +15,18 @@ A full-stack measurement system for controlling laboratory instruments, performi
 
 ## Getting Started
 
+### Prerequisites (first-time setup on a new Windows machine)
+
+1. **Install [Python 3](https://www.python.org/downloads/windows/)**. During install, tick **"Add python.exe to PATH"** — otherwise `build.ps1` won't find it.
+2. **Install [Node.js LTS](https://nodejs.org/)** (includes `npm`). Open a new PowerShell window after install so the updated PATH takes effect.
+3. **Allow PowerShell to run local scripts.** By default Windows blocks unsigned `.ps1` files, which makes `build.ps1` fail silently or with a "cannot be loaded because running scripts is disabled on this system" error. Open PowerShell as your normal user and run once:
+
+   ```powershell
+   Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned
+   ```
+
+### Build and run
+
 1. **Setup and build** (one-time, or after code changes):
 
    Open PowerShell in the repo root and run:
@@ -24,6 +36,8 @@ A full-stack measurement system for controlling laboratory instruments, performi
    ```
 
    This creates a Python virtual environment, installs all Python and Node dependencies, builds the Next.js frontend, and copies the output to `backend/static/`.
+
+   If the window closes immediately, launch PowerShell first, `cd` into the repo, then run `.\build.ps1` from there — the error will stay on screen so you can see which step failed.
 
 2. **Run the application**:
 
