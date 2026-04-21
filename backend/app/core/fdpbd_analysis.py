@@ -53,7 +53,12 @@ def run_fdpbd_analysis(params: FDPBDParams, data_filename: str) -> dict:
 
     # Calculate average sum voltage
     v_sum_avg = np.mean(v_sum)
-    coef = alpha_t * detector_factor * v_sum_avg / np.sqrt(2)  # For 10x objective
+    # Detector calibration: converts deflection angle (rad) to detector signal (V).
+    # Both the sample thermo-optic coefficient and the air dn/dT must be scaled by
+    # this factor so the two deflection contributions are in the same units.
+    det_calib = detector_factor * v_sum_avg / np.sqrt(2)
+    coef = alpha_t * det_calib
+    dndt_up = dndt_up * det_calib
 
     # Compute steady-state heating
     t_ss_heat = compute_steady_state_heat(
