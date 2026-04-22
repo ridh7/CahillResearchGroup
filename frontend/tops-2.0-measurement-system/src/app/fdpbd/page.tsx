@@ -479,9 +479,14 @@ export default function FDPBDPage() {
       }
     }
     if (
-      ['f_rolloff', 'delay_1', 'delay_2', 'incident_pump', 'incident_probe', 'w_probe_det'].includes(
-        field
-      )
+      [
+        'f_rolloff',
+        'delay_1',
+        'delay_2',
+        'incident_pump',
+        'incident_probe',
+        'w_probe_det',
+      ].includes(field)
     ) {
       const laserValues = {
         'TOPS 1': {
@@ -737,7 +742,8 @@ export default function FDPBDPage() {
         lens_transmittance: parseFloat(params.lens_transmittance),
         // det_factor = sqrt(8/pi) * focal_length / w_1_d; mm/mm cancels to dimensionless 1/rad
         detector_gain:
-          Math.sqrt(8 / Math.PI) * (parseFloat(params.focal_length) / parseFloat(params.w_probe_det)),
+          Math.sqrt(8 / Math.PI) *
+          (parseFloat(params.focal_length) / parseFloat(params.w_probe_det)),
         c_probe: parseFloat(params.c_probe),
         n_al: parseFloat(params.n_al),
         k_al: parseFloat(params.k_al),
@@ -922,7 +928,8 @@ export default function FDPBDPage() {
         r_0: parseFloat(params.x_offset) * 1e-6,
         lens_transmittance: parseFloat(params.lens_transmittance),
         detector_gain:
-          Math.sqrt(8 / Math.PI) * (parseFloat(params.focal_length) / parseFloat(params.w_probe_det)),
+          Math.sqrt(8 / Math.PI) *
+          (parseFloat(params.focal_length) / parseFloat(params.w_probe_det)),
         c_probe: parseFloat(params.c_probe),
         n_al: parseFloat(params.n_al),
         k_al: parseFloat(params.k_al),
@@ -1399,7 +1406,7 @@ export default function FDPBDPage() {
                                     htmlFor="include_air_deflection"
                                     className="text-sm text-white"
                                   >
-                                    Include air deflection (mirage effect)
+                                    Include beam deflection
                                   </label>
                                 </div>
                                 {params.include_air_deflection && (
