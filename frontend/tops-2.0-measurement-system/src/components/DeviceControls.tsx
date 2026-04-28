@@ -130,7 +130,15 @@ export default function DeviceControls({
     const y2Valid = formData.y2 !== '' && Number(formData.y2) >= 0 && Number(formData.y2) <= 75;
     const coordsValid = x1Valid && x2Valid && y1Valid && y2Valid;
 
-    if (formData.motionType === 'continuous') {
+    if (formData.motionType === 'continuous' || formData.motionType === 'hardware_triggered') {
+      // Hardware-triggered also requires y2 > y1 (forward unidirectional) since
+      // AtPositionFwd pulses only fire on forward Y motion with current BNC routing.
+      if (
+        formData.motionType === 'hardware_triggered' &&
+        Number(formData.y2) <= Number(formData.y1)
+      ) {
+        return false;
+      }
       if (formData.movementMode === 'steps') {
         const xStepsValid =
           formData.xSteps !== '' &&
@@ -239,6 +247,12 @@ export default function DeviceControls({
           ? motionTime(fastDist, 100, 1000) // fast retrace: 100 mm/s, 1000 mm/s²
           : 0;
       // Each sweep: move fast axis + step slow axis (+ retrace if unidirectional)
+      totalSeconds = numSweeps * sweepTime + numSlowSteps * (slowStepTime + retraceTime);
+    } else if (formData.motionType === 'hardware_triggered') {
+      // Hardware-triggered: always unidirectional Y-fast, so each row has a
+      // forward sweep + reverse reposition + slow-axis step. Reverse reposition
+      // uses the fast retrace velocity (100 mm/s, 1000 mm/s²) like continuous.
+      const retraceTime = motionTime(fastDist, 100, 1000);
       totalSeconds = numSweeps * sweepTime + numSlowSteps * (slowStepTime + retraceTime);
     } else {
       // Step & measure
@@ -370,6 +384,25 @@ export default function DeviceControls({
               />
               Continuous
             </label>
+            <label className="flex items-center text-white">
+              <input
+                type="radio"
+                name="motionType"
+                value="hardware_triggered"
+                checked={formData.motionType === 'hardware_triggered'}
+                onChange={() =>
+                  setFormData({
+                    ...formData,
+                    motionType: 'hardware_triggered',
+                    fastAxis: 'y',
+                    scanPattern: 'unidirectional',
+                    recordRetrace: false,
+                  })
+                }
+                className="mr-2 text-teal-600 focus:ring-teal-500"
+              />
+              Hardware Triggered
+            </label>
           </div>
 
           {/* Movement Mode (steps vs stepSize) */}
@@ -468,8 +501,9 @@ export default function DeviceControls({
             })}
           </div>
 
-          {/* Step Inputs — conditional on motion type and movement mode */}
-          {formData.motionType === 'continuous' ? (
+          {/* Step Inputs — conditional on motion type and movement mode
+              (hardware_triggered uses the same step-size fields as continuous) */}
+          {formData.motionType === 'continuous' || formData.motionType === 'hardware_triggered' ? (
             formData.movementMode === 'steps' ? (
               <div className="grid grid-cols-2 gap-2">
                 <input
@@ -603,13 +637,15 @@ export default function DeviceControls({
 
           {/* Fast Axis + Scan Pattern + Delay Row */}
           <div className="grid grid-cols-2 gap-2">
-            {/* Fast Axis Dropdown */}
+            {/* Fast Axis Dropdown — locked to Y in hardware_triggered mode because
+                BNC Port 1 is physically wired to MotorChannel2 on the motherboard. */}
             <div className="flex items-center space-x-2">
               <label className="text-sm text-gray-300">Fast axis:</label>
               <select
                 value={formData.fastAxis}
                 onChange={(e) => setFormData({ ...formData, fastAxis: e.target.value })}
-                className="rounded border border-gray-600 bg-gray-700 p-1.5 text-sm text-white focus:border-teal-500 focus:outline-none"
+                disabled={formData.motionType === 'hardware_triggered'}
+                className="rounded border border-gray-600 bg-gray-700 p-1.5 text-sm text-white focus:border-teal-500 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
               >
                 <option value="x">X</option>
                 <option value="y">Y</option>
@@ -637,44 +673,50 @@ export default function DeviceControls({
             />
           </div>
 
-          {/* Scan Pattern */}
-          <div className="flex items-center justify-center space-x-4">
-            <label className="flex items-center text-sm text-gray-300">
-              <input
-                type="radio"
-                name="scanPattern"
-                value="bidirectional"
-                checked={formData.scanPattern === 'bidirectional'}
-                onChange={() =>
-                  setFormData({ ...formData, scanPattern: 'bidirectional', recordRetrace: false })
-                }
-                className="mr-1.5 text-teal-600 focus:ring-teal-500"
-              />
-              Bidirectional
-            </label>
-            <label className="flex items-center text-sm text-gray-300">
-              <input
-                type="radio"
-                name="scanPattern"
-                value="unidirectional"
-                checked={formData.scanPattern === 'unidirectional'}
-                onChange={() => setFormData({ ...formData, scanPattern: 'unidirectional' })}
-                className="mr-1.5 text-teal-600 focus:ring-teal-500"
-              />
-              Unidirectional
-            </label>
-            {formData.scanPattern === 'unidirectional' && (
+          {/* Scan Pattern — hardware-triggered is unidirectional-only for now. */}
+          {formData.motionType === 'hardware_triggered' ? (
+            <div className="flex items-center justify-center text-sm text-gray-400">
+              Unidirectional forward sweep on Y axis (required for hardware triggering).
+            </div>
+          ) : (
+            <div className="flex items-center justify-center space-x-4">
               <label className="flex items-center text-sm text-gray-300">
                 <input
-                  type="checkbox"
-                  checked={formData.recordRetrace}
-                  onChange={(e) => setFormData({ ...formData, recordRetrace: e.target.checked })}
-                  className="mr-1.5 rounded text-teal-600 focus:ring-teal-500"
+                  type="radio"
+                  name="scanPattern"
+                  value="bidirectional"
+                  checked={formData.scanPattern === 'bidirectional'}
+                  onChange={() =>
+                    setFormData({ ...formData, scanPattern: 'bidirectional', recordRetrace: false })
+                  }
+                  className="mr-1.5 text-teal-600 focus:ring-teal-500"
                 />
-                Record retrace
+                Bidirectional
               </label>
-            )}
-          </div>
+              <label className="flex items-center text-sm text-gray-300">
+                <input
+                  type="radio"
+                  name="scanPattern"
+                  value="unidirectional"
+                  checked={formData.scanPattern === 'unidirectional'}
+                  onChange={() => setFormData({ ...formData, scanPattern: 'unidirectional' })}
+                  className="mr-1.5 text-teal-600 focus:ring-teal-500"
+                />
+                Unidirectional
+              </label>
+              {formData.scanPattern === 'unidirectional' && (
+                <label className="flex items-center text-sm text-gray-300">
+                  <input
+                    type="checkbox"
+                    checked={formData.recordRetrace}
+                    onChange={(e) => setFormData({ ...formData, recordRetrace: e.target.checked })}
+                    className="mr-1.5 rounded text-teal-600 focus:ring-teal-500"
+                  />
+                  Record retrace
+                </label>
+              )}
+            </div>
+          )}
 
           {/* Estimated Time */}
           {estimatedTime && (

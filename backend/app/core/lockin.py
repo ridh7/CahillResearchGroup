@@ -199,3 +199,55 @@ class SR865A:
             self.inst.write(f"OFSL {code}")
         else:
             raise ValueError("Filter slope code must be between 0 and 3")
+
+    # ─── Hardware-triggered buffered acquisition (SAMPpertrig) ──────────────
+    #
+    # Arm the CAPTURE subsystem in "one-sample-per-hardware-trigger" mode.
+    # Each falling edge on the rear TRIG IN BNC pushes one sample set into
+    # the buffer. Only CAPTURECFG=1 (X,Y) is supported by the read helper.
+
+    def arm_samppertrig(self, n_pulses: int) -> None:
+        """Arm OneShot + SAMPpertrig CAPTURE sized for exactly n_pulses X/Y pairs.
+
+        On rows after row 0 the SR865A's trigger-edge detection often misses the
+        first falling edge after CAPTURESTART unless the capture subsystem is
+        given a strong reset and enough settling time. Strategy:
+          1. CAPTURESTOP (idempotent)
+          2. Toggle CAPTURECFG through a different value (0) then back to the
+             target. Per the manual, CAPTURECFG writes clear sticky status
+             bits; a real value change seems to reset the edge-detection state
+             more reliably than re-writing the same value.
+          3. CAPTURELEN and CAPTURESTART.
+          4. Short sleep so the subsystem is actually armed before the stage
+             starts moving.
+        """
+        import contextlib
+        import math
+        import time
+
+        bytes_needed = n_pulses * 8  # 2 floats per pair × 4 bytes
+        kb = max(2, math.ceil(bytes_needed / 2048) * 2)  # min 2 kB, round to even kB
+        with contextlib.suppress(Exception):
+            self.inst.write("CAPTURESTOP")
+        time.sleep(0.1)
+        self.inst.write("CAPTURECFG 0")  # dummy value to force a state change
+        time.sleep(0.05)
+        self.inst.write("CAPTURECFG 1")  # X,Y
+        self.inst.write(f"CAPTURELEN {kb}")
+        self.inst.write("CAPTURESTART 0,2")
+        time.sleep(0.2)  # let the subsystem actually arm
+        self._capture_len_kb = kb
+
+    def read_capture(self) -> list[tuple[float, float]]:
+        """Stop capture and return list of (X, Y) pairs from the buffer."""
+        import time
+
+        self.inst.write("CAPTURESTOP")
+        time.sleep(0.1)
+        bytes_captured = int(self.inst.query("CAPTUREBYTES?").strip())
+        n_pairs = bytes_captured // 8
+        kb = getattr(self, "_capture_len_kb", 2)
+        floats = self.inst.query_binary_values(
+            f"CAPTUREGET? 0,{kb}", datatype="f", is_big_endian=False
+        )
+        return [(floats[2 * i], floats[2 * i + 1]) for i in range(n_pairs)]

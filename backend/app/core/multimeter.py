@@ -114,3 +114,80 @@ class BKPrecision5493C:
         except Exception as e:
             print(f"Error getting terminal: {e}")
             return None
+
+    # ─── Hardware-triggered buffered acquisition (EXT multi-trigger) ────────
+    #
+    # Arm the DMM to buffer n_pulses readings, one per falling edge on the
+    # rear EXT TRIG BNC. Readback via FETC? returns all readings in order.
+
+    def arm_ext_multi_trigger(self, n_pulses: int, nplc: float = 0.2) -> None:
+        """Arm TRIG:SOUR EXT + TRIG:COUN N + SAMP:COUN 1 + INIT for n_pulses edges.
+
+        Empirical observation: the FIRST EXT-trigger sequence after a single
+        *RST is brittle and FETC? often protocol-violates regardless of how
+        many edges arrived. Subsequent sequences work fine. We don't know why,
+        but a double-*RST consistently puts the meter into a state where the
+        next INIT succeeds. So we always do two resets — costs ~1 second per
+        scan-row but eliminates the "row 0 always fails" pattern.
+        """
+        import contextlib
+        import time
+
+        with contextlib.suppress(Exception):
+            self.inst.write("ABOR")
+        time.sleep(0.3)
+        self.inst.write("*RST")
+        time.sleep(0.6)
+        with contextlib.suppress(Exception):
+            self.inst.write("ABOR")
+        time.sleep(0.2)
+        self.inst.write("*RST")
+        time.sleep(0.8)
+
+        self.inst.write("CONF:VOLT:DC")
+        self.inst.write(f"SENS:VOLT:DC:NPLC {nplc}")
+        self.inst.write("rear")
+        self.inst.write("SAMP:COUN 1")
+        self.inst.write(f"TRIG:COUN {n_pulses}")
+        self.inst.write("TRIG:SOUR EXT")
+        time.sleep(0.2)
+        self.inst.write("INIT")
+        time.sleep(0.3)
+
+    def read_readings(self) -> list[float]:
+        """Drain the DMM trigger buffer via ABOR + FETC?.
+
+        FETC? alone will protocol-violate (`VI_ERROR_INP_PROT_VIOL`) when fewer
+        triggers arrived than `TRIG:COUN` configured — which happens whenever
+        the BBD302 drops a pulse and the meter is left waiting for an edge that
+        never comes. Per the 5490C manual §3.1, ABOR terminates the
+        measurement-in-progress and returns the instrument to the trigger idle
+        state; per §3.3, ABOR does not clear reading memory (only INIT, READ?,
+        MEASure?, *RST, SYST:PRESet do). So ABOR + FETC? returns whatever was
+        actually captured, partial buffers included.
+
+        Returns [] on a real failure (transfer error, etc.); caller decides how
+        to handle a dropped row.
+        """
+        import contextlib
+        import time
+
+        self.inst.timeout = 15000
+        with contextlib.suppress(Exception):
+            self.inst.write("ABOR")
+        time.sleep(0.2)
+
+        for attempt in (1, 2):
+            try:
+                raw = self.inst.query("FETC?")
+                return [float(v) for v in raw.strip().split(",") if v.strip()]
+            except Exception as e:
+                if attempt == 1:
+                    print(f"---DMM FETC? attempt 1 failed ({e}); waiting and retrying")
+                    time.sleep(1.0)
+                    with contextlib.suppress(Exception):
+                        self.inst.write("ABOR")
+                    continue
+                print(f"---DMM FETC? attempt 2 failed ({e}); giving up on row")
+                return []
+        return []

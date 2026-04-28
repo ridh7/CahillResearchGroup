@@ -11,7 +11,9 @@ class ScanParams(BaseModel):
     x_step_size: float | None = None
     y_step_size: float | None = None
     movement_mode: str = "stepSize"  # "steps" or "stepSize"
-    motion_type: str = "step_and_measure"  # "continuous" or "step_and_measure"
+    motion_type: str = (
+        "step_and_measure"  # "continuous" | "step_and_measure" | "hardware_triggered"
+    )
     scan_pattern: str = "bidirectional"  # "bidirectional" or "unidirectional"
     record_retrace: bool = False  # for unidirectional: record backward sweep
     fast_axis: str = "y"  # "x" or "y"
