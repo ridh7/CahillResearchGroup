@@ -150,7 +150,7 @@ Simple input form for sample identification and experiment comments. Data is inc
 
 Tabbed interface for configuring three instruments:
 
-- **Stage Tab**: Motion type (step-and-measure / continuous), scan bounds (X/Y min/max), steps or step sizes, fast axis selection, scan pattern (bidirectional / unidirectional), move-to-position controls, stop button
+- **Stage Tab**: Motion type (step-and-measure / continuous / hardware-triggered), scan bounds (X/Y min/max), steps or step sizes, fast axis selection, scan pattern (bidirectional / unidirectional — hidden in hardware-triggered mode, which is unidirectional Y-fast only), move-to-position controls, stop button
 - **Lock-in Tab**: Sensitivity, time constant, frequency, filter slope settings
 - **Multimeter Tab**: Aperture time (NPLC), terminal selection
 
