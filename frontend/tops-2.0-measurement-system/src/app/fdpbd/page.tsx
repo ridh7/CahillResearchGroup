@@ -263,7 +263,7 @@ export default function FDPBDPage() {
     elapsed: number;
     fit_param: string;
   } | null>(null);
-  const [lensOption, setLensOption] = useState<'5x' | '10x' | '20x' | 'custom'>('5x');
+  const [lensOption, setLensOption] = useState<'2x' | '5x' | '10x' | '20x' | 'custom'>('5x');
   const [mediumOption, setMediumOption] = useState<'air' | 'custom'>('air');
   const [isotropyOption, setIsotropyOption] = useState<
     'isotropy' | 'anisotropy' | 'transverse_anisotropy'
@@ -305,7 +305,6 @@ export default function FDPBDPage() {
         params.w_rms,
         params.x_offset,
         params.lens_transmittance,
-        params.focal_length,
         params.w_probe_det,
         params.c_probe,
         params.n_al,
@@ -362,7 +361,6 @@ export default function FDPBDPage() {
       params.n_al,
       params.k_al,
       params.lens_transmittance,
-      params.focal_length,
       params.w_probe_det,
       ...(isotropyOption === 'anisotropy'
         ? [
@@ -406,6 +404,13 @@ export default function FDPBDPage() {
 
     if (['w_rms', 'x_offset', 'lens_transmittance', 'focal_length', 'phi'].includes(field)) {
       const lensValues = {
+        '2x': {
+          w_rms: '28.00',
+          x_offset: '31.50',
+          lens_transmittance: '0.95',
+          focal_length: '100',
+          phi: '0',
+        },
         '5x': {
           w_rms: '11.20',
           x_offset: '12.60',
@@ -533,10 +538,17 @@ export default function FDPBDPage() {
     }
   };
 
-  const handleLensOptionChange = (option: '5x' | '10x' | '20x' | 'custom') => {
+  const handleLensOptionChange = (option: '2x' | '5x' | '10x' | '20x' | 'custom') => {
     setLensOption(option);
     if (option !== 'custom') {
       const values = {
+        '2x': {
+          w_rms: '28.00',
+          x_offset: '31.50',
+          lens_transmittance: '0.95',
+          focal_length: '100',
+          phi: '0',
+        },
         '5x': {
           w_rms: '11.20',
           x_offset: '12.60',
@@ -1277,8 +1289,23 @@ export default function FDPBDPage() {
                     {/* Experimental Inputs */}
                     <div className="mb-6">
                       <h3 className="text-md mb-2 font-semibold text-white">Experimental Inputs</h3>
-                      {/* Lens Magnification */}
+                      {/* Laser */}
                       <div className="mb-4 rounded-lg bg-gray-700">
+                        <button
+                          onClick={() => toggleSection('laser')}
+                          className="flex w-full items-center justify-between p-4 text-left"
+                        >
+                          <h4 className="text-sm font-semibold text-white">Laser</h4>
+                          <span
+                            className={`text-gray-400 transition-transform ${collapsedSections.has('laser') ? '' : 'rotate-180'}`}
+                          >
+                            &#9650;
+                          </span>
+                        </button>
+                        {!collapsedSections.has('laser') && renderLaserSection('laser', true)}
+                      </div>
+                      {/* Lens Magnification */}
+                      <div className="rounded-lg bg-gray-700">
                         <button
                           onClick={() => toggleSection('lens')}
                           className="flex w-full items-center justify-between p-4 text-left"
@@ -1293,7 +1320,7 @@ export default function FDPBDPage() {
                         {!collapsedSections.has('lens') && (
                           <div className="px-4 pb-4">
                             <div className="mb-2 flex space-x-4">
-                              {['5x', '10x', '20x', 'custom'].map((opt) => (
+                              {['2x', '5x', '10x', '20x', 'custom'].map((opt) => (
                                 <label key={opt} className="flex items-center text-white">
                                   <input
                                     type="radio"
@@ -1301,7 +1328,7 @@ export default function FDPBDPage() {
                                     value={opt}
                                     checked={lensOption === opt}
                                     onChange={() =>
-                                      handleLensOptionChange(opt as '5x' | '10x' | '20x' | 'custom')
+                                      handleLensOptionChange(opt as '2x' | '5x' | '10x' | '20x' | 'custom')
                                     }
                                     className="mr-2"
                                     disabled={isProcessing}
@@ -1323,10 +1350,6 @@ export default function FDPBDPage() {
                                     ? `[${fieldUnits.lens_transmittance}]`
                                     : ''
                                 }`,
-                              },
-                              {
-                                field: 'focal_length',
-                                label: `Focal Length [${fieldUnits.focal_length}]`,
                               },
                               ...(isotropyOption === 'anisotropy'
                                 ? [{ field: 'phi', label: `Phi [${fieldUnits.phi}]` }]
@@ -1355,21 +1378,6 @@ export default function FDPBDPage() {
                             ))}
                           </div>
                         )}
-                      </div>
-                      {/* Laser */}
-                      <div className="rounded-lg bg-gray-700">
-                        <button
-                          onClick={() => toggleSection('laser')}
-                          className="flex w-full items-center justify-between p-4 text-left"
-                        >
-                          <h4 className="text-sm font-semibold text-white">Laser</h4>
-                          <span
-                            className={`text-gray-400 transition-transform ${collapsedSections.has('laser') ? '' : 'rotate-180'}`}
-                          >
-                            &#9650;
-                          </span>
-                        </button>
-                        {!collapsedSections.has('laser') && renderLaserSection('laser', true)}
                       </div>
                     </div>
 
@@ -1819,6 +1827,23 @@ export default function FDPBDPage() {
                   <>
                     <div className="mb-6">
                       <h3 className="text-md mb-2 font-semibold text-white">Experimental Inputs</h3>
+                      {/* Laser */}
+                      <div className="mb-4 rounded-lg bg-gray-700">
+                        <button
+                          onClick={() => toggleSection('t_laser')}
+                          className="flex w-full items-center justify-between p-4 text-left"
+                        >
+                          <h4 className="text-sm font-semibold text-white">Laser</h4>
+                          <span
+                            className={`text-gray-400 transition-transform ${collapsedSections.has('t_laser') ? '' : 'rotate-180'}`}
+                          >
+                            &#9650;
+                          </span>
+                        </button>
+                        {!collapsedSections.has('t_laser') &&
+                          renderLaserSection('laser_transverse', false)}
+                      </div>
+
                       {/* Lens Magnification */}
                       <div className="mb-4 rounded-lg bg-gray-700">
                         <button
@@ -1835,7 +1860,7 @@ export default function FDPBDPage() {
                         {!collapsedSections.has('t_lens') && (
                           <div className="px-4 pb-4">
                             <div className="mb-2 flex space-x-4">
-                              {['5x', '10x', '20x', 'custom'].map((opt) => (
+                              {['2x', '5x', '10x', '20x', 'custom'].map((opt) => (
                                 <label key={opt} className="flex items-center text-white">
                                   <input
                                     type="radio"
@@ -1843,7 +1868,7 @@ export default function FDPBDPage() {
                                     value={opt}
                                     checked={lensOption === opt}
                                     onChange={() =>
-                                      handleLensOptionChange(opt as '5x' | '10x' | '20x' | 'custom')
+                                      handleLensOptionChange(opt as '2x' | '5x' | '10x' | '20x' | 'custom')
                                     }
                                     className="mr-2"
                                     disabled={isProcessing}
@@ -1856,10 +1881,6 @@ export default function FDPBDPage() {
                               { field: 'w_rms', label: `w rms [${fieldUnits.w_rms}]` },
                               { field: 'x_offset', label: `X Offset [${fieldUnits.x_offset}]` },
                               { field: 'lens_transmittance', label: 'Lens Transmittance' },
-                              {
-                                field: 'focal_length',
-                                label: `Focal Length [${fieldUnits.focal_length}]`,
-                              },
                               {
                                 field: 'v_sum_fixed',
                                 label: `V Sum Fixed [${fieldUnits.v_sum_fixed}]`,
@@ -1889,23 +1910,6 @@ export default function FDPBDPage() {
                             ))}
                           </div>
                         )}
-                      </div>
-
-                      {/* Laser */}
-                      <div className="mb-4 rounded-lg bg-gray-700">
-                        <button
-                          onClick={() => toggleSection('t_laser')}
-                          className="flex w-full items-center justify-between p-4 text-left"
-                        >
-                          <h4 className="text-sm font-semibold text-white">Laser</h4>
-                          <span
-                            className={`text-gray-400 transition-transform ${collapsedSections.has('t_laser') ? '' : 'rotate-180'}`}
-                          >
-                            &#9650;
-                          </span>
-                        </button>
-                        {!collapsedSections.has('t_laser') &&
-                          renderLaserSection('laser_transverse', false)}
                       </div>
                     </div>
 
