@@ -2,7 +2,7 @@
 // Edit these values here when the optics/electronics calibration changes —
 // they are intentionally not editable from the UI.
 
-export type LaserOption = 'TOPS 1' | 'TOPS 2' | 'custom';
+export type LaserOption = 'TOPS 1' | 'TOPS 2';
 
 export type Tops1Defaults = {
   amplitude_corrected_0: string;

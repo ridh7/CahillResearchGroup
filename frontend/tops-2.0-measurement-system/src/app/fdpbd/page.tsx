@@ -269,9 +269,6 @@ export default function FDPBDPage() {
     'isotropy' | 'anisotropy' | 'transverse_anisotropy'
   >('isotropy');
   const [laserOption, setLaserOption] = useState<LaserOption>('TOPS 1');
-  // Tracks whether the visible leaking-correction field set is the TOPS 1 polynomial
-  // form or the TOPS 2 rolloff form when laserOption is 'custom'.
-  const [lastTopsMode, setLastTopsMode] = useState<'TOPS 1' | 'TOPS 2'>('TOPS 1');
 
   const isValidDecimal = (value: string | string[]) => {
     if (Array.isArray(value)) {
@@ -281,8 +278,7 @@ export default function FDPBDPage() {
   };
 
   const activeLeakingFields = (): string[] => {
-    const mode = laserOption === 'custom' ? lastTopsMode : laserOption;
-    if (mode === 'TOPS 1') {
+    if (laserOption === 'TOPS 1') {
       return [
         params.amplitude_corrected_0,
         params.amplitude_corrected_1,
@@ -519,23 +515,6 @@ export default function FDPBDPage() {
         setIsotropyOption('anisotropy');
       }
     }
-    if (['incident_pump', 'incident_probe', 'w_probe_det'].includes(field)) {
-      const laserOpticalValues = {
-        'TOPS 1': { incident_pump: '1.06', incident_probe: '0.85', w_probe_det: '0.971' },
-        'TOPS 2': { incident_pump: '1.06', incident_probe: '0.85', w_probe_det: '0.87' },
-      };
-      const updatedParams = { ...params, [field]: value };
-      if (
-        !Object.values(laserOpticalValues).some(
-          (vals) =>
-            vals.incident_pump === updatedParams.incident_pump &&
-            vals.incident_probe === updatedParams.incident_probe &&
-            vals.w_probe_det === updatedParams.w_probe_det
-        )
-      ) {
-        setLaserOption('custom');
-      }
-    }
   };
 
   const handleLensOptionChange = (option: '2x' | '5x' | '10x' | '20x' | 'custom') => {
@@ -640,9 +619,7 @@ export default function FDPBDPage() {
   };
 
   const handleLaserOptionChange = (option: LaserOption) => {
-    if (option === 'custom') return; // custom is auto-only, not user-selectable
     setLaserOption(option);
-    setLastTopsMode(option);
     const opticalValues = {
       'TOPS 1': { incident_pump: '1.06', incident_probe: '0.85', w_probe_det: '0.971' },
       'TOPS 2': { incident_pump: '1.06', incident_probe: '0.85', w_probe_det: '0.87' },
@@ -730,7 +707,7 @@ export default function FDPBDPage() {
     setLensOption('custom');
     setMediumOption('custom');
     setIsotropyOption('anisotropy');
-    setLaserOption('custom');
+    setLaserOption('TOPS 1');
     setStatus('');
   };
 
@@ -947,8 +924,7 @@ export default function FDPBDPage() {
   };
 
   const renderLaserSection = (radioName: string, includeIncidentProbe = true) => {
-    const visibleMode = laserOption === 'custom' ? lastTopsMode : laserOption;
-    const leakingFields = leakingFieldsForMode(visibleMode);
+    const leakingFields = leakingFieldsForMode(laserOption);
     const opticalFields = [
       { field: 'incident_pump', label: `Incident Pump [${fieldUnits.incident_pump}]` },
       ...(includeIncidentProbe
@@ -959,11 +935,8 @@ export default function FDPBDPage() {
     return (
       <div className="px-4 pb-4">
         <div className="mb-2 flex items-center space-x-4">
-          {(['TOPS 1', 'TOPS 2', 'custom'] as LaserOption[]).map((opt) => (
-            <label
-              key={opt}
-              className={`flex items-center text-white ${opt === 'custom' ? 'opacity-50' : ''}`}
-            >
+          {(['TOPS 1', 'TOPS 2'] as LaserOption[]).map((opt) => (
+            <label key={opt} className="flex items-center text-white">
               <input
                 type="radio"
                 name={radioName}
@@ -971,16 +944,26 @@ export default function FDPBDPage() {
                 checked={laserOption === opt}
                 onChange={() => handleLaserOptionChange(opt)}
                 className="mr-2"
-                disabled={isProcessing || opt === 'custom'}
+                disabled={isProcessing}
               />
               {opt}
             </label>
           ))}
           <span
-            className="cursor-help text-xs text-gray-300"
-            title={`These instrument-specific values are read-only on the UI. Edit them in: ${LASER_DEFAULTS_PATH}`}
+            className="inline-flex h-4 w-4 flex-none cursor-help items-center justify-center text-gray-300"
+            title={`Leaking-correction values below are read-only and instrument-specific. Edit them in: ${LASER_DEFAULTS_PATH}`}
+            aria-label="Info"
           >
-            &#9432;
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 16 16"
+              width="16"
+              height="16"
+              fill="currentColor"
+              aria-hidden="true"
+            >
+              <path d="M8 0a8 8 0 1 0 0 16A8 8 0 0 0 8 0Zm0 14.5a6.5 6.5 0 1 1 0-13 6.5 6.5 0 0 1 0 13ZM7.25 6.75h1.5v5h-1.5v-5Zm.75-2.5a1 1 0 1 1 0 2 1 1 0 0 1 0-2Z" />
+            </svg>
           </span>
         </div>
         {leakingFields.map((param) => (
@@ -992,7 +975,6 @@ export default function FDPBDPage() {
               readOnly
               tabIndex={-1}
               className="cursor-not-allowed rounded border-2 border-gray-600 bg-gray-900 p-2 text-gray-300 focus:outline-none"
-              title={`Read-only. Edit in ${LASER_DEFAULTS_PATH}`}
             />
           </div>
         ))}
