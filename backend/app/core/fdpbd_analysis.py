@@ -10,9 +10,15 @@ from .fdpbd.thermal_model import compute_steady_state_heat, delta_bo_theta
 def run_fdpbd_analysis(params: FDPBDParams, data_filename: str) -> dict:
     """Run FD-PBD analysis with given parameters and data file."""
     # Extract parameters
+    laser_option = params.laser_option
     f_rolloff = params.f_rolloff
+    delay_0 = params.delay_0
     delay_1 = params.delay_1
     delay_2 = params.delay_2
+    amplitude_corrected_0 = params.amplitude_corrected_0
+    amplitude_corrected_1 = params.amplitude_corrected_1
+    amplitude_corrected_2 = params.amplitude_corrected_2
+    amplitude_corrected_3 = params.amplitude_corrected_3
     lambda_down = np.array(params.lambda_down)
     eta_down = np.array(params.eta_down)
     c_down = np.array(params.c_down)
@@ -46,7 +52,18 @@ def run_fdpbd_analysis(params: FDPBDParams, data_filename: str) -> dict:
     v_out, v_in, _, v_sum, freq = load_data(data_filename)
 
     # Calculate leaking correction
-    complex_leaking = calculate_leaking(freq, f_rolloff, delay_1, delay_2)
+    complex_leaking = calculate_leaking(
+        freq,
+        laser_option,
+        f_rolloff=f_rolloff,
+        delay_0=delay_0,
+        delay_1=delay_1,
+        delay_2=delay_2,
+        amplitude_corrected_0=amplitude_corrected_0,
+        amplitude_corrected_1=amplitude_corrected_1,
+        amplitude_corrected_2=amplitude_corrected_2,
+        amplitude_corrected_3=amplitude_corrected_3,
+    )
 
     # Correct data
     v_corr_in, v_corr_out, v_corr_ratio = correct_data(v_out, v_in, complex_leaking)

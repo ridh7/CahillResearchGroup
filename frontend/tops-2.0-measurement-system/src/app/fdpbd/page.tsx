@@ -4,6 +4,12 @@ import { useState } from 'react';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import { API_BASE } from '../../lib/api';
+import {
+  TOPS1_DEFAULTS,
+  TOPS2_DEFAULTS,
+  LASER_DEFAULTS_PATH,
+  type LaserOption,
+} from './laserDefaults';
 
 const Plot = dynamic(() => import('react-plotly.js'), { ssr: false });
 
@@ -61,8 +67,13 @@ type TransverseIsotropicResult = {
 
 type FDPBDParams = {
   f_rolloff: string;
+  delay_0: string;
   delay_1: string;
   delay_2: string;
+  amplitude_corrected_0: string;
+  amplitude_corrected_1: string;
+  amplitude_corrected_2: string;
+  amplitude_corrected_3: string;
   lambda_down: string[];
   eta_down: string[];
   c_down: string[];
@@ -109,9 +120,14 @@ type FDPBDParams = {
 
 export default function FDPBDPage() {
   const [params, setParams] = useState<FDPBDParams>({
-    f_rolloff: '95000',
-    delay_1: '0.0000089',
-    delay_2: '-1.3e-11',
+    f_rolloff: TOPS2_DEFAULTS.f_rolloff,
+    delay_0: TOPS1_DEFAULTS.delay_0,
+    delay_1: TOPS1_DEFAULTS.delay_1,
+    delay_2: TOPS1_DEFAULTS.delay_2,
+    amplitude_corrected_0: TOPS1_DEFAULTS.amplitude_corrected_0,
+    amplitude_corrected_1: TOPS1_DEFAULTS.amplitude_corrected_1,
+    amplitude_corrected_2: TOPS1_DEFAULTS.amplitude_corrected_2,
+    amplitude_corrected_3: TOPS1_DEFAULTS.amplitude_corrected_3,
     lambda_down: ['149.0', '0.1', '9.7'],
     eta_down: ['1.0', '1.0', '1.0'],
     c_down: ['2.44', '0.1', '2.73'],
@@ -157,8 +173,13 @@ export default function FDPBDPage() {
   });
   const fieldUnits: Record<string, string> = {
     f_rolloff: 'Hz',
+    delay_0: '',
     delay_1: 's',
     delay_2: 's²',
+    amplitude_corrected_0: '',
+    amplitude_corrected_1: '',
+    amplitude_corrected_2: '',
+    amplitude_corrected_3: '',
     lambda_down: 'W/m-K',
     eta_down: '',
     c_down: 'J/cm\u00B3-K',
@@ -247,7 +268,10 @@ export default function FDPBDPage() {
   const [isotropyOption, setIsotropyOption] = useState<
     'isotropy' | 'anisotropy' | 'transverse_anisotropy'
   >('isotropy');
-  const [laserOption, setLaserOption] = useState<'TOPS 1' | 'TOPS 2' | 'custom'>('TOPS 1');
+  const [laserOption, setLaserOption] = useState<LaserOption>('TOPS 1');
+  // Tracks whether the visible leaking-correction field set is the TOPS 1 polynomial
+  // form or the TOPS 2 rolloff form when laserOption is 'custom'.
+  const [lastTopsMode, setLastTopsMode] = useState<'TOPS 1' | 'TOPS 2'>('TOPS 1');
 
   const isValidDecimal = (value: string | string[]) => {
     if (Array.isArray(value)) {
@@ -256,12 +280,26 @@ export default function FDPBDPage() {
     return value !== '' && !isNaN(parseFloat(value));
   };
 
+  const activeLeakingFields = (): string[] => {
+    const mode = laserOption === 'custom' ? lastTopsMode : laserOption;
+    if (mode === 'TOPS 1') {
+      return [
+        params.amplitude_corrected_0,
+        params.amplitude_corrected_1,
+        params.amplitude_corrected_2,
+        params.amplitude_corrected_3,
+        params.delay_0,
+        params.delay_1,
+        params.delay_2,
+      ];
+    }
+    return [params.f_rolloff, params.delay_1, params.delay_2];
+  };
+
   const isFormValid = () => {
     if (isotropyOption === 'transverse_anisotropy') {
       const fields = [
-        params.f_rolloff,
-        params.delay_1,
-        params.delay_2,
+        ...activeLeakingFields(),
         params.incident_pump,
         params.v_sum_fixed,
         params.w_rms,
@@ -301,9 +339,7 @@ export default function FDPBDPage() {
       return fields.every((field) => isValidDecimal(field)) && file !== null;
     }
     const fields = [
-      params.f_rolloff,
-      params.delay_1,
-      params.delay_2,
+      ...activeLeakingFields(),
       params.lambda_down[0],
       params.lambda_down[1],
       params.lambda_down[2],
@@ -478,41 +514,15 @@ export default function FDPBDPage() {
         setIsotropyOption('anisotropy');
       }
     }
-    if (
-      [
-        'f_rolloff',
-        'delay_1',
-        'delay_2',
-        'incident_pump',
-        'incident_probe',
-        'w_probe_det',
-      ].includes(field)
-    ) {
-      const laserValues = {
-        'TOPS 1': {
-          f_rolloff: '95000',
-          delay_1: '0.0000089',
-          delay_2: '-1.3e-11',
-          incident_pump: '1.06',
-          incident_probe: '0.85',
-          w_probe_det: '0.971',
-        },
-        'TOPS 2': {
-          f_rolloff: '95000',
-          delay_1: '0.0000089',
-          delay_2: '-1.3e-11',
-          incident_pump: '1.06',
-          incident_probe: '0.85',
-          w_probe_det: '0.87',
-        },
+    if (['incident_pump', 'incident_probe', 'w_probe_det'].includes(field)) {
+      const laserOpticalValues = {
+        'TOPS 1': { incident_pump: '1.06', incident_probe: '0.85', w_probe_det: '0.971' },
+        'TOPS 2': { incident_pump: '1.06', incident_probe: '0.85', w_probe_det: '0.87' },
       };
       const updatedParams = { ...params, [field]: value };
       if (
-        !Object.values(laserValues).some(
+        !Object.values(laserOpticalValues).some(
           (vals) =>
-            vals.f_rolloff === updatedParams.f_rolloff &&
-            vals.delay_1 === updatedParams.delay_1 &&
-            vals.delay_2 === updatedParams.delay_2 &&
             vals.incident_pump === updatedParams.incident_pump &&
             vals.incident_probe === updatedParams.incident_probe &&
             vals.w_probe_det === updatedParams.w_probe_det
@@ -617,35 +627,37 @@ export default function FDPBDPage() {
     }
   };
 
-  const handleLaserOptionChange = (option: 'TOPS 1' | 'TOPS 2' | 'custom') => {
+  const handleLaserOptionChange = (option: LaserOption) => {
+    if (option === 'custom') return; // custom is auto-only, not user-selectable
     setLaserOption(option);
-    if (option !== 'custom') {
-      const values = {
-        'TOPS 1': {
-          f_rolloff: '95000',
-          delay_1: '0.0000089',
-          delay_2: '-1.3e-11',
-          incident_pump: '1.06',
-          incident_probe: '0.85',
-          w_probe_det: '0.971',
-        },
-        'TOPS 2': {
-          f_rolloff: '95000',
-          delay_1: '0.0000089',
-          delay_2: '-1.3e-11',
-          incident_pump: '1.06',
-          incident_probe: '0.85',
-          w_probe_det: '0.87',
-        },
-      };
+    setLastTopsMode(option);
+    const opticalValues = {
+      'TOPS 1': { incident_pump: '1.06', incident_probe: '0.85', w_probe_det: '0.971' },
+      'TOPS 2': { incident_pump: '1.06', incident_probe: '0.85', w_probe_det: '0.87' },
+    };
+    if (option === 'TOPS 1') {
       setParams((prev) => ({
         ...prev,
-        f_rolloff: values[option].f_rolloff,
-        delay_1: values[option].delay_1,
-        delay_2: values[option].delay_2,
-        incident_pump: values[option].incident_pump,
-        incident_probe: values[option].incident_probe,
-        w_probe_det: values[option].w_probe_det,
+        delay_0: TOPS1_DEFAULTS.delay_0,
+        delay_1: TOPS1_DEFAULTS.delay_1,
+        delay_2: TOPS1_DEFAULTS.delay_2,
+        amplitude_corrected_0: TOPS1_DEFAULTS.amplitude_corrected_0,
+        amplitude_corrected_1: TOPS1_DEFAULTS.amplitude_corrected_1,
+        amplitude_corrected_2: TOPS1_DEFAULTS.amplitude_corrected_2,
+        amplitude_corrected_3: TOPS1_DEFAULTS.amplitude_corrected_3,
+        incident_pump: opticalValues['TOPS 1'].incident_pump,
+        incident_probe: opticalValues['TOPS 1'].incident_probe,
+        w_probe_det: opticalValues['TOPS 1'].w_probe_det,
+      }));
+    } else {
+      setParams((prev) => ({
+        ...prev,
+        f_rolloff: TOPS2_DEFAULTS.f_rolloff,
+        delay_1: TOPS2_DEFAULTS.delay_1,
+        delay_2: TOPS2_DEFAULTS.delay_2,
+        incident_pump: opticalValues['TOPS 2'].incident_pump,
+        incident_probe: opticalValues['TOPS 2'].incident_probe,
+        w_probe_det: opticalValues['TOPS 2'].w_probe_det,
       }));
     }
   };
@@ -653,8 +665,13 @@ export default function FDPBDPage() {
   const handleClear = () => {
     setParams({
       f_rolloff: '',
+      delay_0: '',
       delay_1: '',
       delay_2: '',
+      amplitude_corrected_0: '',
+      amplitude_corrected_1: '',
+      amplitude_corrected_2: '',
+      amplitude_corrected_3: '',
       lambda_down: ['', '', ''],
       eta_down: ['', '', ''],
       c_down: ['', '', ''],
@@ -732,9 +749,15 @@ export default function FDPBDPage() {
     if (isotropyOption === 'transverse_anisotropy') {
       // Transverse anisotropy mode: map shared fields to backend param names with unit conversions
       const transverseParams = {
+        laser_option: laserOption,
         f_rolloff: parseFloat(params.f_rolloff),
+        delay_0: parseFloat(params.delay_0),
         delay_1: parseFloat(params.delay_1),
         delay_2: parseFloat(params.delay_2),
+        amplitude_corrected_0: parseFloat(params.amplitude_corrected_0),
+        amplitude_corrected_1: parseFloat(params.amplitude_corrected_1),
+        amplitude_corrected_2: parseFloat(params.amplitude_corrected_2),
+        amplitude_corrected_3: parseFloat(params.amplitude_corrected_3),
         incident_pump: parseFloat(params.incident_pump) * 1e-3, // mW -> W
         v_sum_fixed: parseFloat(params.v_sum_fixed),
         w_rms: parseFloat(params.w_rms) * 1e-6, // µm -> m
@@ -803,6 +826,7 @@ export default function FDPBDPage() {
       Math.sqrt(8 / Math.PI) * (parseFloat(params.focal_length) / parseFloat(params.w_probe_det));
     const modifiedParams = {
       ...params,
+      laser_option: laserOption,
       w_rms: (parseFloat(params.w_rms) * 1e-6).toString(),
       x_offset: (parseFloat(params.x_offset) * 1e-6).toString(),
       incident_probe: (parseFloat(params.incident_probe) * 1e-3).toString(),
@@ -886,6 +910,102 @@ export default function FDPBDPage() {
     }
   };
 
+  // Field definitions for the leaking-correction inputs, varying by laser mode.
+  // These values are instrument-specific and shown read-only on the UI;
+  // edit them in `laserDefaults.ts`.
+  const leakingFieldsForMode = (
+    mode: 'TOPS 1' | 'TOPS 2'
+  ): { field: keyof FDPBDParams; label: string }[] => {
+    if (mode === 'TOPS 1') {
+      return [
+        { field: 'amplitude_corrected_0', label: 'Amplitude Corrected (constant)' },
+        { field: 'amplitude_corrected_1', label: 'Amplitude Corrected (1st order)' },
+        { field: 'amplitude_corrected_2', label: 'Amplitude Corrected (2nd order)' },
+        { field: 'amplitude_corrected_3', label: 'Amplitude Corrected (3rd order)' },
+        { field: 'delay_0', label: 'delay (constant)' },
+        { field: 'delay_1', label: `delay (1st order) [${fieldUnits.delay_1}]` },
+        { field: 'delay_2', label: `delay (2nd order) [${fieldUnits.delay_2}]` },
+      ];
+    }
+    return [
+      { field: 'f_rolloff', label: `f Rolloff [${fieldUnits.f_rolloff}]` },
+      { field: 'delay_1', label: `coef 1 [${fieldUnits.delay_1}]` },
+      { field: 'delay_2', label: `coef 2 [${fieldUnits.delay_2}]` },
+    ];
+  };
+
+  const renderLaserSection = (radioName: string, includeIncidentProbe = true) => {
+    const visibleMode = laserOption === 'custom' ? lastTopsMode : laserOption;
+    const leakingFields = leakingFieldsForMode(visibleMode);
+    const opticalFields = [
+      { field: 'incident_pump', label: `Incident Pump [${fieldUnits.incident_pump}]` },
+      ...(includeIncidentProbe
+        ? [{ field: 'incident_probe', label: `Incident Probe [${fieldUnits.incident_probe}]` }]
+        : []),
+      { field: 'w_probe_det', label: `Probe Radius at Detector [${fieldUnits.w_probe_det}]` },
+    ];
+    return (
+      <div className="px-4 pb-4">
+        <div className="mb-2 flex items-center space-x-4">
+          {(['TOPS 1', 'TOPS 2', 'custom'] as LaserOption[]).map((opt) => (
+            <label
+              key={opt}
+              className={`flex items-center text-white ${opt === 'custom' ? 'opacity-50' : ''}`}
+            >
+              <input
+                type="radio"
+                name={radioName}
+                value={opt}
+                checked={laserOption === opt}
+                onChange={() => handleLaserOptionChange(opt)}
+                className="mr-2"
+                disabled={isProcessing || opt === 'custom'}
+              />
+              {opt}
+            </label>
+          ))}
+          <span
+            className="cursor-help text-xs text-gray-300"
+            title={`These instrument-specific values are read-only on the UI. Edit them in: ${LASER_DEFAULTS_PATH}`}
+          >
+            &#9432;
+          </span>
+        </div>
+        {leakingFields.map((param) => (
+          <div key={param.field} className="mb-2 flex flex-col">
+            <label className="mb-1 text-sm text-white">{param.label}</label>
+            <input
+              type="text"
+              value={params[param.field] as string}
+              readOnly
+              tabIndex={-1}
+              className="cursor-not-allowed rounded border-2 border-gray-600 bg-gray-900 p-2 text-gray-300 focus:outline-none"
+              title={`Read-only. Edit in ${LASER_DEFAULTS_PATH}`}
+            />
+          </div>
+        ))}
+        {opticalFields.map((param) => (
+          <div key={param.field} className="mb-2 flex flex-col">
+            <label className="mb-1 text-sm text-white">{param.label}</label>
+            <input
+              type="number"
+              step="any"
+              value={params[param.field as keyof FDPBDParams] as string}
+              onChange={(e) => handleInputChange(e, param.field as keyof FDPBDParams)}
+              className={`rounded border-2 bg-gray-800 p-2 text-white focus:outline-none ${
+                isValidDecimal(params[param.field as keyof FDPBDParams] as string)
+                  ? 'border-gray-600 focus:border-teal-500'
+                  : 'border-red-500'
+              }`}
+              disabled={isProcessing}
+              required
+            />
+          </div>
+        ))}
+      </div>
+    );
+  };
+
   const anisotropicFitParams = [
     { value: 'sigma_x', label: 'Thermal Conductivity X (σx)' },
     { value: 'sigma_y', label: 'Thermal Conductivity Y (σy)' },
@@ -919,9 +1039,15 @@ export default function FDPBDPage() {
 
     if (isotropyOption === 'transverse_anisotropy') {
       const transverseParams = {
+        laser_option: laserOption,
         f_rolloff: parseFloat(params.f_rolloff),
+        delay_0: parseFloat(params.delay_0),
         delay_1: parseFloat(params.delay_1),
         delay_2: parseFloat(params.delay_2),
+        amplitude_corrected_0: parseFloat(params.amplitude_corrected_0),
+        amplitude_corrected_1: parseFloat(params.amplitude_corrected_1),
+        amplitude_corrected_2: parseFloat(params.amplitude_corrected_2),
+        amplitude_corrected_3: parseFloat(params.amplitude_corrected_3),
         incident_pump: parseFloat(params.incident_pump) * 1e-3,
         v_sum_fixed: parseFloat(params.v_sum_fixed),
         w_rms: parseFloat(params.w_rms) * 1e-6,
@@ -969,6 +1095,7 @@ export default function FDPBDPage() {
         Math.sqrt(8 / Math.PI) * (parseFloat(params.focal_length) / parseFloat(params.w_probe_det));
       const anisotropicParams = {
         ...params,
+        laser_option: laserOption,
         detector_factor: detector_factor.toString(),
         focal_length: undefined,
         w_probe_det: undefined,
@@ -1242,75 +1369,7 @@ export default function FDPBDPage() {
                             &#9650;
                           </span>
                         </button>
-                        {!collapsedSections.has('laser') && (
-                          <div className="px-4 pb-4">
-                            <div className="mb-2 flex space-x-4">
-                              {['TOPS 1', 'TOPS 2', 'custom'].map((opt) => (
-                                <label key={opt} className="flex items-center text-white">
-                                  <input
-                                    type="radio"
-                                    name="laser"
-                                    value={opt}
-                                    checked={laserOption === opt}
-                                    onChange={() =>
-                                      handleLaserOptionChange(opt as 'TOPS 1' | 'TOPS 2' | 'custom')
-                                    }
-                                    className="mr-2"
-                                    disabled={isProcessing}
-                                  />
-                                  {opt}
-                                </label>
-                              ))}
-                            </div>
-                            {[
-                              {
-                                field: 'f_rolloff',
-                                label: `f Rolloff [${fieldUnits.f_rolloff}]`,
-                              },
-                              {
-                                field: 'delay_1',
-                                label: `coef 1 [${fieldUnits.delay_1}]`,
-                              },
-                              {
-                                field: 'delay_2',
-                                label: `coef 2 [${fieldUnits.delay_2}]`,
-                              },
-                              {
-                                field: 'incident_pump',
-                                label: `Incident Pump [${fieldUnits.incident_pump}]`,
-                              },
-                              {
-                                field: 'incident_probe',
-                                label: `Incident Probe [${fieldUnits.incident_probe}]`,
-                              },
-                              {
-                                field: 'w_probe_det',
-                                label: `Probe Radius at Detector [${fieldUnits.w_probe_det}]`,
-                              },
-                            ].map((param) => (
-                              <div key={param.field} className="mb-2 flex flex-col">
-                                <label className="mb-1 text-sm text-white">{param.label}</label>
-                                <input
-                                  type="number"
-                                  step="any"
-                                  value={params[param.field as keyof FDPBDParams] as string}
-                                  onChange={(e) =>
-                                    handleInputChange(e, param.field as keyof FDPBDParams)
-                                  }
-                                  className={`rounded border-2 bg-gray-800 p-2 text-white focus:outline-none ${
-                                    isValidDecimal(
-                                      params[param.field as keyof FDPBDParams] as string
-                                    )
-                                      ? 'border-gray-600 focus:border-teal-500'
-                                      : 'border-red-500'
-                                  }`}
-                                  disabled={isProcessing}
-                                  required
-                                />
-                              </div>
-                            ))}
-                          </div>
-                        )}
+                        {!collapsedSections.has('laser') && renderLaserSection('laser', true)}
                       </div>
                     </div>
 
@@ -1845,62 +1904,8 @@ export default function FDPBDPage() {
                             &#9650;
                           </span>
                         </button>
-                        {!collapsedSections.has('t_laser') && (
-                          <div className="px-4 pb-4">
-                            <div className="mb-2 flex space-x-4">
-                              {['TOPS 1', 'TOPS 2', 'custom'].map((opt) => (
-                                <label key={opt} className="flex items-center text-white">
-                                  <input
-                                    type="radio"
-                                    name="laser_transverse"
-                                    value={opt}
-                                    checked={laserOption === opt}
-                                    onChange={() =>
-                                      handleLaserOptionChange(opt as 'TOPS 1' | 'TOPS 2' | 'custom')
-                                    }
-                                    className="mr-2"
-                                    disabled={isProcessing}
-                                  />
-                                  {opt}
-                                </label>
-                              ))}
-                            </div>
-                            {[
-                              { field: 'f_rolloff', label: `f Rolloff [${fieldUnits.f_rolloff}]` },
-                              { field: 'delay_1', label: `coef 1 [${fieldUnits.delay_1}]` },
-                              { field: 'delay_2', label: `coef 2 [${fieldUnits.delay_2}]` },
-                              {
-                                field: 'incident_pump',
-                                label: `Incident Pump [${fieldUnits.incident_pump}]`,
-                              },
-                              {
-                                field: 'w_probe_det',
-                                label: `Probe Radius at Detector [${fieldUnits.w_probe_det}]`,
-                              },
-                            ].map((param) => (
-                              <div key={param.field} className="mb-2 flex flex-col">
-                                <label className="mb-1 text-sm text-white">{param.label}</label>
-                                <input
-                                  type="number"
-                                  step="any"
-                                  value={params[param.field as keyof FDPBDParams] as string}
-                                  onChange={(e) =>
-                                    handleInputChange(e, param.field as keyof FDPBDParams)
-                                  }
-                                  className={`rounded border-2 bg-gray-800 p-2 text-white focus:outline-none ${
-                                    isValidDecimal(
-                                      params[param.field as keyof FDPBDParams] as string
-                                    )
-                                      ? 'border-gray-600 focus:border-teal-500'
-                                      : 'border-red-500'
-                                  }`}
-                                  disabled={isProcessing}
-                                  required
-                                />
-                              </div>
-                            ))}
-                          </div>
-                        )}
+                        {!collapsedSections.has('t_laser') &&
+                          renderLaserSection('laser_transverse', false)}
                       </div>
                     </div>
 

@@ -512,7 +512,16 @@ def run_transverse_isotropic_analysis(
     # 1. Load & correct experimental data
     v_out, v_in, _, v_sum, freq = load_data(data_filename)
     complex_leaking = calculate_leaking(
-        freq, params.f_rolloff, params.delay_1, params.delay_2
+        freq,
+        params.laser_option,
+        f_rolloff=params.f_rolloff,
+        delay_0=params.delay_0,
+        delay_1=params.delay_1,
+        delay_2=params.delay_2,
+        amplitude_corrected_0=params.amplitude_corrected_0,
+        amplitude_corrected_1=params.amplitude_corrected_1,
+        amplitude_corrected_2=params.amplitude_corrected_2,
+        amplitude_corrected_3=params.amplitude_corrected_3,
     )
     v_corr_in, v_corr_out, v_corr_ratio = correct_data(v_out, v_in, complex_leaking)
 
@@ -638,7 +647,16 @@ def run_de_fitting_transverse(
     # Same setup as run_transverse_isotropic_analysis
     v_out, v_in, _, v_sum, freq = load_data(data_filename)
     complex_leaking = calculate_leaking(
-        freq, params.f_rolloff, params.delay_1, params.delay_2
+        freq,
+        params.laser_option,
+        f_rolloff=params.f_rolloff,
+        delay_0=params.delay_0,
+        delay_1=params.delay_1,
+        delay_2=params.delay_2,
+        amplitude_corrected_0=params.amplitude_corrected_0,
+        amplitude_corrected_1=params.amplitude_corrected_1,
+        amplitude_corrected_2=params.amplitude_corrected_2,
+        amplitude_corrected_3=params.amplitude_corrected_3,
     )
     v_corr_in, v_corr_out, v_corr_ratio = correct_data(v_out, v_in, complex_leaking)
 
