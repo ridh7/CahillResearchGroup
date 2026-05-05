@@ -104,7 +104,7 @@ def run_fdpbd_analysis(params: FDPBDParams, data_filename: str) -> dict:
     # Perform fitting
     x_guess = [lambda_down[2], coef]
     lb = [0.0, -100.0]
-    ub = [100.0, 100.0]
+    ub = [3000.0, 100.0]
     x_sol, _ = fit_in_out(
         x_guess,
         v_corr_in_fit,
