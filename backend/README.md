@@ -321,7 +321,7 @@ Four SSE endpoints provide real-time data streams via `StreamingResponse`:
 
 ### 3. Data Acquisition Modes
 
-Both scan modes are launched via `POST /start` which fires a daemon thread and returns immediately. Scan progress is streamed to the frontend via `/sse/scan_data`. The `scan_generation` counter prevents zombie scans when stopping and restarting rapidly.
+All three scan modes are launched via `POST /start` which fires a daemon thread and returns immediately. Scan progress is streamed to the frontend via `/sse/scan_data`. The `scan_generation` counter prevents zombie scans when stopping and restarting rapidly.
 
 #### Step-and-Measure (`move_in_rectangle`)
 
@@ -338,6 +338,18 @@ Both scan modes are launched via `POST /start` which fires a daemon thread and r
 - Position gating: bin-based (`round((pos - grid_origin) / step_size)`) ensures one reading per grid cell
 - Supports bidirectional and unidirectional patterns (with optional retrace recording)
 - Configurable fast axis (X or Y)
+- **Output**: Timestamped CSV (`{sample_id}_tops2_YYYYMMDD_HHMMSS.csv`)
+
+#### Hardware-Triggered Scan (`hardware_triggered_scan`)
+
+- BBD302's AtPositionFwd BNC pulses drive both the SR865A lock-in (via `CAPTURESTART 0,2` SAMPpertrig CAPTURE) and the BK 5493C DMM (via `TRIG:SOUR EXT + TRIG:COUN N + INIT`) over a single BNC tee
+- Python is **not** in the per-edge timing loop — each row arms both instruments, executes the fast-axis move, then drains both buffers in bulk
+- Unidirectional only; fast axis locked to Y because BNC Port 1 is wired to MotorChannel2 in the motherboard config
+- Workarounds for hardware quirks live in this method:
+  - Stage fires one extra **leading sacrificial pulse** before `grid[0]`. The lock-in's chronic first-edge-after-CAPTURESTART dropout lands on the decoy; readback drops slot 0 from each buffer to align cleanly to `grid[0..N-1]`.
+  - DMM `arm_ext_multi_trigger` issues a **double `*RST`** because the first INIT after a single `*RST` is brittle and protocol-violates on `FETC?`.
+  - DMM `read_readings` issues `ABOR` before `FETC?` so partial buffers (when fewer edges arrive than `TRIG:COUN`) drain cleanly instead of returning a protocol violation.
+  - Inter-scan velocity restore is verified via readback in the `finally` block; entry-time sanity check refuses to start if the captured velocity looks like leftover retrace.
 - **Output**: Timestamped CSV (`{sample_id}_tops2_YYYYMMDD_HHMMSS.csv`)
 
 **Scan Abort Mechanism**:
@@ -538,7 +550,7 @@ All endpoints are organized by domain in separate routers. Visit http://localhos
 ### Stage Control ([routers/stage.py](app/routers/stage.py))
 
 - **`POST /move`**: Move to absolute (X, Y) position in mm
-- **`POST /start`**: Unified scan endpoint — routes to step-and-measure or continuous scan based on `motion_type`. Runs in daemon thread, returns immediately.
+- **`POST /start`**: Unified scan endpoint — routes to step-and-measure, continuous, or hardware-triggered scan based on `motion_type`. Runs in daemon thread, returns immediately.
 - **`POST /stop`**: Immediately stop all stage motion and abort any running scan
 - **`POST /home`**: Home specified channel (X, Y, or both)
 - **`GET /get_movement_params`**: Get velocity and homing parameters

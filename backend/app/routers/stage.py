@@ -52,7 +52,7 @@ async def start_movement(
     # synchronously without the thread needing to communicate them back.
     slow_step: float | None = None
     fast_step: float | None = None
-    if params.motion_type == "continuous":
+    if params.motion_type in ("continuous", "hardware_triggered"):
         slow_step = (
             params.x_step_size if params.fast_axis == "y" else params.y_step_size
         )
@@ -97,6 +97,19 @@ async def start_movement(
                     params.scan_pattern,
                     params.record_retrace,
                     params.fast_axis,
+                    fast_step,
+                    params.sample_id,
+                    params.comments,
+                    params.save_dir,
+                    scan_generation=my_generation,
+                )
+            elif params.motion_type == "hardware_triggered":
+                stage.hardware_triggered_scan(
+                    params.x1,
+                    params.y1,
+                    params.x2,
+                    params.y2,
+                    slow_step,
                     fast_step,
                     params.sample_id,
                     params.comments,
