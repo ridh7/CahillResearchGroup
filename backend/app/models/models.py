@@ -33,8 +33,6 @@ class Layer3Params(BaseModel):
 
 
 class AnisotropicFDPBDParams(BaseModel):
-    laser_option: str = "TOPS 2"
-    f_rolloff: float = 95e3
     delay_0: float = 0.0
     delay_1: float = 0.0
     delay_2: float = 0.0

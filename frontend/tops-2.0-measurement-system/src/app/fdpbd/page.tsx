@@ -66,7 +66,6 @@ type TransverseIsotropicResult = {
 };
 
 type FDPBDParams = {
-  f_rolloff: string;
   delay_0: string;
   delay_1: string;
   delay_2: string;
@@ -120,7 +119,6 @@ type FDPBDParams = {
 
 export default function FDPBDPage() {
   const [params, setParams] = useState<FDPBDParams>({
-    f_rolloff: TOPS2_DEFAULTS.f_rolloff,
     delay_0: TOPS1_DEFAULTS.delay_0,
     delay_1: TOPS1_DEFAULTS.delay_1,
     delay_2: TOPS1_DEFAULTS.delay_2,
@@ -138,14 +136,14 @@ export default function FDPBDPage() {
     eta_up: '1.0',
     c_up: '1192.0',
     h_up: '0.001',
-    w_rms: '11.20',
-    x_offset: '12.60',
+    w_rms: '28.00',
+    x_offset: '31.50',
     incident_pump: '1.06',
     incident_probe: '0.85',
     n_al: '2.9',
     k_al: '8.2',
-    lens_transmittance: '0.93',
-    focal_length: '40',
+    lens_transmittance: '0.86',
+    focal_length: '100',
     w_probe_det: '0.971',
     phi: '0',
     rho: '2.70',
@@ -172,7 +170,6 @@ export default function FDPBDPage() {
     dndt_up: '-8.9e-7',
   });
   const fieldUnits: Record<string, string> = {
-    f_rolloff: 'Hz',
     delay_0: '',
     delay_1: 's',
     delay_2: 's²',
@@ -263,7 +260,7 @@ export default function FDPBDPage() {
     elapsed: number;
     fit_param: string;
   } | null>(null);
-  const [lensOption, setLensOption] = useState<'2x' | '5x' | '10x' | '20x' | 'custom'>('5x');
+  const [lensOption, setLensOption] = useState<'2x' | '5x' | '10x' | '20x' | 'custom'>('2x');
   const [mediumOption, setMediumOption] = useState<'air' | 'custom'>('air');
   const [isotropyOption, setIsotropyOption] = useState<
     'isotropy' | 'anisotropy' | 'transverse_anisotropy'
@@ -277,20 +274,15 @@ export default function FDPBDPage() {
     return value !== '' && !isNaN(parseFloat(value));
   };
 
-  const activeLeakingFields = (): string[] => {
-    if (laserOption === 'TOPS 1') {
-      return [
-        params.amplitude_corrected_0,
-        params.amplitude_corrected_1,
-        params.amplitude_corrected_2,
-        params.amplitude_corrected_3,
-        params.delay_0,
-        params.delay_1,
-        params.delay_2,
-      ];
-    }
-    return [params.f_rolloff, params.delay_1, params.delay_2];
-  };
+  const activeLeakingFields = (): string[] => [
+    params.amplitude_corrected_0,
+    params.amplitude_corrected_1,
+    params.amplitude_corrected_2,
+    params.amplitude_corrected_3,
+    params.delay_0,
+    params.delay_1,
+    params.delay_2,
+  ];
 
   const isFormValid = () => {
     if (isotropyOption === 'transverse_anisotropy') {
@@ -403,7 +395,7 @@ export default function FDPBDPage() {
         '2x': {
           w_rms: '28.00',
           x_offset: '31.50',
-          lens_transmittance: '0.95',
+          lens_transmittance: '0.86',
           focal_length: '100',
           phi: '0',
         },
@@ -524,7 +516,7 @@ export default function FDPBDPage() {
         '2x': {
           w_rms: '28.00',
           x_offset: '31.50',
-          lens_transmittance: '0.95',
+          lens_transmittance: '0.86',
           focal_length: '100',
           phi: '0',
         },
@@ -641,9 +633,13 @@ export default function FDPBDPage() {
     } else {
       setParams((prev) => ({
         ...prev,
-        f_rolloff: TOPS2_DEFAULTS.f_rolloff,
+        delay_0: TOPS2_DEFAULTS.delay_0,
         delay_1: TOPS2_DEFAULTS.delay_1,
         delay_2: TOPS2_DEFAULTS.delay_2,
+        amplitude_corrected_0: TOPS2_DEFAULTS.amplitude_corrected_0,
+        amplitude_corrected_1: TOPS2_DEFAULTS.amplitude_corrected_1,
+        amplitude_corrected_2: TOPS2_DEFAULTS.amplitude_corrected_2,
+        amplitude_corrected_3: TOPS2_DEFAULTS.amplitude_corrected_3,
         incident_pump: opticalValues['TOPS 2'].incident_pump,
         incident_probe: opticalValues['TOPS 2'].incident_probe,
         w_probe_det: opticalValues['TOPS 2'].w_probe_det,
@@ -653,7 +649,6 @@ export default function FDPBDPage() {
 
   const handleClear = () => {
     setParams({
-      f_rolloff: '',
       delay_0: '',
       delay_1: '',
       delay_2: '',
@@ -738,8 +733,6 @@ export default function FDPBDPage() {
     if (isotropyOption === 'transverse_anisotropy') {
       // Transverse anisotropy mode: map shared fields to backend param names with unit conversions
       const transverseParams = {
-        laser_option: laserOption,
-        f_rolloff: parseFloat(params.f_rolloff),
         delay_0: parseFloat(params.delay_0),
         delay_1: parseFloat(params.delay_1),
         delay_2: parseFloat(params.delay_2),
@@ -815,7 +808,6 @@ export default function FDPBDPage() {
       Math.sqrt(8 / Math.PI) * (parseFloat(params.focal_length) / parseFloat(params.w_probe_det));
     const modifiedParams = {
       ...params,
-      laser_option: laserOption,
       w_rms: (parseFloat(params.w_rms) * 1e-6).toString(),
       x_offset: (parseFloat(params.x_offset) * 1e-6).toString(),
       incident_probe: (parseFloat(params.incident_probe) * 1e-3).toString(),
@@ -902,29 +894,17 @@ export default function FDPBDPage() {
   // Field definitions for the leaking-correction inputs, varying by laser mode.
   // These values are instrument-specific and shown read-only on the UI;
   // edit them in `laserDefaults.ts`.
-  const leakingFieldsForMode = (
-    mode: 'TOPS 1' | 'TOPS 2'
-  ): { field: keyof FDPBDParams; label: string }[] => {
-    if (mode === 'TOPS 1') {
-      return [
-        { field: 'amplitude_corrected_0', label: 'Amplitude Corrected (constant)' },
-        { field: 'amplitude_corrected_1', label: 'Amplitude Corrected (1st order)' },
-        { field: 'amplitude_corrected_2', label: 'Amplitude Corrected (2nd order)' },
-        { field: 'amplitude_corrected_3', label: 'Amplitude Corrected (3rd order)' },
-        { field: 'delay_0', label: 'delay (constant)' },
-        { field: 'delay_1', label: `delay (1st order) [${fieldUnits.delay_1}]` },
-        { field: 'delay_2', label: `delay (2nd order) [${fieldUnits.delay_2}]` },
-      ];
-    }
-    return [
-      { field: 'f_rolloff', label: `f Rolloff [${fieldUnits.f_rolloff}]` },
-      { field: 'delay_1', label: `coef 1 [${fieldUnits.delay_1}]` },
-      { field: 'delay_2', label: `coef 2 [${fieldUnits.delay_2}]` },
-    ];
-  };
+  const leakingFields: { field: keyof FDPBDParams; label: string }[] = [
+    { field: 'amplitude_corrected_0', label: 'Amplitude Corrected (constant)' },
+    { field: 'amplitude_corrected_1', label: 'Amplitude Corrected (1st order)' },
+    { field: 'amplitude_corrected_2', label: 'Amplitude Corrected (2nd order)' },
+    { field: 'amplitude_corrected_3', label: 'Amplitude Corrected (3rd order)' },
+    { field: 'delay_0', label: 'delay (constant)' },
+    { field: 'delay_1', label: `delay (1st order) [${fieldUnits.delay_1}]` },
+    { field: 'delay_2', label: `delay (2nd order) [${fieldUnits.delay_2}]` },
+  ];
 
   const renderLaserSection = (radioName: string, includeIncidentProbe = true) => {
-    const leakingFields = leakingFieldsForMode(laserOption);
     const opticalFields = [
       { field: 'incident_pump', label: `Incident Pump [${fieldUnits.incident_pump}]` },
       ...(includeIncidentProbe
@@ -1033,8 +1013,6 @@ export default function FDPBDPage() {
 
     if (isotropyOption === 'transverse_anisotropy') {
       const transverseParams = {
-        laser_option: laserOption,
-        f_rolloff: parseFloat(params.f_rolloff),
         delay_0: parseFloat(params.delay_0),
         delay_1: parseFloat(params.delay_1),
         delay_2: parseFloat(params.delay_2),
@@ -1089,7 +1067,6 @@ export default function FDPBDPage() {
         Math.sqrt(8 / Math.PI) * (parseFloat(params.focal_length) / parseFloat(params.w_probe_det));
       const anisotropicParams = {
         ...params,
-        laser_option: laserOption,
         detector_factor: detector_factor.toString(),
         focal_length: undefined,
         w_probe_det: undefined,

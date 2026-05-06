@@ -513,8 +513,6 @@ def run_anisotropic_analysis(params: dict, data_filename: str) -> dict:
 
     # Transform frontend parameters
     transformed_params = {
-        "laser_option": str(params.get("laser_option", "TOPS 2")),
-        "f_rolloff": float(params.get("f_rolloff", 95e3)),
         "delay_0": float(params.get("delay_0", 0.0)),
         "delay_1": float(params.get("delay_1", 0.0)),
         "delay_2": float(params.get("delay_2", 0.0)),
@@ -571,8 +569,6 @@ def run_anisotropic_analysis(params: dict, data_filename: str) -> dict:
     # Calculate leaking correction
     complex_leaking = calculate_leaking(
         freq,
-        transformed_params["laser_option"],
-        f_rolloff=transformed_params["f_rolloff"],
         delay_0=transformed_params["delay_0"],
         delay_1=transformed_params["delay_1"],
         delay_2=transformed_params["delay_2"],
@@ -659,8 +655,6 @@ def run_de_fitting_anisotropic(
     model_freqs = np.logspace(np.log10(100e3), np.log10(100), 10)
 
     transformed_params = {
-        "laser_option": str(params.get("laser_option", "TOPS 2")),
-        "f_rolloff": float(params.get("f_rolloff", 95e3)),
         "delay_0": float(params.get("delay_0", 0.0)),
         "delay_1": float(params.get("delay_1", 0.0)),
         "delay_2": float(params.get("delay_2", 0.0)),
@@ -715,8 +709,6 @@ def run_de_fitting_anisotropic(
     v_out, v_in, _, v_sum, freq = load_data(data_filename)
     complex_leaking = calculate_leaking(
         freq,
-        transformed_params["laser_option"],
-        f_rolloff=transformed_params["f_rolloff"],
         delay_0=transformed_params["delay_0"],
         delay_1=transformed_params["delay_1"],
         delay_2=transformed_params["delay_2"],

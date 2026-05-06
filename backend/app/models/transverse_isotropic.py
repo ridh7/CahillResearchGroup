@@ -3,11 +3,9 @@ from pydantic import BaseModel
 
 class TransverseIsotropicParams(BaseModel):
     # Lock-in correction
-    laser_option: str = "TOPS 2"
-    f_rolloff: float = 95e3
     delay_0: float = 0.0
-    delay_1: float = 0.89e-5
-    delay_2: float = -1.3e-11
+    delay_1: float = 0.0
+    delay_2: float = 0.0
     amplitude_corrected_0: float = 0.0
     amplitude_corrected_1: float = 0.0
     amplitude_corrected_2: float = 0.0

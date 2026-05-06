@@ -4,7 +4,7 @@
 
 export type LaserOption = 'TOPS 1' | 'TOPS 2';
 
-export type Tops1Defaults = {
+export type LeakingDefaults = {
   amplitude_corrected_0: string;
   amplitude_corrected_1: string;
   amplitude_corrected_2: string;
@@ -14,13 +14,7 @@ export type Tops1Defaults = {
   delay_2: string;
 };
 
-export type Tops2Defaults = {
-  f_rolloff: string;
-  delay_1: string;
-  delay_2: string;
-};
-
-export const TOPS1_DEFAULTS: Tops1Defaults = {
+export const TOPS1_DEFAULTS: LeakingDefaults = {
   amplitude_corrected_0: '9.93e-1',
   amplitude_corrected_1: '6.88e-4',
   amplitude_corrected_2: '-4.45e-6',
@@ -30,10 +24,15 @@ export const TOPS1_DEFAULTS: Tops1Defaults = {
   delay_2: '1.65e-11',
 };
 
-export const TOPS2_DEFAULTS: Tops2Defaults = {
-  f_rolloff: '95000',
-  delay_1: '0.0000089',
-  delay_2: '-1.3e-11',
+// TODO: replace with measured TOPS 2 constants.
+export const TOPS2_DEFAULTS: LeakingDefaults = {
+  amplitude_corrected_0: '0',
+  amplitude_corrected_1: '0',
+  amplitude_corrected_2: '0',
+  amplitude_corrected_3: '0',
+  delay_0: '0',
+  delay_1: '0',
+  delay_2: '0',
 };
 
 // Path shown in the UI tooltip so users know where to edit these values.

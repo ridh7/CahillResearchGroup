@@ -39,9 +39,7 @@ def load_data(
 
 def calculate_leaking(
     freq: NDArray[np.float64],
-    laser_option: str = "TOPS 2",
     *,
-    f_rolloff: float | None = None,
     delay_0: float = 0.0,
     delay_1: float = 0.0,
     delay_2: float = 0.0,
@@ -53,30 +51,18 @@ def calculate_leaking(
     """
     Calculate the complex leaking correction factor.
 
-    For ``laser_option == "TOPS 1"``:
         complex_leaking = (A0 + A1*sqrt(f) + A2*f + A3*f**1.5)
                           * exp(1j*(delay_0 + delay_1*f + delay_2*f**2)*1.1)
-    For ``laser_option == "TOPS 2"`` (default; also used for "custom"):
-        complex_leaking = 1 / (1 + 1j*f/f_rolloff)
-                          / exp(1j*(delay_1*f + delay_2*f**2))
     """
-    if laser_option == "TOPS 1":
-        sf = np.sqrt(freq)
-        amp = (
-            amplitude_corrected_0
-            + amplitude_corrected_1 * sf
-            + amplitude_corrected_2 * sf**2
-            + amplitude_corrected_3 * sf**3
-        )
-        phase = np.exp(1j * (delay_0 + delay_1 * freq + delay_2 * freq**2) * 1.1)
-        res: NDArray[np.complex128] = amp * phase
-        return res
-
-    res = (
-        1.0
-        / (1 + 1j * freq / f_rolloff)
-        / np.exp(1j * (delay_1 * freq + delay_2 * freq**2))
+    sf = np.sqrt(freq)
+    amp = (
+        amplitude_corrected_0
+        + amplitude_corrected_1 * sf
+        + amplitude_corrected_2 * sf**2
+        + amplitude_corrected_3 * sf**3
     )
+    phase = np.exp(1j * (delay_0 + delay_1 * freq + delay_2 * freq**2) * 1.1)
+    res: NDArray[np.complex128] = amp * phase
     return res
 
 

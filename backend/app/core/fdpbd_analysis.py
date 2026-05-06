@@ -10,8 +10,6 @@ from .fdpbd.thermal_model import compute_steady_state_heat, delta_bo_theta
 def run_fdpbd_analysis(params: FDPBDParams, data_filename: str) -> dict:
     """Run FD-PBD analysis with given parameters and data file."""
     # Extract parameters
-    laser_option = params.laser_option
-    f_rolloff = params.f_rolloff
     delay_0 = params.delay_0
     delay_1 = params.delay_1
     delay_2 = params.delay_2
@@ -54,8 +52,6 @@ def run_fdpbd_analysis(params: FDPBDParams, data_filename: str) -> dict:
     # Calculate leaking correction
     complex_leaking = calculate_leaking(
         freq,
-        laser_option,
-        f_rolloff=f_rolloff,
         delay_0=delay_0,
         delay_1=delay_1,
         delay_2=delay_2,

@@ -513,8 +513,6 @@ def run_transverse_isotropic_analysis(
     v_out, v_in, _, v_sum, freq = load_data(data_filename)
     complex_leaking = calculate_leaking(
         freq,
-        params.laser_option,
-        f_rolloff=params.f_rolloff,
         delay_0=params.delay_0,
         delay_1=params.delay_1,
         delay_2=params.delay_2,
@@ -648,8 +646,6 @@ def run_de_fitting_transverse(
     v_out, v_in, _, v_sum, freq = load_data(data_filename)
     complex_leaking = calculate_leaking(
         freq,
-        params.laser_option,
-        f_rolloff=params.f_rolloff,
         delay_0=params.delay_0,
         delay_1=params.delay_1,
         delay_2=params.delay_2,
