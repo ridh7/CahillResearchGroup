@@ -4,6 +4,12 @@ import { useState } from 'react';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import { API_BASE } from '../../lib/api';
+import {
+  TOPS1_DEFAULTS,
+  TOPS2_DEFAULTS,
+  LASER_DEFAULTS_PATH,
+  type LaserOption,
+} from './laserDefaults';
 
 const Plot = dynamic(() => import('react-plotly.js'), { ssr: false });
 
@@ -60,9 +66,13 @@ type TransverseIsotropicResult = {
 };
 
 type FDPBDParams = {
-  f_rolloff: string;
+  delay_0: string;
   delay_1: string;
   delay_2: string;
+  amplitude_corrected_0: string;
+  amplitude_corrected_1: string;
+  amplitude_corrected_2: string;
+  amplitude_corrected_3: string;
   lambda_down: string[];
   eta_down: string[];
   c_down: string[];
@@ -109,9 +119,13 @@ type FDPBDParams = {
 
 export default function FDPBDPage() {
   const [params, setParams] = useState<FDPBDParams>({
-    f_rolloff: '95000',
-    delay_1: '0.0000089',
-    delay_2: '-1.3e-11',
+    delay_0: TOPS1_DEFAULTS.delay_0,
+    delay_1: TOPS1_DEFAULTS.delay_1,
+    delay_2: TOPS1_DEFAULTS.delay_2,
+    amplitude_corrected_0: TOPS1_DEFAULTS.amplitude_corrected_0,
+    amplitude_corrected_1: TOPS1_DEFAULTS.amplitude_corrected_1,
+    amplitude_corrected_2: TOPS1_DEFAULTS.amplitude_corrected_2,
+    amplitude_corrected_3: TOPS1_DEFAULTS.amplitude_corrected_3,
     lambda_down: ['149.0', '0.1', '9.7'],
     eta_down: ['1.0', '1.0', '1.0'],
     c_down: ['2.44', '0.1', '2.73'],
@@ -122,14 +136,14 @@ export default function FDPBDPage() {
     eta_up: '1.0',
     c_up: '1192.0',
     h_up: '0.001',
-    w_rms: '11.20',
-    x_offset: '12.60',
+    w_rms: '28.00',
+    x_offset: '31.50',
     incident_pump: '1.06',
     incident_probe: '0.85',
     n_al: '2.9',
     k_al: '8.2',
-    lens_transmittance: '0.93',
-    focal_length: '40',
+    lens_transmittance: '0.86',
+    focal_length: '100',
     w_probe_det: '0.971',
     phi: '0',
     rho: '2.70',
@@ -156,9 +170,13 @@ export default function FDPBDPage() {
     dndt_up: '-8.9e-7',
   });
   const fieldUnits: Record<string, string> = {
-    f_rolloff: 'Hz',
+    delay_0: '',
     delay_1: 's',
     delay_2: 's²',
+    amplitude_corrected_0: '',
+    amplitude_corrected_1: '',
+    amplitude_corrected_2: '',
+    amplitude_corrected_3: '',
     lambda_down: 'W/m-K',
     eta_down: '',
     c_down: 'J/cm\u00B3-K',
@@ -242,12 +260,12 @@ export default function FDPBDPage() {
     elapsed: number;
     fit_param: string;
   } | null>(null);
-  const [lensOption, setLensOption] = useState<'5x' | '10x' | '20x' | 'custom'>('5x');
+  const [lensOption, setLensOption] = useState<'2x' | '5x' | '10x' | '20x' | 'custom'>('2x');
   const [mediumOption, setMediumOption] = useState<'air' | 'custom'>('air');
   const [isotropyOption, setIsotropyOption] = useState<
     'isotropy' | 'anisotropy' | 'transverse_anisotropy'
   >('isotropy');
-  const [laserOption, setLaserOption] = useState<'TOPS 1' | 'TOPS 2' | 'custom'>('TOPS 1');
+  const [laserOption, setLaserOption] = useState<LaserOption>('TOPS 1');
 
   const isValidDecimal = (value: string | string[]) => {
     if (Array.isArray(value)) {
@@ -256,18 +274,25 @@ export default function FDPBDPage() {
     return value !== '' && !isNaN(parseFloat(value));
   };
 
+  const activeLeakingFields = (): string[] => [
+    params.amplitude_corrected_0,
+    params.amplitude_corrected_1,
+    params.amplitude_corrected_2,
+    params.amplitude_corrected_3,
+    params.delay_0,
+    params.delay_1,
+    params.delay_2,
+  ];
+
   const isFormValid = () => {
     if (isotropyOption === 'transverse_anisotropy') {
       const fields = [
-        params.f_rolloff,
-        params.delay_1,
-        params.delay_2,
+        ...activeLeakingFields(),
         params.incident_pump,
         params.v_sum_fixed,
         params.w_rms,
         params.x_offset,
         params.lens_transmittance,
-        params.focal_length,
         params.w_probe_det,
         params.c_probe,
         params.n_al,
@@ -301,9 +326,7 @@ export default function FDPBDPage() {
       return fields.every((field) => isValidDecimal(field)) && file !== null;
     }
     const fields = [
-      params.f_rolloff,
-      params.delay_1,
-      params.delay_2,
+      ...activeLeakingFields(),
       params.lambda_down[0],
       params.lambda_down[1],
       params.lambda_down[2],
@@ -326,7 +349,6 @@ export default function FDPBDPage() {
       params.n_al,
       params.k_al,
       params.lens_transmittance,
-      params.focal_length,
       params.w_probe_det,
       ...(isotropyOption === 'anisotropy'
         ? [
@@ -370,6 +392,13 @@ export default function FDPBDPage() {
 
     if (['w_rms', 'x_offset', 'lens_transmittance', 'focal_length', 'phi'].includes(field)) {
       const lensValues = {
+        '2x': {
+          w_rms: '28.00',
+          x_offset: '31.50',
+          lens_transmittance: '0.86',
+          focal_length: '100',
+          phi: '0',
+        },
         '5x': {
           w_rms: '11.20',
           x_offset: '12.60',
@@ -478,55 +507,19 @@ export default function FDPBDPage() {
         setIsotropyOption('anisotropy');
       }
     }
-    if (
-      [
-        'f_rolloff',
-        'delay_1',
-        'delay_2',
-        'incident_pump',
-        'incident_probe',
-        'w_probe_det',
-      ].includes(field)
-    ) {
-      const laserValues = {
-        'TOPS 1': {
-          f_rolloff: '95000',
-          delay_1: '0.0000089',
-          delay_2: '-1.3e-11',
-          incident_pump: '1.06',
-          incident_probe: '0.85',
-          w_probe_det: '0.971',
-        },
-        'TOPS 2': {
-          f_rolloff: '95000',
-          delay_1: '0.0000089',
-          delay_2: '-1.3e-11',
-          incident_pump: '1.06',
-          incident_probe: '0.85',
-          w_probe_det: '0.87',
-        },
-      };
-      const updatedParams = { ...params, [field]: value };
-      if (
-        !Object.values(laserValues).some(
-          (vals) =>
-            vals.f_rolloff === updatedParams.f_rolloff &&
-            vals.delay_1 === updatedParams.delay_1 &&
-            vals.delay_2 === updatedParams.delay_2 &&
-            vals.incident_pump === updatedParams.incident_pump &&
-            vals.incident_probe === updatedParams.incident_probe &&
-            vals.w_probe_det === updatedParams.w_probe_det
-        )
-      ) {
-        setLaserOption('custom');
-      }
-    }
   };
 
-  const handleLensOptionChange = (option: '5x' | '10x' | '20x' | 'custom') => {
+  const handleLensOptionChange = (option: '2x' | '5x' | '10x' | '20x' | 'custom') => {
     setLensOption(option);
     if (option !== 'custom') {
       const values = {
+        '2x': {
+          w_rms: '28.00',
+          x_offset: '31.50',
+          lens_transmittance: '0.86',
+          focal_length: '100',
+          phi: '0',
+        },
         '5x': {
           w_rms: '11.20',
           x_offset: '12.60',
@@ -617,44 +610,52 @@ export default function FDPBDPage() {
     }
   };
 
-  const handleLaserOptionChange = (option: 'TOPS 1' | 'TOPS 2' | 'custom') => {
+  const handleLaserOptionChange = (option: LaserOption) => {
     setLaserOption(option);
-    if (option !== 'custom') {
-      const values = {
-        'TOPS 1': {
-          f_rolloff: '95000',
-          delay_1: '0.0000089',
-          delay_2: '-1.3e-11',
-          incident_pump: '1.06',
-          incident_probe: '0.85',
-          w_probe_det: '0.971',
-        },
-        'TOPS 2': {
-          f_rolloff: '95000',
-          delay_1: '0.0000089',
-          delay_2: '-1.3e-11',
-          incident_pump: '1.06',
-          incident_probe: '0.85',
-          w_probe_det: '0.87',
-        },
-      };
+    const opticalValues = {
+      'TOPS 1': { incident_pump: '1.06', incident_probe: '0.85', w_probe_det: '0.971' },
+      'TOPS 2': { incident_pump: '1.06', incident_probe: '0.85', w_probe_det: '0.87' },
+    };
+    if (option === 'TOPS 1') {
       setParams((prev) => ({
         ...prev,
-        f_rolloff: values[option].f_rolloff,
-        delay_1: values[option].delay_1,
-        delay_2: values[option].delay_2,
-        incident_pump: values[option].incident_pump,
-        incident_probe: values[option].incident_probe,
-        w_probe_det: values[option].w_probe_det,
+        delay_0: TOPS1_DEFAULTS.delay_0,
+        delay_1: TOPS1_DEFAULTS.delay_1,
+        delay_2: TOPS1_DEFAULTS.delay_2,
+        amplitude_corrected_0: TOPS1_DEFAULTS.amplitude_corrected_0,
+        amplitude_corrected_1: TOPS1_DEFAULTS.amplitude_corrected_1,
+        amplitude_corrected_2: TOPS1_DEFAULTS.amplitude_corrected_2,
+        amplitude_corrected_3: TOPS1_DEFAULTS.amplitude_corrected_3,
+        incident_pump: opticalValues['TOPS 1'].incident_pump,
+        incident_probe: opticalValues['TOPS 1'].incident_probe,
+        w_probe_det: opticalValues['TOPS 1'].w_probe_det,
+      }));
+    } else {
+      setParams((prev) => ({
+        ...prev,
+        delay_0: TOPS2_DEFAULTS.delay_0,
+        delay_1: TOPS2_DEFAULTS.delay_1,
+        delay_2: TOPS2_DEFAULTS.delay_2,
+        amplitude_corrected_0: TOPS2_DEFAULTS.amplitude_corrected_0,
+        amplitude_corrected_1: TOPS2_DEFAULTS.amplitude_corrected_1,
+        amplitude_corrected_2: TOPS2_DEFAULTS.amplitude_corrected_2,
+        amplitude_corrected_3: TOPS2_DEFAULTS.amplitude_corrected_3,
+        incident_pump: opticalValues['TOPS 2'].incident_pump,
+        incident_probe: opticalValues['TOPS 2'].incident_probe,
+        w_probe_det: opticalValues['TOPS 2'].w_probe_det,
       }));
     }
   };
 
   const handleClear = () => {
     setParams({
-      f_rolloff: '',
+      delay_0: '',
       delay_1: '',
       delay_2: '',
+      amplitude_corrected_0: '',
+      amplitude_corrected_1: '',
+      amplitude_corrected_2: '',
+      amplitude_corrected_3: '',
       lambda_down: ['', '', ''],
       eta_down: ['', '', ''],
       c_down: ['', '', ''],
@@ -701,7 +702,7 @@ export default function FDPBDPage() {
     setLensOption('custom');
     setMediumOption('custom');
     setIsotropyOption('anisotropy');
-    setLaserOption('custom');
+    setLaserOption('TOPS 1');
     setStatus('');
   };
 
@@ -732,9 +733,13 @@ export default function FDPBDPage() {
     if (isotropyOption === 'transverse_anisotropy') {
       // Transverse anisotropy mode: map shared fields to backend param names with unit conversions
       const transverseParams = {
-        f_rolloff: parseFloat(params.f_rolloff),
+        delay_0: parseFloat(params.delay_0),
         delay_1: parseFloat(params.delay_1),
         delay_2: parseFloat(params.delay_2),
+        amplitude_corrected_0: parseFloat(params.amplitude_corrected_0),
+        amplitude_corrected_1: parseFloat(params.amplitude_corrected_1),
+        amplitude_corrected_2: parseFloat(params.amplitude_corrected_2),
+        amplitude_corrected_3: parseFloat(params.amplitude_corrected_3),
         incident_pump: parseFloat(params.incident_pump) * 1e-3, // mW -> W
         v_sum_fixed: parseFloat(params.v_sum_fixed),
         w_rms: parseFloat(params.w_rms) * 1e-6, // µm -> m
@@ -886,6 +891,95 @@ export default function FDPBDPage() {
     }
   };
 
+  // Field definitions for the leaking-correction inputs, varying by laser mode.
+  // These values are instrument-specific and shown read-only on the UI;
+  // edit them in `laserDefaults.ts`.
+  const leakingFields: { field: keyof FDPBDParams; label: string }[] = [
+    { field: 'amplitude_corrected_0', label: 'Amplitude Corrected (constant)' },
+    { field: 'amplitude_corrected_1', label: 'Amplitude Corrected (1st order)' },
+    { field: 'amplitude_corrected_2', label: 'Amplitude Corrected (2nd order)' },
+    { field: 'amplitude_corrected_3', label: 'Amplitude Corrected (3rd order)' },
+    { field: 'delay_0', label: 'delay (constant)' },
+    { field: 'delay_1', label: `delay (1st order) [${fieldUnits.delay_1}]` },
+    { field: 'delay_2', label: `delay (2nd order) [${fieldUnits.delay_2}]` },
+  ];
+
+  const renderLaserSection = (radioName: string, includeIncidentProbe = true) => {
+    const opticalFields = [
+      { field: 'incident_pump', label: `Incident Pump [${fieldUnits.incident_pump}]` },
+      ...(includeIncidentProbe
+        ? [{ field: 'incident_probe', label: `Incident Probe [${fieldUnits.incident_probe}]` }]
+        : []),
+      { field: 'w_probe_det', label: `Probe Radius at Detector [${fieldUnits.w_probe_det}]` },
+    ];
+    return (
+      <div className="px-4 pb-4">
+        <div className="mb-2 flex items-center space-x-4">
+          {(['TOPS 1', 'TOPS 2'] as LaserOption[]).map((opt) => (
+            <label key={opt} className="flex items-center text-white">
+              <input
+                type="radio"
+                name={radioName}
+                value={opt}
+                checked={laserOption === opt}
+                onChange={() => handleLaserOptionChange(opt)}
+                className="mr-2"
+                disabled={isProcessing}
+              />
+              {opt}
+            </label>
+          ))}
+          <span
+            className="inline-flex h-4 w-4 flex-none cursor-help items-center justify-center text-gray-300"
+            title={`Leaking-correction values below are read-only and instrument-specific. Edit them in: ${LASER_DEFAULTS_PATH}`}
+            aria-label="Info"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 16 16"
+              width="16"
+              height="16"
+              fill="currentColor"
+              aria-hidden="true"
+            >
+              <path d="M8 0a8 8 0 1 0 0 16A8 8 0 0 0 8 0Zm0 14.5a6.5 6.5 0 1 1 0-13 6.5 6.5 0 0 1 0 13ZM7.25 6.75h1.5v5h-1.5v-5Zm.75-2.5a1 1 0 1 1 0 2 1 1 0 0 1 0-2Z" />
+            </svg>
+          </span>
+        </div>
+        {leakingFields.map((param) => (
+          <div key={param.field} className="mb-2 flex flex-col">
+            <label className="mb-1 text-sm text-white">{param.label}</label>
+            <input
+              type="text"
+              value={params[param.field] as string}
+              readOnly
+              tabIndex={-1}
+              className="cursor-not-allowed rounded border-2 border-gray-600 bg-gray-900 p-2 text-gray-300 focus:outline-none"
+            />
+          </div>
+        ))}
+        {opticalFields.map((param) => (
+          <div key={param.field} className="mb-2 flex flex-col">
+            <label className="mb-1 text-sm text-white">{param.label}</label>
+            <input
+              type="number"
+              step="any"
+              value={params[param.field as keyof FDPBDParams] as string}
+              onChange={(e) => handleInputChange(e, param.field as keyof FDPBDParams)}
+              className={`rounded border-2 bg-gray-800 p-2 text-white focus:outline-none ${
+                isValidDecimal(params[param.field as keyof FDPBDParams] as string)
+                  ? 'border-gray-600 focus:border-teal-500'
+                  : 'border-red-500'
+              }`}
+              disabled={isProcessing}
+              required
+            />
+          </div>
+        ))}
+      </div>
+    );
+  };
+
   const anisotropicFitParams = [
     { value: 'sigma_x', label: 'Thermal Conductivity X (σx)' },
     { value: 'sigma_y', label: 'Thermal Conductivity Y (σy)' },
@@ -919,9 +1013,13 @@ export default function FDPBDPage() {
 
     if (isotropyOption === 'transverse_anisotropy') {
       const transverseParams = {
-        f_rolloff: parseFloat(params.f_rolloff),
+        delay_0: parseFloat(params.delay_0),
         delay_1: parseFloat(params.delay_1),
         delay_2: parseFloat(params.delay_2),
+        amplitude_corrected_0: parseFloat(params.amplitude_corrected_0),
+        amplitude_corrected_1: parseFloat(params.amplitude_corrected_1),
+        amplitude_corrected_2: parseFloat(params.amplitude_corrected_2),
+        amplitude_corrected_3: parseFloat(params.amplitude_corrected_3),
         incident_pump: parseFloat(params.incident_pump) * 1e-3,
         v_sum_fixed: parseFloat(params.v_sum_fixed),
         w_rms: parseFloat(params.w_rms) * 1e-6,
@@ -1150,8 +1248,23 @@ export default function FDPBDPage() {
                     {/* Experimental Inputs */}
                     <div className="mb-6">
                       <h3 className="text-md mb-2 font-semibold text-white">Experimental Inputs</h3>
-                      {/* Lens Magnification */}
+                      {/* Laser */}
                       <div className="mb-4 rounded-lg bg-gray-700">
+                        <button
+                          onClick={() => toggleSection('laser')}
+                          className="flex w-full items-center justify-between p-4 text-left"
+                        >
+                          <h4 className="text-sm font-semibold text-white">Laser</h4>
+                          <span
+                            className={`text-gray-400 transition-transform ${collapsedSections.has('laser') ? '' : 'rotate-180'}`}
+                          >
+                            &#9650;
+                          </span>
+                        </button>
+                        {!collapsedSections.has('laser') && renderLaserSection('laser', true)}
+                      </div>
+                      {/* Lens Magnification */}
+                      <div className="rounded-lg bg-gray-700">
                         <button
                           onClick={() => toggleSection('lens')}
                           className="flex w-full items-center justify-between p-4 text-left"
@@ -1166,7 +1279,7 @@ export default function FDPBDPage() {
                         {!collapsedSections.has('lens') && (
                           <div className="px-4 pb-4">
                             <div className="mb-2 flex space-x-4">
-                              {['5x', '10x', '20x', 'custom'].map((opt) => (
+                              {['2x', '5x', '10x', '20x', 'custom'].map((opt) => (
                                 <label key={opt} className="flex items-center text-white">
                                   <input
                                     type="radio"
@@ -1174,7 +1287,7 @@ export default function FDPBDPage() {
                                     value={opt}
                                     checked={lensOption === opt}
                                     onChange={() =>
-                                      handleLensOptionChange(opt as '5x' | '10x' | '20x' | 'custom')
+                                      handleLensOptionChange(opt as '2x' | '5x' | '10x' | '20x' | 'custom')
                                     }
                                     className="mr-2"
                                     disabled={isProcessing}
@@ -1197,96 +1310,9 @@ export default function FDPBDPage() {
                                     : ''
                                 }`,
                               },
-                              {
-                                field: 'focal_length',
-                                label: `Focal Length [${fieldUnits.focal_length}]`,
-                              },
                               ...(isotropyOption === 'anisotropy'
                                 ? [{ field: 'phi', label: `Phi [${fieldUnits.phi}]` }]
                                 : []),
-                            ].map((param) => (
-                              <div key={param.field} className="mb-2 flex flex-col">
-                                <label className="mb-1 text-sm text-white">{param.label}</label>
-                                <input
-                                  type="number"
-                                  step="any"
-                                  value={params[param.field as keyof FDPBDParams] as string}
-                                  onChange={(e) =>
-                                    handleInputChange(e, param.field as keyof FDPBDParams)
-                                  }
-                                  className={`rounded border-2 bg-gray-800 p-2 text-white focus:outline-none ${
-                                    isValidDecimal(
-                                      params[param.field as keyof FDPBDParams] as string
-                                    )
-                                      ? 'border-gray-600 focus:border-teal-500'
-                                      : 'border-red-500'
-                                  }`}
-                                  disabled={isProcessing}
-                                  required
-                                />
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                      {/* Laser */}
-                      <div className="rounded-lg bg-gray-700">
-                        <button
-                          onClick={() => toggleSection('laser')}
-                          className="flex w-full items-center justify-between p-4 text-left"
-                        >
-                          <h4 className="text-sm font-semibold text-white">Laser</h4>
-                          <span
-                            className={`text-gray-400 transition-transform ${collapsedSections.has('laser') ? '' : 'rotate-180'}`}
-                          >
-                            &#9650;
-                          </span>
-                        </button>
-                        {!collapsedSections.has('laser') && (
-                          <div className="px-4 pb-4">
-                            <div className="mb-2 flex space-x-4">
-                              {['TOPS 1', 'TOPS 2', 'custom'].map((opt) => (
-                                <label key={opt} className="flex items-center text-white">
-                                  <input
-                                    type="radio"
-                                    name="laser"
-                                    value={opt}
-                                    checked={laserOption === opt}
-                                    onChange={() =>
-                                      handleLaserOptionChange(opt as 'TOPS 1' | 'TOPS 2' | 'custom')
-                                    }
-                                    className="mr-2"
-                                    disabled={isProcessing}
-                                  />
-                                  {opt}
-                                </label>
-                              ))}
-                            </div>
-                            {[
-                              {
-                                field: 'f_rolloff',
-                                label: `f Rolloff [${fieldUnits.f_rolloff}]`,
-                              },
-                              {
-                                field: 'delay_1',
-                                label: `coef 1 [${fieldUnits.delay_1}]`,
-                              },
-                              {
-                                field: 'delay_2',
-                                label: `coef 2 [${fieldUnits.delay_2}]`,
-                              },
-                              {
-                                field: 'incident_pump',
-                                label: `Incident Pump [${fieldUnits.incident_pump}]`,
-                              },
-                              {
-                                field: 'incident_probe',
-                                label: `Incident Probe [${fieldUnits.incident_probe}]`,
-                              },
-                              {
-                                field: 'w_probe_det',
-                                label: `Probe Radius at Detector [${fieldUnits.w_probe_det}]`,
-                              },
                             ].map((param) => (
                               <div key={param.field} className="mb-2 flex flex-col">
                                 <label className="mb-1 text-sm text-white">{param.label}</label>
@@ -1760,6 +1786,23 @@ export default function FDPBDPage() {
                   <>
                     <div className="mb-6">
                       <h3 className="text-md mb-2 font-semibold text-white">Experimental Inputs</h3>
+                      {/* Laser */}
+                      <div className="mb-4 rounded-lg bg-gray-700">
+                        <button
+                          onClick={() => toggleSection('t_laser')}
+                          className="flex w-full items-center justify-between p-4 text-left"
+                        >
+                          <h4 className="text-sm font-semibold text-white">Laser</h4>
+                          <span
+                            className={`text-gray-400 transition-transform ${collapsedSections.has('t_laser') ? '' : 'rotate-180'}`}
+                          >
+                            &#9650;
+                          </span>
+                        </button>
+                        {!collapsedSections.has('t_laser') &&
+                          renderLaserSection('laser_transverse', false)}
+                      </div>
+
                       {/* Lens Magnification */}
                       <div className="mb-4 rounded-lg bg-gray-700">
                         <button
@@ -1776,7 +1819,7 @@ export default function FDPBDPage() {
                         {!collapsedSections.has('t_lens') && (
                           <div className="px-4 pb-4">
                             <div className="mb-2 flex space-x-4">
-                              {['5x', '10x', '20x', 'custom'].map((opt) => (
+                              {['2x', '5x', '10x', '20x', 'custom'].map((opt) => (
                                 <label key={opt} className="flex items-center text-white">
                                   <input
                                     type="radio"
@@ -1784,7 +1827,7 @@ export default function FDPBDPage() {
                                     value={opt}
                                     checked={lensOption === opt}
                                     onChange={() =>
-                                      handleLensOptionChange(opt as '5x' | '10x' | '20x' | 'custom')
+                                      handleLensOptionChange(opt as '2x' | '5x' | '10x' | '20x' | 'custom')
                                     }
                                     className="mr-2"
                                     disabled={isProcessing}
@@ -1798,85 +1841,10 @@ export default function FDPBDPage() {
                               { field: 'x_offset', label: `X Offset [${fieldUnits.x_offset}]` },
                               { field: 'lens_transmittance', label: 'Lens Transmittance' },
                               {
-                                field: 'focal_length',
-                                label: `Focal Length [${fieldUnits.focal_length}]`,
-                              },
-                              {
                                 field: 'v_sum_fixed',
                                 label: `V Sum Fixed [${fieldUnits.v_sum_fixed}]`,
                               },
                               { field: 'c_probe', label: 'C Probe' },
-                            ].map((param) => (
-                              <div key={param.field} className="mb-2 flex flex-col">
-                                <label className="mb-1 text-sm text-white">{param.label}</label>
-                                <input
-                                  type="number"
-                                  step="any"
-                                  value={params[param.field as keyof FDPBDParams] as string}
-                                  onChange={(e) =>
-                                    handleInputChange(e, param.field as keyof FDPBDParams)
-                                  }
-                                  className={`rounded border-2 bg-gray-800 p-2 text-white focus:outline-none ${
-                                    isValidDecimal(
-                                      params[param.field as keyof FDPBDParams] as string
-                                    )
-                                      ? 'border-gray-600 focus:border-teal-500'
-                                      : 'border-red-500'
-                                  }`}
-                                  disabled={isProcessing}
-                                  required
-                                />
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Laser */}
-                      <div className="mb-4 rounded-lg bg-gray-700">
-                        <button
-                          onClick={() => toggleSection('t_laser')}
-                          className="flex w-full items-center justify-between p-4 text-left"
-                        >
-                          <h4 className="text-sm font-semibold text-white">Laser</h4>
-                          <span
-                            className={`text-gray-400 transition-transform ${collapsedSections.has('t_laser') ? '' : 'rotate-180'}`}
-                          >
-                            &#9650;
-                          </span>
-                        </button>
-                        {!collapsedSections.has('t_laser') && (
-                          <div className="px-4 pb-4">
-                            <div className="mb-2 flex space-x-4">
-                              {['TOPS 1', 'TOPS 2', 'custom'].map((opt) => (
-                                <label key={opt} className="flex items-center text-white">
-                                  <input
-                                    type="radio"
-                                    name="laser_transverse"
-                                    value={opt}
-                                    checked={laserOption === opt}
-                                    onChange={() =>
-                                      handleLaserOptionChange(opt as 'TOPS 1' | 'TOPS 2' | 'custom')
-                                    }
-                                    className="mr-2"
-                                    disabled={isProcessing}
-                                  />
-                                  {opt}
-                                </label>
-                              ))}
-                            </div>
-                            {[
-                              { field: 'f_rolloff', label: `f Rolloff [${fieldUnits.f_rolloff}]` },
-                              { field: 'delay_1', label: `coef 1 [${fieldUnits.delay_1}]` },
-                              { field: 'delay_2', label: `coef 2 [${fieldUnits.delay_2}]` },
-                              {
-                                field: 'incident_pump',
-                                label: `Incident Pump [${fieldUnits.incident_pump}]`,
-                              },
-                              {
-                                field: 'w_probe_det',
-                                label: `Probe Radius at Detector [${fieldUnits.w_probe_det}]`,
-                              },
                             ].map((param) => (
                               <div key={param.field} className="mb-2 flex flex-col">
                                 <label className="mb-1 text-sm text-white">{param.label}</label>
