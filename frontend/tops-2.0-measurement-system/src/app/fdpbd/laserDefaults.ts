@@ -24,15 +24,14 @@ export const TOPS1_DEFAULTS: LeakingDefaults = {
   delay_2: '1.65e-11',
 };
 
-// TODO: replace with measured TOPS 2 constants.
 export const TOPS2_DEFAULTS: LeakingDefaults = {
-  amplitude_corrected_0: '0',
-  amplitude_corrected_1: '0',
-  amplitude_corrected_2: '0',
-  amplitude_corrected_3: '0',
-  delay_0: '0',
-  delay_1: '0',
-  delay_2: '0',
+  amplitude_corrected_0: '1',
+  amplitude_corrected_1: '1.50e-4',
+  amplitude_corrected_2: '1.18e-6',
+  amplitude_corrected_3: '-6.08e-9',
+  delay_0: '5.08e-3',
+  delay_1: '-1.10e-5',
+  delay_2: '7.33e-12',
 };
 
 // Path shown in the UI tooltip so users know where to edit these values.
