@@ -61,7 +61,7 @@ def calculate_leaking(
         + amplitude_corrected_2 * sf**2
         + amplitude_corrected_3 * sf**3
     )
-    phase = np.exp(1j * (delay_0 + delay_1 * freq + delay_2 * freq**2) * 1.1)
+    phase = np.exp(1j * (delay_0 + delay_1 * freq + delay_2 * freq**2))
     res: NDArray[np.complex128] = amp * phase
     return res
 
