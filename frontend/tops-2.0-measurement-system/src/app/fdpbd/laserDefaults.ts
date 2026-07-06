@@ -15,13 +15,13 @@ export type LeakingDefaults = {
 };
 
 export const TOPS1_DEFAULTS: LeakingDefaults = {
-  amplitude_corrected_0: '9.93e-1',
-  amplitude_corrected_1: '6.88e-4',
-  amplitude_corrected_2: '-4.45e-6',
-  amplitude_corrected_3: '6.92e-9',
-  delay_0: '5.35e-3',
-  delay_1: '-1.05e-5',
-  delay_2: '1.65e-11',
+  amplitude_corrected_0: '9.61e-1',
+  amplitude_corrected_1: '9.06e-4',
+  amplitude_corrected_2: '-5.66e-6',
+  amplitude_corrected_3: '9.6e-9',
+  delay_0: '8.96e-3',
+  delay_1: '-1.17e-5',
+  delay_2: '2.81e-11',
 };
 
 export const TOPS2_DEFAULTS: LeakingDefaults = {
