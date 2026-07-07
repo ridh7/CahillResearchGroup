@@ -64,8 +64,8 @@ def run_fdpbd_analysis(params: FDPBDParams, data_filename: str) -> dict:
     # Correct data
     v_corr_in, v_corr_out, v_corr_ratio = correct_data(v_out, v_in, complex_leaking)
 
-    # Calculate average sum voltage
-    v_sum_avg = np.mean(v_sum)
+    # Calculate average sum voltage new detector requires this factor of 4
+    v_sum_avg = np.mean(v_sum)*4.0 
     # Detector calibration: converts deflection angle (rad) to detector signal (V).
     # Both the sample thermo-optic coefficient and the air dn/dT must be scaled by
     # this factor so the two deflection contributions are in the same units.
