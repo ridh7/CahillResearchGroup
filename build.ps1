@@ -3,6 +3,10 @@
 # and copies the output into backend/static/.
 # Run this once after cloning, or whenever the frontend changes.
 
+param(
+    [switch]$SkipFrontendBuild
+)
+
 $ErrorActionPreference = "Stop"
 
 function Exit-WithPause($code) {
@@ -36,39 +40,43 @@ if ($LASTEXITCODE -ne 0) {
 }
 Write-Host "Python setup complete." -ForegroundColor Green
 
-# --- Frontend build ---
-Write-Host "Installing frontend dependencies..." -ForegroundColor Cyan
-Push-Location $frontendDir
-try {
-    npm ci
-    if ($LASTEXITCODE -ne 0) {
-        Write-Host "ERROR: 'npm ci' failed. Check package-lock.json or node version." -ForegroundColor Red
+if (-Not $SkipFrontendBuild) {
+    # --- Frontend build ---
+    Write-Host "Installing frontend dependencies..." -ForegroundColor Cyan
+    Push-Location $frontendDir
+    try {
+        npm ci
+        if ($LASTEXITCODE -ne 0) {
+            Write-Host "ERROR: 'npm ci' failed. Check package-lock.json or node version." -ForegroundColor Red
+            Exit-WithPause 1
+        }
+        Write-Host "Frontend dependencies installed." -ForegroundColor Green
+
+        Write-Host "Building frontend..." -ForegroundColor Cyan
+        npm run build
+        if ($LASTEXITCODE -ne 0) {
+            Write-Host "ERROR: Frontend build failed. Check for TypeScript/ESLint errors above." -ForegroundColor Red
+            Exit-WithPause 1
+        }
+        Write-Host "Frontend build complete." -ForegroundColor Green
+    } finally {
+        Pop-Location
+    }
+
+    $outDir = Join-Path $frontendDir "out"
+    if (-Not (Test-Path $outDir)) {
+        Write-Host "ERROR: Frontend build output not found at $outDir" -ForegroundColor Red
         Exit-WithPause 1
     }
-    Write-Host "Frontend dependencies installed." -ForegroundColor Green
 
-    Write-Host "Building frontend..." -ForegroundColor Cyan
-    npm run build
-    if ($LASTEXITCODE -ne 0) {
-        Write-Host "ERROR: Frontend build failed. Check for TypeScript/ESLint errors above." -ForegroundColor Red
-        Exit-WithPause 1
+    Write-Host "Copying build output to backend/static..." -ForegroundColor Cyan
+    if (Test-Path $backendStaticDir) {
+        Remove-Item -Recurse -Force $backendStaticDir
     }
-    Write-Host "Frontend build complete." -ForegroundColor Green
-} finally {
-    Pop-Location
+    Copy-Item -Recurse -Force $outDir $backendStaticDir
+} else {
+    Write-Host "Skipping frontend build due to -SkipFrontendBuild parameter." -ForegroundColor Yellow
 }
-
-$outDir = Join-Path $frontendDir "out"
-if (-Not (Test-Path $outDir)) {
-    Write-Host "ERROR: Frontend build output not found at $outDir" -ForegroundColor Red
-    Exit-WithPause 1
-}
-
-Write-Host "Copying build output to backend/static..." -ForegroundColor Cyan
-if (Test-Path $backendStaticDir) {
-    Remove-Item -Recurse -Force $backendStaticDir
-}
-Copy-Item -Recurse -Force $outDir $backendStaticDir
 
 Write-Host ""
 Write-Host "Build complete. Run start.bat to launch the application." -ForegroundColor Green
