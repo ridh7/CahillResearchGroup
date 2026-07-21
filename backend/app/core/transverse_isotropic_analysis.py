@@ -494,7 +494,7 @@ def compute_lockin_signals(
     angles: np.ndarray, v_sum_fixed: float, detector_gain: float
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Convert deflection angles into lock-in signals."""
-    raw = angles / np.sqrt(2) * 2.0 * detector_gain * v_sum_fixed
+    raw = angles / np.sqrt(2) * 4.0 * detector_gain * v_sum_fixed # dgc: changed factor of 2.0 to 4.0
     in_phase = np.abs(np.real(raw))
     out_of_phase = -np.imag(raw)
     ratio = np.full_like(in_phase, np.nan)

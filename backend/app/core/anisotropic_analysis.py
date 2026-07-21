@@ -466,7 +466,7 @@ def compute_lockin_signals(
     angles: np.ndarray, v_sum_avg: float, detector_factor: float
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Convert deflection angles into lock-in signals."""
-    raw = angles / np.sqrt(2) * 0.5 * detector_factor * v_sum_avg
+    raw = angles / np.sqrt(2) *  detector_factor * v_sum_avg # dgc: removed a factor of 0.5
     in_phase = np.abs(np.real(raw))
     out_phase = -np.imag(raw)
     ratio = np.full_like(in_phase, np.nan)
@@ -582,7 +582,7 @@ def run_anisotropic_analysis(params: dict, data_filename: str) -> dict:
     v_corr_in, v_corr_out, v_corr_ratio = correct_data(v_out, v_in, complex_leaking)
 
     # Average sum voltage
-    v_sum_avg = float(np.mean(v_sum))
+    v_sum_avg = float(np.mean(v_sum)) * 4.0
 
     # Build p and psi grids
     up_p = 8 / transformed_params["w_rms"]
@@ -718,7 +718,7 @@ def run_de_fitting_anisotropic(
         amplitude_corrected_3=transformed_params["amplitude_corrected_3"],
     )
     v_corr_in, v_corr_out, v_corr_ratio = correct_data(v_out, v_in, complex_leaking)
-    v_sum_avg = float(np.mean(v_sum))
+    v_sum_avg = float(np.mean(v_sum)) * 4.0
 
     # Build grids
     up_p = 8 / transformed_params["w_rms"]
