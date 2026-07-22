@@ -164,7 +164,7 @@ export default function FDPBDPage() {
     alphaT_para: '60e-6',
     // Transverse anisotropy defaults (from main_3.py)
     v_sum_fixed: '0.18',
-    c_probe: '0.65',
+    c_probe: '0.70',
     g_int: '100e6',
     include_air_deflection: false,
     dndt_up: '-8.9e-7',
@@ -585,7 +585,7 @@ export default function FDPBDPage() {
         ...prev,
         // Transverse-only fields
         v_sum_fixed: prev.v_sum_fixed || '0.18',
-        c_probe: prev.c_probe || '0.65',
+        c_probe: prev.c_probe || '0.70',
         g_int: prev.g_int || '100e6',
         // Set transducer defaults for transverse mode
         rho: '2.70',

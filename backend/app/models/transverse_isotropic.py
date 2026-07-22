@@ -18,7 +18,7 @@ class TransverseIsotropicParams(BaseModel):
     r_0: float = 12.6e-6
     lens_transmittance: float = 0.92
     detector_gain: float = 37.0
-    c_probe: float = 0.65
+    c_probe: float = 0.70
     n_al: float = 2.9
     k_al: float = 8.2
 
