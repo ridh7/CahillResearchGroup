@@ -24,8 +24,8 @@ class TransverseIsotropicParams(BaseModel):
 
     # Simulation grid
     n_p: int = 63
-    model_freq_start: float = 5e3
-    model_freq_end: float = 300.0
+    model_freq_start: float = 30e3 # dgc: changed this to 30e3 to 30
+    model_freq_end: float = 30
     model_freq_points: int = 40
 
     # Thermal boundary conductance

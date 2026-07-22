@@ -509,7 +509,7 @@ def run_anisotropic_analysis(params: dict, data_filename: str) -> dict:
     g_int = 100e6
     n_p = 63
     n_psi = 45
-    model_freqs = np.logspace(np.log10(100e3), np.log10(100), 10)
+    model_freqs = np.logspace(np.log10(30e3), np.log10(30), 10) # dgc: changed this to 30e3 to 30
 
     # Transform frontend parameters
     transformed_params = {
@@ -652,7 +652,7 @@ def run_de_fitting_anisotropic(
     g_int = 100e6
     n_p = 63
     n_psi = 45
-    model_freqs = np.logspace(np.log10(100e3), np.log10(100), 10)
+    model_freqs = np.logspace(np.log10(30e3), np.log10(30), 10) # dgc: changed this to 30e3 to 30
 
     transformed_params = {
         "delay_0": float(params.get("delay_0", 0.0)),
